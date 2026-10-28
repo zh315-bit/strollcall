@@ -154,7 +154,9 @@ def ref_str(r):
 def report(rows, spend) -> str:
     now = datetime.now(NYC)
     med = lambda xs: statistics.median(xs) if xs else None  # noqa: E731
-    ids = lambda r, arm: r[arm]["top"].id if r[arm]["top"] else None  # noqa: E731
+    # Compared by place names (meeting point -> destination), not OSM ids: another branch of the
+    # same chain or another gate of the same park does not count as a different pick.
+    ids = lambda r, arm: r[arm]["pick"] if r[arm]["top"] else None  # noqa: E731
     total_ref = sum(len(r["case"]["expected_wishes"]) for r in rows)
 
     def ref_total(arm, key):
@@ -233,6 +235,7 @@ def report(rows, spend) -> str:
             "| Gap / time error | " + " | ".join(f"{fmt(r[x]['gap'])} / {fmt(r[x]['err'])}" for x in ARMS) + " |",
             "| Why this one | " + " | ".join(r[x]["why"] for x in ARMS) + " |",
             "| Ranking | " + " | ".join(r[x]["rank_source"] for x in ARMS) + " |",
+            "| Notes shown to users | " + " | ".join(" ".join(r[x]["plan"].notes) or "–" for x in ARMS) + " |",
             "| Hard constraints, both people | " + " | ".join(
                 {True: "ok", False: "VIOLATED", None: "–"}[r[x]["hard"]] for x in ARMS) + " |",
             "| Strict time limit detected (A, B) | " + " | ".join(
