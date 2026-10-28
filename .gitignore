@@ -1,0 +1,18 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# local data (SQLite holds invites and spend log)
+*.sqlite
+*.sqlite3
+*.db
+data/
+
+.DS_Store
