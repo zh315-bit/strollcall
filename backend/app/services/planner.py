@@ -13,6 +13,9 @@ import statistics
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
+from pydantic import BaseModel
+
+from app.core.errors import ProviderError
 from app.core.geo import haversine_m
 from app.core.hours import is_open
 from app.models.schemas import MeetupCandidate, Place, RouteLeg, TravelMatrix, WalkIntent
@@ -370,3 +373,99 @@ def top_candidates(
             )
         )
     return result
+
+
+# --- Fallback ladder (section 6.4) ---
+
+# Drop counter -> (constraint that failed, one suggested change)
+FAILURE_REASONS = {
+    "meetup_no_route": ("route_exists", "longer_time"),
+    "shared_no_route": ("route_exists", "closer_destination"),
+    "meetup_over_time_share": ("time_budget", "longer_time"),
+    "elapsed_over_budget": ("time_budget", "closer_destination"),
+    "meetup_gap_over_max": ("fair_gap", "longer_time"),
+    "destination_known_closed": ("destination_open", "relaxed_preference"),
+    "open_status_unconfirmed": ("destination_open", "relaxed_preference"),
+    "directions_broke_constraint": ("time_budget", "longer_time"),
+}
+SUGGESTIONS = {
+    "longer_time": "Allow a longer walk, for example {longer} minutes.",
+    "closer_destination": "Pick a destination closer to the meetup point, or allow {longer} minutes.",
+    "relaxed_preference": "Relax a preference: allow any destination type or drop 'open now'.",
+}
+
+
+class PlanFailure(BaseModel):
+    constraint: str  # which hard constraint failed most often
+    count: int
+    suggestion_type: str  # longer_time / closer_destination / relaxed_preference
+    suggestion: str
+
+
+class PlanResult(BaseModel):
+    status: str  # proposed / no_feasible_plan / routing_unavailable / places_unavailable
+    candidates: list[MeetupCandidate] = []
+    places: dict[str, Place] = {}  # meeting and endpoint places of the candidates
+    failure: PlanFailure | None = None
+    error: str | None = None
+    stats: dict[str, int] = {}
+
+
+def explain_failure(stats: dict[str, int], intent: WalkIntent) -> PlanFailure:
+    longer = min(intent.duration_min + 10, 60)
+    counts: dict[str, int] = {}
+    first_key: dict[str, str] = {}
+    for key, (constraint, _) in FAILURE_REASONS.items():
+        if stats.get(key):
+            counts[constraint] = counts.get(constraint, 0) + stats[key]
+            if constraint not in first_key or stats[key] > stats[first_key[constraint]]:
+                first_key[constraint] = key
+    if not counts:
+        # Nothing to filter: OSM had no candidate places of the wanted kind nearby.
+        missing = "destination" if stats.get("meetup_kept") else "meetup"
+        return PlanFailure(
+            constraint=f"no_{missing}_places",
+            count=0,
+            suggestion_type="relaxed_preference",
+            suggestion=SUGGESTIONS["relaxed_preference"],
+        )
+    constraint = max(sorted(counts), key=lambda c: counts[c])
+    suggestion_type = FAILURE_REASONS[first_key[constraint]][1]
+    return PlanFailure(
+        constraint=constraint,
+        count=counts[constraint],
+        suggestion_type=suggestion_type,
+        suggestion=SUGGESTIONS[suggestion_type].format(longer=longer),
+    )
+
+
+def plan_walk(
+    a: Point, b: Point, intent: WalkIntent, overpass, ors, depart_at: datetime,
+    weights: Weights | None = None,
+) -> PlanResult:
+    """Full deterministic planning. Never returns a route ORS did not produce."""
+    weights = weights or Weights.from_settings()
+    try:
+        cs = generate_candidates(a, b, intent, overpass, ors, depart_at)
+        ranked = score_options(a, b, cs, intent, weights, depart_at)
+        top = top_candidates(a, b, ranked, intent, ors, cs.stats) if ranked else []
+    except ProviderError as e:
+        status = "places_unavailable" if e.code == "places_unavailable" else "routing_unavailable"
+        log.warning("planner failed: %s (%s)", status, e.message)
+        return PlanResult(status=status, error=e.message)
+
+    cs.stats["feasible_options"] = len(ranked)
+    if not top:
+        failure = explain_failure(cs.stats, intent)
+        log.info("planner: no feasible plan, %s failed %d times", failure.constraint, failure.count)
+        return PlanResult(status="no_feasible_plan", failure=failure, stats=cs.stats)
+
+    places = {o.meetup.place.id: o.meetup.place for o in ranked}
+    places.update({o.destination.id: o.destination for o in ranked})
+    used = {c.meeting_place_id for c in top} | {c.endpoint_place_id for c in top}
+    return PlanResult(
+        status="proposed",
+        candidates=top,
+        places={pid: places[pid] for pid in sorted(used)},
+        stats=cs.stats,
+    )
