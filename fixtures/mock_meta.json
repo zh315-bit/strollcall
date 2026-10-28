@@ -1,0 +1,11 @@
+{
+  "walk_intent": {
+    "duration_min": 25,
+    "vibes": ["quiet"],
+    "endpoint_type": "cafe",
+    "avoid": ["busy streets"],
+    "hard_constraints": [],
+    "inferred_fields": ["avoid"]
+  },
+  "transcript": "25 minutes, quiet streets, coffee at the end"
+}
