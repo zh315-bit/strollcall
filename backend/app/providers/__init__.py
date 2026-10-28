@@ -33,3 +33,19 @@ def meta_or_mock(call: Callable[[object], T]) -> tuple[T, str]:
     except BudgetExceeded as e:
         log.warning("Meta budget guard: %s. Falling back to mock Meta provider.", e)
         return call(MockMeta()), "mock"
+
+
+_overpass = None
+
+
+def get_overpass():
+    global _overpass
+    if get_settings().use_mocks:
+        from app.providers.mock import MockOverpass
+
+        return MockOverpass()
+    if _overpass is None:  # one instance so its cache is shared
+        from app.providers.overpass import OverpassProvider
+
+        _overpass = OverpassProvider()
+    return _overpass
