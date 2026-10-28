@@ -26,7 +26,7 @@ log = logging.getLogger(__name__)
 Point = tuple[float, float]  # (lat, lon)
 
 MAX_MEETUPS_QUERIED = 20  # one [A, B] x 20 matrix call
-MIN_MEETUPS_KEPT, MAX_MEETUPS_KEPT = 5, 10
+MAX_MEETUPS_KEPT = 10  # the doc's 5-10; fewer survive when fewer pass the filters
 MAX_DESTINATIONS = 4  # one kept x 4 matrix call
 MEETUP_TIME_SHARE = 0.6  # max(tA, tB) <= duration * 0.6
 MAX_GAP_MIN = 5.0
