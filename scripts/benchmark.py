@@ -55,13 +55,15 @@ def timed(case, overpass, ors) -> tuple[PlanResult, float]:
 def run_case(case, cache_dir: Path) -> dict:
     overpass, ors = providers(cache_dir)
     cold, cold_s = timed(case, overpass, ors)
-    cached, cached_s = timed(case, overpass, ors)
+    result = cold
     attempts = 1
-    while cached.status == "places_unavailable" and attempts < 3 and not ARGS.mock:
+    # A cold run that failed on Overpass leaves queries uncached: fetch them (bounded) first,
+    # so the cached timing below never includes a fetch.
+    while result.status == "places_unavailable" and attempts < 3 and not ARGS.mock:
         time.sleep(30 * attempts)
         attempts += 1
-        cached, _ = timed(case, overpass, ors)
-        cached, cached_s = timed(case, overpass, ors)  # time it once everything is cached
+        result, _ = timed(case, overpass, ors)
+    cached, cached_s = timed(case, overpass, ors)
     top = cached.candidates[0] if cached.candidates else None
     return {
         "case": case,
@@ -127,7 +129,8 @@ def report(rows: list[dict]) -> str:
             f", {'/'.join(intent.vibes)}" if intent.vibes else "")
         route = (f"{res.places[top.meeting_place_id].name} → {res.places[top.endpoint_place_id].name}"
                  if top else "–")
-        cold = fmt(r["cold_s"], " s", 2) if r["cold"].status == res.status else f"{r['cold'].status}"
+        failed = r["cold"].status in ("places_unavailable", "routing_unavailable")
+        cold = r["cold"].status if failed else fmt(r["cold_s"], " s", 2)
         lines.append(
             f"| {c['id']} | {c['pair']['a']['name']} ↔ {c['pair']['b']['name']} | {what} | {res.status} | "
             f"{route} | {fmt(top.arrival_gap_min if top else None, ' min')} | "
@@ -160,7 +163,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory() as tmp:
         for case in load_cases():
             row = run_case(case, Path(tmp))
-            print(f"{case['id']}: {row['cached'].status} cold={row['cold_s']:.2f}s cached={row['cached_s']:.3f}s")
+            print(f"{case['id']}: cold {row['cold'].status} {row['cold_s']:.2f}s, cached {row['cached'].status} {row['cached_s']:.3f}s")
             rows.append(row)
     out_dir = ROOT / "benchmarks"
     out_dir.mkdir(exist_ok=True)
