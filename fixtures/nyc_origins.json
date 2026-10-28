@@ -1,0 +1,27 @@
+{
+  "_note": "Public places only (subway stations, parks). Coordinates are the OpenStreetMap objects named in osm_id, read via Overpass on 2026-10-28.",
+  "pairs": [
+    {"id": "p1",
+     "a": {"name": "West 4th Street-Washington Square station", "osm_id": "node/597928309", "lat": 40.73164, "lon": -74.00099},
+     "b": {"name": "Astor Place station", "osm_id": "node/597928340", "lat": 40.72985, "lon": -73.99139}},
+    {"id": "p2",
+     "a": {"name": "Christopher Street-Stonewall station", "osm_id": "node/5106257816", "lat": 40.73361, "lon": -74.00283},
+     "b": {"name": "14th Street-Union Square station", "osm_id": "node/544355596", "lat": 40.73576, "lon": -73.99065}},
+    {"id": "p3",
+     "a": {"name": "Spring Street station (C/E)", "osm_id": "node/597937480", "lat": 40.72554, "lon": -74.00401},
+     "b": {"name": "3rd Avenue station (L)", "osm_id": "node/597937476", "lat": 40.73315, "lon": -73.98682}},
+    {"id": "p4",
+     "a": {"name": "Tompkins Square Park", "osm_id": "way/25162896", "lat": 40.72647, "lon": -73.98169},
+     "b": {"name": "Prince Street station", "osm_id": "node/597928328", "lat": 40.72433, "lon": -73.99770}},
+    {"id": "p5",
+     "a": {"name": "Madison Square Park", "osm_id": "way/22899286", "lat": 40.74219, "lon": -73.98787},
+     "b": {"name": "8th Street-NYU station", "osm_id": "node/597928329", "lat": 40.73033, "lon": -73.99263}},
+    {"id": "p6",
+     "a": {"name": "23rd Street station (F/M, 6th Ave)", "osm_id": "node/5553981244", "lat": 40.74288, "lon": -73.99282},
+     "b": {"name": "Bleecker Street station", "osm_id": "node/597928342", "lat": 40.72595, "lon": -73.99468}}
+  ],
+  "smoke": {
+    "center": {"name": "Washington Square Park", "osm_id": "way/22899302", "lat": 40.73089, "lon": -73.99759},
+    "route_to": {"name": "14th Street-Union Square station", "osm_id": "node/544355596", "lat": 40.73576, "lon": -73.99065}
+  }
+}

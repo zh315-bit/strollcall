@@ -70,7 +70,9 @@ class OverpassProvider:
 
     def __init__(self, settings: Settings | None = None, http: httpx.Client | None = None):
         self.settings = settings or get_settings()
-        self.http = http or httpx.Client(timeout=30.0, headers={"User-Agent": USER_AGENT})
+        self.http = http or httpx.Client(
+            timeout=self.settings.overpass_timeout_s, headers={"User-Agent": USER_AGENT}
+        )
         self._cache: dict[tuple, tuple[float, list[Place]]] = {}
 
     def places_near(

@@ -27,6 +27,8 @@ class Settings(BaseSettings):
 
     ors_api_key: SecretStr = SecretStr("")
     overpass_url: str = "https://overpass-api.de/api/interpreter"
+    # Overpass queues requests when busy, so allow more than the 25 s query timeout.
+    overpass_timeout_s: float = 60.0
 
     daily_budget_usd: float = 15.0
     use_mocks: bool = False
