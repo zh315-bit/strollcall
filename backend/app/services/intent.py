@@ -7,11 +7,12 @@ from pydantic import BaseModel, ValidationError
 from app.core.errors import ProviderError
 from app.models.schemas import WalkIntent
 from app.providers import meta_or_mock
+from app.providers.overpass import DESTINATION_TYPES
 
 log = logging.getLogger(__name__)
 
 DEFAULT_DURATION_MIN = 25
-ENDPOINT_TYPES = ["cafe", "park", "bookstore", "landmark"]
+ENDPOINT_TYPES = list(DESTINATION_TYPES)
 INTENT_FIELDS = ["duration_min", "vibes", "endpoint_type", "avoid", "hard_constraints"]
 
 SYSTEM_PROMPT = f"""You turn one person's description of a walk into JSON for StrollCall, an app that plans a short walk for two friends.
@@ -20,7 +21,7 @@ Rules:
 - Extract only what the person said. Never add preferences they did not express; leave a list empty when nothing was said.
 - duration_min: total walking minutes for the outing, 15 to 60. If no duration was given, use {DEFAULT_DURATION_MIN}. If the given value is outside 15-60, use the nearest bound.
 - vibes: short lowercase phrases for the feel they asked for, such as "quiet", "green", "lively", "scenic".
-- endpoint_type: where the walk should end, one of {", ".join(ENDPOINT_TYPES)}; null if they did not say. "coffee" means cafe, "books" means bookstore.
+- endpoint_type: where the walk should end, one of {", ".join(ENDPOINT_TYPES)}; null if they did not say. "coffee" means cafe, "books" means bookstore, "pastries" means bakery, "ice cream" means ice_cream.
 - avoid: short lowercase phrases for what they want to avoid.
 - hard_constraints: only explicit must-haves, such as "must be open now" or "step-free route".
 - Never invent opening hours, safety, accessibility or crowd levels.

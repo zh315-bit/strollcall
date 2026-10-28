@@ -29,7 +29,7 @@ class Settings(BaseSettings):
 
     ors_api_key: SecretStr = SecretStr("")
     overpass_url: str = "https://overpass-api.de/api/interpreter"
-    overpass_mirror_url: str = "https://overpass.private.coffee/api/interpreter"
+    overpass_mirror_url: str = "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
     # User-facing requests fail fast; scripts/capture_fixtures.py raises this to 60 s.
     overpass_timeout_s: float = 15.0
     cache_dir: Path = ROOT_DIR / "cache"

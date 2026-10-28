@@ -59,8 +59,11 @@ class Place(BaseModel):
     name: str
     lat: float
     lon: float
-    category: str  # park / cafe / bookstore / landmark
+    # destinations: cafe / bookstore / park / bakery / ice_cream / landmark
+    # meetup points: park / park_gate / subway_entrance / plaza / landmark
+    category: str
     opening_hours: str | None = None  # raw OSM opening_hours; None = unknown
+    tags: dict[str, str] = {}  # selected OSM tags, for preference fit
     fetched_at: datetime | None = None  # when the OSM data was read; hours are "as of" this
 
 
