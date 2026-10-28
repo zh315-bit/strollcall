@@ -1,14 +1,16 @@
-"""Run the planner on the 6 benchmark cases and write benchmarks/YYYY-MM-DD.md.
+"""Run the planner on the benchmark cases and write benchmarks/YYYY-MM-DD[-engine].md.
 
-    python scripts/benchmark.py                 # live APIs, warm caches (cheap on quota)
-    python scripts/benchmark.py --cold          # also measure cold latency (uses ORS quota:
+    python scripts/benchmark.py                 # local OSM graph + place snapshot (default)
+    python scripts/benchmark.py --engine apis   # live Overpass + ORS, warm caches
+    python scripts/benchmark.py --engine apis --cold   # cold latency (spends ORS quota:
                                                 # about 2 matrix + 9 directions per case)
     python scripts/benchmark.py --mock          # recorded fixtures, offline
     python scripts/benchmark.py --cases p1,p3   # a subset
 
 Each case runs twice with the same providers:
-  first  - with --cold: empty Overpass cache and no ORS cache reads, one attempt;
-           otherwise the normal caches (cache/ tiles, ORS SQLite cache);
+  first  - local: a fresh routing instance (empty search cache, graph already loaded);
+           apis with --cold: empty Overpass cache and no ORS cache reads, one attempt;
+           apis otherwise: the normal caches (cache/ tiles, ORS SQLite cache);
   cached - the same query again, served from the caches (if the first run failed on
            Overpass, it is retried up to 3 times with a pause before this run so the
            plan itself can still be measured).
@@ -31,23 +33,44 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--mock", action="store_true", help="use recorded fixtures (offline)")
 parser.add_argument("--cold", action="store_true", help="measure cold latency (spends ORS quota)")
 parser.add_argument("--cases", help="comma-separated case ids, default all")
+parser.add_argument("--engine", choices=["local", "apis"], default="local")
 ARGS = parser.parse_args()
 os.environ["USE_MOCKS"] = "true" if ARGS.mock else "false"
 
 from _common import ROOT, load_cases  # noqa: E402
 
 from app.core.config import get_settings  # noqa: E402
+from app.providers.local_routing import LocalRouting, load_graph  # noqa: E402
 from app.providers.mock import MockORS, MockOverpass  # noqa: E402
 from app.providers.ors import ORSProvider  # noqa: E402
 from app.providers.overpass import OverpassProvider  # noqa: E402
+from app.providers.snapshot_places import SnapshotPlaces, load_snapshot  # noqa: E402
 from app.services.planner import PlanResult, plan_walk  # noqa: E402
 
 NYC = ZoneInfo("America/New_York")
 
 
+LOAD: dict = {}
+
+
+def local_data():
+    """Graph and snapshot, loaded once; load time and memory recorded for the report."""
+    if not LOAD:
+        import psutil
+
+        s, proc = get_settings(), psutil.Process()
+        rss0, t = proc.memory_info().rss, time.perf_counter()
+        LOAD["graph"], LOAD["snapshot"] = load_graph(s.graph_path), load_snapshot(s.places_snapshot_path)
+        LOAD["seconds"], LOAD["rss_mb"] = time.perf_counter() - t, (proc.memory_info().rss - rss0) / 1e6
+    return LOAD["graph"], LOAD["snapshot"]
+
+
 def providers(cache_dir: Path):
     if ARGS.mock:
         return MockOverpass(), MockORS()
+    if ARGS.engine == "local":
+        graph, snapshot = local_data()
+        return SnapshotPlaces(snapshot), LocalRouting(graph)
     update = {"overpass_timeout_s": 60.0}
     if ARGS.cold:
         update["cache_dir"] = cache_dir
@@ -68,7 +91,7 @@ def run_case(case, cache_dir: Path) -> dict:
     attempts = 1
     # A cold run that failed on Overpass leaves queries uncached: fetch them (bounded) first,
     # so the cached timing below never includes a fetch.
-    while result.status == "places_unavailable" and attempts < 3 and not ARGS.mock:
+    while result.status == "places_unavailable" and attempts < 3 and not ARGS.mock and ARGS.engine == "apis":
         time.sleep(30 * attempts)
         attempts += 1
         result, _ = timed(case, overpass, ors)
@@ -109,6 +132,11 @@ def report(rows: list[dict]) -> str:
     cached_ok = [r["cached_s"] for r in rows if r["cached"].status not in ("places_unavailable", "routing_unavailable")]
     if ARGS.mock:
         mode = "recorded fixtures (USE_MOCKS=true, offline); latencies are fixture reads, not network"
+    elif ARGS.engine == "local":
+        g, snap = LOAD["graph"], LOAD["snapshot"]
+        mode = (f"local OSM walking graph ({len(g.lat):,} nodes, {g.file_bytes / 1e6:.1f} MB) + place snapshot "
+                f"(fetched {snap.fetched_at[:10]}); data loaded in {LOAD['seconds']:.2f} s, "
+                f"+{LOAD['rss_mb']:.0f} MB RSS; walking speed 80 m/min")
     elif ARGS.cold:
         mode = "live APIs, cold first run (no Overpass or ORS cache)"
     else:
@@ -128,7 +156,7 @@ def report(rows: list[dict]) -> str:
         f"| Feasibility rate | {len(solved)}/{n} ({100 * len(solved) / n:.0f}%) |",
         f"| Arrival gap, median / max | {fmt(median(gaps), ' min')} / {fmt(max(gaps) if gaps else None, ' min')} |",
         f"| Time-budget error, median | {fmt(median(errors), ' min')} |",
-        f"| Planning latency, {'cold' if ARGS.cold else 'first run'}, median | {fmt(median(cold_ok), ' s', 2)} ({len(cold_ok)}/{n} completed) |",
+        f"| Planning latency, {'cold' if ARGS.cold else 'first run'}, median | {fmt(median(cold_ok), ' s', 3)} ({len(cold_ok)}/{n} completed) |",
         f"| Planning latency, cached, median | {fmt(median(cached_ok), ' s', 3)} |",
         "",
         "## Cases",
@@ -184,7 +212,7 @@ def main() -> int:
             rows.append(row)
     out_dir = ROOT / "benchmarks"
     out_dir.mkdir(exist_ok=True)
-    suffix = ("-mock" if ARGS.mock else "") + (f"-{ARGS.cases.replace(',', '')}" if ARGS.cases else "")
+    suffix = ("-mock" if ARGS.mock else f"-{ARGS.engine}") + (f"-{ARGS.cases.replace(',', '')}" if ARGS.cases else "")
     out = out_dir / f"{datetime.now(NYC):%Y-%m-%d}{suffix}.md"
     out.write_text(report(rows))
     print(f"wrote {out.relative_to(ROOT)}")
