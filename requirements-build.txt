@@ -1,0 +1,3 @@
+# Only for scripts/build_graph.py (one-off data build). The app itself needs requirements.txt.
+-r requirements.txt
+osmnx==2.0.6
