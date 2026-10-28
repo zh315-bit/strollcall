@@ -1,10 +1,12 @@
 import logging
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api import dev, intents, invites, voice
 from app.core.budget import SpendGuard
-from app.core.config import get_settings
+from app.core.config import ROOT_DIR, get_settings
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -13,6 +15,19 @@ app.include_router(intents.router)
 app.include_router(invites.router)
 app.include_router(voice.router)
 app.include_router(dev.router)  # answers 404 unless DEBUG=true
+
+FRONTEND = ROOT_DIR / "frontend"
+app.mount("/static", StaticFiles(directory=FRONTEND), name="static")
+
+
+@app.get("/", include_in_schema=False)
+def index_page() -> FileResponse:
+    return FileResponse(FRONTEND / "index.html")
+
+
+@app.get("/i/{token}", include_in_schema=False)
+def invite_page(token: str) -> FileResponse:
+    return FileResponse(FRONTEND / "invite.html")
 
 
 @app.get("/health")
@@ -38,6 +53,8 @@ def health() -> dict:
             "meta": meta,
             "overpass": "mock" if s.use_mocks else "live",
             "ors": keyed(bool(s.ors_api_key.get_secret_value())),
+            "routing": "mock" if s.use_mocks else s.routing_provider,
+            "places": "mock" if s.use_mocks else s.places_provider,
         },
         "meta_models": {"text": s.model_id, "image": s.image_model_id, "voice": s.voice_model_id},
         "meta_spend_today_usd": round(spent, 6),

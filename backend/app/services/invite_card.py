@@ -70,7 +70,7 @@ def image_prompt(intent: WalkIntent) -> str:
         "bookstore": "a little bookstore front", "ice_cream": "an ice cream window",
         "park": "an open lawn with trees", "landmark": "a classic city monument",
     }.get(intent.endpoint_type or "", "a friendly corner cafe")
-    return (f"Warm flat illustration of two friends walking toward each other on {scene}, "
+    return (f"Warm flat illustration of exactly two friends, no other people, walking toward each other on {scene}, "
             f"about to continue together toward {ending}. Soft autumn light, gentle colors, "
             "simple shapes. No text, no letters, no logos, no recognizable real people.")
 

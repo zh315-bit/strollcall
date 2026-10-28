@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StrollCall</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+  <h1>StrollCall</h1>
+  <p class="tagline">Less planning. More meeting. Invite a friend to a short walk; we find a fair place to meet.</p>
+
+  <section class="card">
+    <h2>1. What kind of walk?</h2>
+    <textarea id="text" placeholder="e.g. 25 minutes, quiet streets, coffee at the end"></textarea>
+    <div class="row" id="text-row">
+      <button class="primary" id="parse">Read my wish</button>
+      <span id="voice-source"></span>
+    </div>
+    <div id="intent" hidden>
+      <p class="muted">Check what we understood. Dashed chips are guesses; remove anything wrong.</p>
+      <div class="row">
+        <label>Minutes <input type="range" id="duration" min="15" max="60" step="5"></label>
+        <b id="duration-label"></b>
+      </div>
+      <div class="row">
+        <label>End at
+          <select id="endpoint">
+            <option value="">anywhere nice</option><option>cafe</option><option>bakery</option>
+            <option>bookstore</option><option>park</option><option value="ice_cream">ice cream</option>
+            <option>landmark</option>
+          </select>
+        </label>
+      </div>
+      <div class="row" id="chips"></div>
+      <div class="row" id="intent-source"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>2. Where do you start?</h2>
+    <p class="muted">Only used to find a fair meeting point. Your friend never sees your exact start.</p>
+    <div class="row"><button id="locate">Use my location</button><span class="muted">or tap the map</span></div>
+    <div id="map"></div>
+    <p class="muted" id="origin-label">No start point yet.</p>
+  </section>
+
+  <button class="primary" id="create" disabled>Create invite</button>
+  <p id="create-error" class="error"></p>
+
+  <footer>Map data © OpenStreetMap contributors (ODbL). Language features by Meta Muse models.</footer>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="/static/js/common.js"></script>
+<script>
+const state = { intent: null, inferred: [], origin: null, text: "" };
+const $ = (id) => document.getElementById(id);
+const map = makeMap("map");
+let marker = null;
+
+$("text-row").insertBefore(micButton($("text"), (s) => {
+  $("voice-source").replaceChildren(el("span", { class: "muted" }, "transcribed"), sourceBadge(s) || "");
+}), $("parse"));
+
+function setOrigin(lat, lon) {
+  state.origin = { lat, lon };
+  if (marker) marker.setLatLng([lat, lon]); else marker = L.marker([lat, lon]).addTo(map);
+  $("origin-label").textContent = "Start point set.";
+  refresh();
+}
+map.on("click", (e) => setOrigin(e.latlng.lat, e.latlng.lng));
+$("locate").addEventListener("click", () => {
+  navigator.geolocation.getCurrentPosition(
+    (p) => { setOrigin(p.coords.latitude, p.coords.longitude); map.setView([p.coords.latitude, p.coords.longitude], 15); },
+    () => alert("Location not available. Tap the map instead."),
+    { enableHighAccuracy: true, timeout: 10000 });
+});
+
+function renderChips() {
+  const chips = [];
+  const add = (list, field) => state.intent[field].forEach((v, i) => chips.push(el("span",
+    { class: "chip" + (state.inferred.includes(field) ? " inferred" : "") },
+    field === "avoid" ? `avoid ${v}` : v,
+    el("button", { type: "button", "aria-label": `remove ${v}`, onclick: () => { state.intent[field].splice(i, 1); renderChips(); } }, "×"))));
+  add(state.intent, "vibes"); add(state.intent, "avoid"); add(state.intent, "hard_constraints");
+  $("chips").replaceChildren(...chips);
+}
+
+$("parse").addEventListener("click", async () => {
+  $("parse").disabled = true;
+  try {
+    state.text = $("text").value.trim();
+    const r = await api("/api/intents/parse", { method: "POST", body: { text: state.text } });
+    state.intent = r.intent; state.inferred = r.inferred_fields;
+    $("duration").value = r.intent.duration_min; $("duration-label").textContent = r.intent.duration_min;
+    $("endpoint").value = r.intent.endpoint_type || "";
+    renderChips();
+    $("intent-source").replaceChildren(
+      r.source === "meta" ? el("span", { class: "muted" }, "Understood by Muse Spark") : sourceBadge(r.source === "default" ? "default" : "mock"));
+    $("intent").hidden = false;
+  } catch (e) { alert(e.message); }
+  $("parse").disabled = false;
+  refresh();
+});
+$("duration").addEventListener("input", () => { state.intent.duration_min = +$("duration").value; $("duration-label").textContent = $("duration").value; });
+$("endpoint").addEventListener("change", () => { state.intent.endpoint_type = $("endpoint").value || null; });
+
+function refresh() { $("create").disabled = !(state.intent && state.origin); }
+
+$("create").addEventListener("click", async () => {
+  $("create").disabled = true;
+  $("create-error").textContent = "";
+  try {
+    const r = await api("/api/invites", { method: "POST", body: { a_intent: state.intent, a_origin: state.origin, a_text: state.text } });
+    try { localStorage.setItem(`strollcall:${r.token}`, r.a_key); } catch (e) { /* private mode: key stays in the URL */ }
+    location.href = `${r.invite_path}#key=${encodeURIComponent(r.a_key)}`;
+  } catch (e) { $("create-error").textContent = e.message; $("create").disabled = false; }
+});
+</script>
+</body>
+</html>

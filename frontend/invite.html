@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>StrollCall invite</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+  <h1>StrollCall</h1>
+  <div id="banner"></div>
+  <div id="app"><p class="muted"><span class="spinner"></span>Loading…</p></div>
+  <div id="map" hidden></div>
+  <footer>Map data © OpenStreetMap contributors (ODbL). Walking times assume 80 m/min. StrollCall never
+    claims a route or place is safe, quiet or open beyond what the data says.</footer>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="/static/js/common.js"></script>
+<script>
+const token = location.pathname.split("/").pop();
+const store = { get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+                set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
+let key = new URLSearchParams(location.hash.slice(1)).get("key") || store.get(`strollcall:${token}`);
+if (key) store.set(`strollcall:${token}`, key);
+const app = document.getElementById("app");
+let map = null, layers = [], pollTimer = null, chosen = 0, bOrigin = null, bMarker = null;
+
+async function load() {
+  try {
+    const v = await api(`/api/invites/${token}` + (key ? `?key=${encodeURIComponent(key)}` : ""));
+    render(v);
+    clearTimeout(pollTimer);
+    if (["pending", "planning"].includes(v.status) && (v.role !== "guest" || v.status === "planning")) {
+      pollTimer = setTimeout(load, 5000); // A waits for B; both wait for planning
+    } else if (v.status === "pending" && !v.image_url && v.sources.image === "pending") {
+      pollTimer = setTimeout(load, 5000); // card image still being drawn
+    }
+  } catch (e) {
+    app.replaceChildren(el("p", { class: "error" }, e.message));
+  }
+}
+
+function card(v) {
+  return el("section", { class: "card" },
+    v.image_url ? el("img", { class: "card-image", src: v.image_url, alt: "Illustration of two friends walking toward each other" }) : null,
+    v.image_url && v.sources.image === "mock" ? sourceBadge("mock") : null,
+    el("p", { class: "invite-text" }, v.invite_text, sourceBadge(v.sources.invite_text)),
+    el("p", { class: "muted" }, `${v.a_intent.duration_min}-minute walk, ending ${v.a_intent.endpoint_type ? "at a " + prettyType(v.a_intent.endpoint_type) : "anywhere nice"}`
+      + (v.a_intent.vibes.length ? ` · ${v.a_intent.vibes.join(", ")}` : "")));
+}
+
+function render(v) {
+  document.getElementById("banner").replaceChildren(demoBanner(v.sources) || "");
+  const parts = [card(v)];
+  if (v.status === "expired") parts.push(el("p", { class: "error" }, "This invite has expired."));
+  else if (v.status === "pending" && v.role === "a") parts.push(waitingForB(v));
+  else if (v.status === "pending") parts.push(acceptForm(v));
+  else if (v.status === "planning") parts.push(el("p", {}, el("span", { class: "spinner" }), "Finding a fair place to meet…"));
+  else if (v.status === "error") parts.push(problem(v));
+  else parts.push(...plan(v));
+  app.replaceChildren(...parts);
+  if (["proposed", "confirmed"].includes(v.status)) drawPlan(v);
+}
+
+function waitingForB(v) {
+  const link = `${location.origin}/i/${v.token}`;
+  return el("section", { class: "card" },
+    el("h2", {}, "Send this link to your friend"),
+    el("p", { class: "share" }, link),
+    el("div", { class: "row" },
+      el("button", { class: "primary", onclick: () => navigator.share ? navigator.share({ url: link, text: v.invite_text }) : navigator.clipboard.writeText(link) }, "Share"),
+      el("button", { onclick: () => navigator.clipboard.writeText(link) }, "Copy")),
+    el("p", { class: "muted" }, el("span", { class: "spinner" }), "Waiting for your friend to accept. This page updates by itself."));
+}
+
+function acceptForm(v) {
+  const text = el("textarea", { placeholder: "Optional: anything you'd like? e.g. somewhere green, I'm bringing my dog" });
+  const status = el("p", { class: "muted" }, "Tap “Use my location” or tap the map to set where you start.");
+  const go = el("button", { class: "primary", disabled: "" }, "I'm in");
+  const showMap = () => {
+    const m = document.getElementById("map"); m.hidden = false;
+    if (!map) {
+      map = makeMap("map");
+      map.on("click", (e) => setB(e.latlng.lat, e.latlng.lng));
+    }
+  };
+  const setB = (lat, lon) => {
+    bOrigin = { lat, lon };
+    if (bMarker) bMarker.setLatLng([lat, lon]); else bMarker = L.marker([lat, lon]).addTo(map);
+    status.textContent = "Start point set."; go.removeAttribute("disabled");
+  };
+  go.addEventListener("click", async () => {
+    go.setAttribute("disabled", "");
+    try {
+      const r = await api(`/api/invites/${token}/accept`, { method: "POST", body: { b_origin: bOrigin, b_text: text.value.trim() } });
+      key = r.b_key; store.set(`strollcall:${token}`, key);
+      history.replaceState(null, "", `#key=${encodeURIComponent(key)}`);
+      document.getElementById("map").hidden = true;
+      load();
+    } catch (e) { status.textContent = e.message; go.removeAttribute("disabled"); }
+  });
+  setTimeout(showMap, 0);
+  return el("section", { class: "card" },
+    el("h2", {}, "Join the walk"),
+    el("p", { class: "muted" }, "Your location is only used to find a fair meeting point. Your friend sees the plan, never your exact start, and it is deleted when the invite expires."),
+    el("div", { class: "row" }, el("button", { onclick: () => navigator.geolocation.getCurrentPosition(
+      (p) => { setB(p.coords.latitude, p.coords.longitude); map.setView([p.coords.latitude, p.coords.longitude], 15); },
+      () => alert("Location not available. Tap the map instead."), { enableHighAccuracy: true, timeout: 10000 }) }, "Use my location")),
+    status,
+    el("div", { class: "row" }, micButton(text)), text,
+    el("div", { class: "row" }, go));
+}
+
+function problem(v) {
+  const f = v.failure;
+  const msg = { no_feasible_plan: "We couldn't find a fair walk for you two.", routing_unavailable: "Unable to verify a walking route right now.",
+                places_unavailable: "Place data is unavailable right now.", model_unavailable: "Our language model is unavailable right now." }[v.error] || v.error;
+  return el("section", { class: "card" }, el("p", { class: "error" }, msg),
+    f ? el("p", {}, f.suggestion) : null,
+    v.error === "routing_unavailable" ? el("p", { class: "muted" }, "Open a map app to plan the walk yourselves.") : null);
+}
+
+function plan(v) {
+  const c = v.candidates[Math.min(chosen, v.candidates.length - 1)];
+  const meet = v.places[c.meeting_place_id], dest = v.places[c.endpoint_place_id];
+  const mine = v.role === "b" ? c.b_leg : c.a_leg;
+  const why = v.reasons[c.id];
+  return [
+    el("section", { class: "card" },
+      el("div", { class: "tabs" }, v.candidates.map((x, i) => el("button", { class: i === chosen ? "active" : "",
+        onclick: () => { chosen = i; render(v); } }, i === 0 ? "Best" : `Option ${i + 1}`))),
+      el("h2", {}, `Meet at ${meet.name}`),
+      el("div", { class: "times" },
+        el("div", {}, el("b", {}, Math.round(c.a_leg.duration_min)), "min for A"),
+        el("div", {}, el("b", {}, Math.round(c.b_leg.duration_min)), "min for B"),
+        el("div", {}, el("b", {}, Math.round(c.shared_leg.duration_min)), "min together")),
+      el("p", {}, `Then walk together to ${dest.name} (${prettyType(dest.category)}). `,
+        el("span", { class: "muted" }, `Arrival gap ${c.arrival_gap_min.toFixed(1)} min, ${Math.round(c.total_elapsed_min)} min in total.`)),
+      el("p", {}, why || c.rationale, why ? (sourceBadge(v.sources.ranking) || el("span", { class: "muted" }, " · Muse Spark")) : null),
+      v.tradeoff ? el("p", { class: "muted" }, v.tradeoff, sourceBadge(v.sources.negotiation)) : null,
+      el("p", { class: "muted" }, dest.opening_hours ? `Opening hours (OpenStreetMap, as of ${(dest.fetched_at || "").slice(0, 10)}): ${dest.opening_hours}` : "Opening hours unknown."),
+      el("div", { class: "row" },
+        el("a", { href: mapsLink(meet.lat, meet.lon), target: "_blank", rel: "noopener" }, el("button", {}, "My way to the meeting point")),
+        el("a", { href: mapsLink(dest.lat, dest.lon), target: "_blank", rel: "noopener" }, el("button", {}, "Meeting point → destination"))),
+      v.status === "confirmed"
+        ? el("p", {}, v.selected_id === c.id ? "✅ Confirmed. See you there!" : "Another option was confirmed.")
+        : (v.role !== "guest" ? el("div", { class: "row" }, el("button", { class: "primary", onclick: async () => {
+            await api(`/api/invites/${token}/confirm`, { method: "POST", body: { key, candidate_id: c.id } }); load(); } }, "Confirm this plan")) : null),
+      el("p", { class: "legend muted" }, el("span", { style: "background:var(--a)" }), "A", el("span", { style: "background:var(--b)" }), "B",
+        el("span", { style: "background:var(--shared)" }), "together")),
+  ];
+}
+
+function drawPlan(v) {
+  const m = document.getElementById("map"); m.hidden = false;
+  if (!map) map = makeMap("map");
+  layers.forEach((l) => l.remove()); layers = [];
+  const c = v.candidates[Math.min(chosen, v.candidates.length - 1)];
+  const css = getComputedStyle(document.documentElement);
+  const color = (name) => css.getPropertyValue(name).trim();
+  const line = (leg, c) => L.polyline(leg.geometry, { color: c, weight: 5, opacity: .85 }).addTo(map);
+  layers.push(line(c.a_leg, color("--a")), line(c.b_leg, color("--b")), line(c.shared_leg, color("--shared")));
+  const meet = v.places[c.meeting_place_id], dest = v.places[c.endpoint_place_id];
+  layers.push(L.marker([meet.lat, meet.lon]).addTo(map).bindPopup(`Meet: ${meet.name}`),
+              L.marker([dest.lat, dest.lon]).addTo(map).bindPopup(dest.name));
+  // The map may have been hidden until now: measure its size first, then fit the plan.
+  map.invalidateSize();
+  map.fitBounds(L.featureGroup(layers).getBounds(), { padding: [20, 20] });
+}
+
+load();
+</script>
+</body>
+</html>

@@ -492,7 +492,7 @@ def top_candidates(
         a_leg: RouteLeg = ors.walk(a, (m.lat, m.lon))
         b_leg: RouteLeg = ors.walk(b, (m.lat, m.lon))
         shared_leg: RouteLeg = ors.walk((m.lat, m.lon), (d.lat, d.lon))
-        gap = abs(a_leg.duration_min - b_leg.duration_min)
+        gap = round(abs(a_leg.duration_min - b_leg.duration_min), 2)  # same value the page shows
         elapsed = max(a_leg.duration_min, b_leg.duration_min) + shared_leg.duration_min
         if gap > MAX_GAP_MIN or elapsed > intent.duration_min + ELAPSED_SLACK_MIN:
             _count(stats, "directions_broke_constraint")

@@ -172,3 +172,17 @@ def test_ranking_with_ungrounded_feature_keeps_deterministic_order(use_meta, p1_
     result = explain.rank_candidates(p1_plan, A, B, JOINT)
     assert result.source == "default" and result.note == "unsupported_feature"
     assert result.candidates == p1_plan.candidates
+
+
+def test_wish_descriptions_count_as_preferences_for_grounding(use_meta, p1_plan):
+    from app.services.wishes import Wish, Wishes
+
+    wishes = Wishes(items=[Wish(requirement="green_meetup", who="B", quote="green")], source="meta")
+    reason = "Meets B's park wish and ends at a cafe for A."
+    # c2's meetup point is not a park, so only B's wish can back the word "park".
+    use_meta(FakeMeta(ranking(("c1", "ok"), ("c2", reason), ("c3", "ok"))))
+    assert p1_plan.places[p1_plan.candidates[1].meeting_place_id].category != "park"
+    a = WalkIntent(duration_min=25, endpoint_type="cafe")
+    b = WalkIntent(duration_min=25, vibes=["green"])
+    assert explain.rank_candidates(p1_plan, a, b, JOINT, wishes).source == "meta"
+    assert explain.rank_candidates(p1_plan, a, b, JOINT).note == "unsupported_feature"

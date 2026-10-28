@@ -9,7 +9,7 @@ client = TestClient(app)
 
 def test_health_reports_mocks_and_spend():
     body = client.get("/health").json()
-    assert body["providers"] == {"meta": "mock", "overpass": "mock", "ors": "mock"}
+    assert body["providers"] == {"meta": "mock", "overpass": "mock", "ors": "mock", "routing": "mock", "places": "mock"}
     assert body["meta_spend_today_usd"] == 0
     assert body["daily_budget_usd"] == 15
 
@@ -43,3 +43,10 @@ def test_dev_plan_with_fixtures(monkeypatch):
     body = client.post("/api/dev/plan", json=P1).json()
     assert body["status"] == "proposed" and body["source"] == "mock"
     assert len(body["candidates"]) == 3
+
+
+def test_pages_are_served():
+    assert "StrollCall" in client.get("/").text
+    page = client.get("/i/sometoken")
+    assert page.status_code == 200 and "invite" in page.text.lower()
+    assert client.get("/static/js/common.js").status_code == 200
