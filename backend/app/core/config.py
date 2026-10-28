@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     # Cap on output tokens per Spark call, reasoning included. Truncation is logged.
     meta_max_output_tokens: int = 4096  # 2048 truncated 3 of 10 live intent calls (2026-10-28)
 
+    # Routing and places run on local OSM data by default (no daily quota); see build_graph.py.
+    routing_provider: str = "local"  # local / ors / mock
+    places_provider: str = "snapshot"  # snapshot / overpass / mock
+    graph_path: Path = ROOT_DIR / "data" / "nyc_graph.npz"
+    places_snapshot_path: Path = ROOT_DIR / "data" / "nyc_places.json.gz"
+
     ors_api_key: SecretStr = SecretStr("")
     # Own ORS budget, counted over a rolling 24 h like the ORS quota itself. Our key's real
     # quota is lower than the published plan (directions reported 200/day), so the caps

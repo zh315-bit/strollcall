@@ -65,3 +65,55 @@ def get_ors():
 
         _ors = ORSProvider()
     return _ors
+
+
+def _ors_or_none():
+    """ORS as a fallback outside the local map; None if it cannot be created (no key)."""
+    from app.core.errors import ProviderError
+
+    try:
+        return get_ors()
+    except ProviderError:
+        return None
+
+
+_routing = None
+
+
+def get_routing():
+    """ROUTING_PROVIDER = local (default) | ors | mock. USE_MOCKS=true forces mock."""
+    global _routing
+    s = get_settings()
+    kind = "mock" if s.use_mocks else s.routing_provider
+    if kind == "mock":
+        from app.providers.mock import MockORS
+
+        return MockORS()
+    if kind == "ors":
+        return get_ors()
+    if _routing is None:
+        from app.providers.local_routing import LocalRouting, load_graph
+
+        _routing = LocalRouting(load_graph(s.graph_path), fallback=_ors_or_none)
+    return _routing
+
+
+_places = None
+
+
+def get_places():
+    """PLACES_PROVIDER = snapshot (default) | overpass | mock. USE_MOCKS=true forces mock."""
+    global _places
+    s = get_settings()
+    kind = "mock" if s.use_mocks else s.places_provider
+    if kind == "mock":
+        from app.providers.mock import MockOverpass
+
+        return MockOverpass()
+    if kind == "overpass":
+        return get_overpass()
+    if _places is None:
+        from app.providers.snapshot_places import SnapshotPlaces, load_snapshot
+
+        _places = SnapshotPlaces(load_snapshot(s.places_snapshot_path), fallback=get_overpass)
+    return _places
