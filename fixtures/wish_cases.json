@@ -1,0 +1,357 @@
+{
+ "_rule": "- Origins: public places in the snapshot (named subway entrances and parks), sampled with a fixed\n  seed; A and B 1.2-2.0 km apart in a straight line, and the direct A-B walk on the local graph at\n  most 1.2 x 30 = 36 min (the benchmark's \"not infeasible by distance\" rule; excludes river crossings).\n- For each requirement with OSM data (outdoor seating, not a chain, wifi, wheelchair access, vegan\n  options): keep a pair only if, within 900 m of its midpoint, at least 1 cafe has the tag value that\n  meets it and at least 2 cafes do not (so the choice matters). Two cases per requirement.\n- Texts: one plainer and one implied phrasing per requirement; the wish alternates between A and B;\n  the other person writes a neutral line. Both want about 30 minutes; A wants to end at a cafe.\n- Reference wish: exactly the requirement the case was generated for.",
+ "seed": 20261028,
+ "depart_at": "2026-10-31T15:00:00-04:00",
+ "cases": [
+  {
+   "id": "w1",
+   "requirement": "outdoor_seating",
+   "a": {
+    "name": "Gantry Plaza State Park",
+    "osm_id": "way/25428484",
+    "lat": 40.7463907,
+    "lon": -73.9580325
+   },
+   "b": {
+    "name": "Smiling Hogshead Ranch",
+    "osm_id": "way/362679830",
+    "lat": 40.742665,
+    "lon": -73.9437167
+   },
+   "intent": {
+    "duration_min": 30,
+    "endpoint_type": "cafe"
+   },
+   "b_intent": {
+    "duration_min": 30
+   },
+   "a_text": "It's warm out, let's get a coffee we can drink sitting outside",
+   "b_text": "Somewhere nice, about 30 minutes",
+   "expected_wishes": [
+    [
+     "A",
+     "outdoor_seating"
+    ]
+   ],
+   "cafes_within_900m": {
+    "meet": 1,
+    "other": 23
+   }
+  },
+  {
+   "id": "w2",
+   "requirement": "outdoor_seating",
+   "a": {
+    "name": "East 116th Street & Lexington Avenue at Southwest Corner",
+    "osm_id": "node/2296577473",
+    "lat": 40.7984734,
+    "lon": -73.9418765
+   },
+   "b": {
+    "name": "Lafayette Square",
+    "osm_id": "way/727964618",
+    "lat": 40.8036053,
+    "lon": -73.9580549
+   },
+   "intent": {
+    "duration_min": 30,
+    "endpoint_type": "cafe"
+   },
+   "b_intent": {
+    "duration_min": 30
+   },
+   "a_text": "Coffee at the end, about 30 minutes",
+   "b_text": "A coffee on a patio in the sun would be perfect",
+   "expected_wishes": [
+    [
+     "B",
+     "outdoor_seating"
+    ]
+   ],
+   "cafes_within_900m": {
+    "meet": 4,
+    "other": 11
+   }
+  },
+  {
+   "id": "w3",
+   "requirement": "not_a_chain",
+   "a": {
+    "name": "Ten Eyck Playground",
+    "osm_id": "way/642720326",
+    "lat": 40.7088649,
+    "lon": -73.9388312
+   },
+   "b": {
+    "name": "Lafayette Playground",
+    "osm_id": "way/1444680293",
+    "lat": 40.6925665,
+    "lon": -73.9300116
+   },
+   "intent": {
+    "duration_min": 30,
+    "endpoint_type": "cafe"
+   },
+   "b_intent": {
+    "duration_min": 30
+   },
+   "a_text": "Some little local place please, not a big chain",
+   "b_text": "Somewhere nice, about 30 minutes",
+   "expected_wishes": [
+    [
+     "A",
+     "not_a_chain"
+    ]
+   ],
+   "cafes_within_900m": {
+    "meet": 21,
+    "other": 2
+   }
+  },
+  {
+   "id": "w4",
+   "requirement": "not_a_chain",
+   "a": {
+    "name": "Lilliann D. Wald Playground",
+    "osm_id": "way/1542949217",
+    "lat": 40.7120525,
+    "lon": -73.9843827
+   },
+   "b": {
+    "name": "Titanic Memorial Park",
+    "osm_id": "way/109441961",
+    "lat": 40.7075259,
+    "lon": -74.0036929
+   },
+   "intent": {
+    "duration_min": 30,
+    "endpoint_type": "cafe"
+   },
+   "b_intent": {
+    "duration_min": 30
+   },
+   "a_text": "Coffee at the end, about 30 minutes",
+   "b_text": "Anywhere for coffee as long as it's not Starbucks",
+   "expected_wishes": [
+    [
+     "B",
+     "not_a_chain"
+    ]
+   ],
+   "cafes_within_900m": {
+    "meet": 58,
+    "other": 10
+   }
+  },
+  {
+   "id": "w5",
+   "requirement": "wifi",
+   "a": {
+    "name": "Broadway & 157th Street at Northwest Corner",
+    "osm_id": "node/3584443082",
+    "lat": 40.8342325,
+    "lon": -73.9450703
+   },
+   "b": {
+    "name": "Broadway & 137th Street at Northeast Corner",
+    "osm_id": "node/3584389443",
+    "lat": 40.8214578,
+    "lon": -73.9538619
+   },
+   "intent": {
+    "duration_min": 30,
+    "endpoint_type": "cafe"
+   },
+   "b_intent": {
+    "duration_min": 30
+   },
+   "a_text": "I need to answer a few emails on my laptop afterwards",
+   "b_text": "Somewhere nice, about 30 minutes",
+   "expected_wishes": [
+    [
+     "A",
+     "wifi"
+    ]
+   ],
+   "cafes_within_900m": {
+    "meet": 6,
+    "other": 4
+   }
+  },
+  {
+   "id": "w6",
+   "requirement": "wifi",
+   "a": {
+    "name": "Straus Park",
+    "osm_id": "way/113723738",
+    "lat": 40.8018709,
+    "lon": -73.9681756
+   },
+   "b": {
+    "name": "Mandela Garden",
+    "osm_id": "way/362827398",
+    "lat": 40.8107975,
+    "lon": -73.9499717
+   },
+   "intent": {
+    "duration_min": 30,
+    "endpoint_type": "cafe"
+   },
+   "b_intent": {
+    "duration_min": 30
+   },
+   "a_text": "Coffee at the end, about 30 minutes",
+   "b_text": "I'll want to get online for a bit once we sit down",
+   "expected_wishes": [
+    [
+     "B",
+     "wifi"
+    ]
+   ],
+   "cafes_within_900m": {
+    "meet": 7,
+    "other": 37
+   }
+  },
+  {
+   "id": "w7",
+   "requirement": "wheelchair_access",
+   "a": {
+    "name": "Bushwick Inlet Park",
+    "osm_id": "way/1028241522",
+    "lat": 40.72321,
+    "lon": -73.9596931
+   },
+   "b": {
+    "name": "Roberto Clemente Ballfield",
+    "osm_id": "way/207181499",
+    "lat": 40.7063822,
+    "lon": -73.9676838
+   },
+   "intent": {
+    "duration_min": 30,
+    "endpoint_type": "cafe"
+   },
+   "b_intent": {
+    "duration_min": 30
+   },
+   "a_text": "I use a wheelchair, so the cafe has to work for that",
+   "b_text": "Somewhere nice, about 30 minutes",
+   "expected_wishes": [
+    [
+     "A",
+     "wheelchair_access"
+    ]
+   ],
+   "cafes_within_900m": {
+    "meet": 5,
+    "other": 47
+   }
+  },
+  {
+   "id": "w8",
+   "requirement": "wheelchair_access",
+   "a": {
+    "name": "Potomac Playground",
+    "osm_id": "way/377078403",
+    "lat": 40.6820686,
+    "lon": -73.9442996
+   },
+   "b": {
+    "name": "Charlie's Place",
+    "osm_id": "way/551946386",
+    "lat": 40.6992306,
+    "lon": -73.9462628
+   },
+   "intent": {
+    "duration_min": 30,
+    "endpoint_type": "cafe"
+   },
+   "b_intent": {
+    "duration_min": 30
+   },
+   "a_text": "Coffee at the end, about 30 minutes",
+   "b_text": "I'm in a wheelchair this month after my knee surgery",
+   "expected_wishes": [
+    [
+     "B",
+     "wheelchair_access"
+    ]
+   ],
+   "cafes_within_900m": {
+    "meet": 1,
+    "other": 22
+   }
+  },
+  {
+   "id": "w9",
+   "requirement": "vegan_options",
+   "a": {
+    "name": "East 60th Street & Lexington Avenue at Southwest Corner",
+    "osm_id": "node/2296577488",
+    "lat": 40.7628401,
+    "lon": -73.9679522
+   },
+   "b": {
+    "name": "Richard Tucker Square",
+    "osm_id": "way/154416666",
+    "lat": 40.7734892,
+    "lon": -73.9819339
+   },
+   "intent": {
+    "duration_min": 30,
+    "endpoint_type": "cafe"
+   },
+   "b_intent": {
+    "duration_min": 30
+   },
+   "a_text": "I'm plant-based, so somewhere with vegan options",
+   "b_text": "Somewhere nice, about 30 minutes",
+   "expected_wishes": [
+    [
+     "A",
+     "vegan_options"
+    ]
+   ],
+   "cafes_within_900m": {
+    "meet": 8,
+    "other": 45
+   }
+  },
+  {
+   "id": "w10",
+   "requirement": "vegan_options",
+   "a": {
+    "name": "East River Esplanade",
+    "osm_id": "way/33804388",
+    "lat": 40.7449661,
+    "lon": -73.9704839
+   },
+   "b": {
+    "name": "Herald Square",
+    "osm_id": "way/1121582607",
+    "lat": 40.7503011,
+    "lon": -73.9876473
+   },
+   "intent": {
+    "duration_min": 30,
+    "endpoint_type": "cafe"
+   },
+   "b_intent": {
+    "duration_min": 30
+   },
+   "a_text": "Coffee at the end, about 30 minutes",
+   "b_text": "I don't eat dairy, eggs or any other animal products",
+   "expected_wishes": [
+    [
+     "B",
+     "vegan_options"
+    ]
+   ],
+   "cafes_within_900m": {
+    "meet": 4,
+    "other": 140
+   }
+  }
+ ]
+}
