@@ -1,0 +1,77 @@
+import io
+import wave
+from types import SimpleNamespace
+
+import pytest
+
+from app.core.budget import BudgetExceeded, SpendGuard
+from app.providers.meta import MetaError, MetaInvalidJSON, MetaProvider, check_wav
+
+
+class FakeCompletions:
+    def __init__(self, contents):
+        self.contents = list(contents)
+        self.calls = 0
+
+    def create(self, **kwargs):
+        self.calls += 1
+        usage = SimpleNamespace(prompt_tokens=100, completion_tokens=50, prompt_tokens_details=None)
+        message = SimpleNamespace(content=self.contents.pop(0))
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)], usage=usage)
+
+
+def make_provider(contents, cap=15.0):
+    completions = FakeCompletions(contents)
+    client = SimpleNamespace(chat=SimpleNamespace(completions=completions))
+    guard = SpendGuard(daily_cap_usd=cap)
+    return MetaProvider(client=client, guard=guard), completions, guard
+
+
+def test_structured_json_records_spend():
+    meta, completions, guard = make_provider(['{"a": 1}'])
+    assert meta.structured_json("sys", "user", {"type": "object"}) == {"a": 1}
+    assert completions.calls == 1
+    assert guard.today_total() > 0
+
+
+def test_one_retry_on_invalid_json():
+    meta, completions, _ = make_provider(["not json", '{"a": 2}'])
+    assert meta.structured_json("sys", "user", {"type": "object"}) == {"a": 2}
+    assert completions.calls == 2
+
+
+def test_gives_up_after_one_retry():
+    meta, completions, _ = make_provider(["nope", "still nope", '{"a": 3}'])
+    with pytest.raises(MetaInvalidJSON):
+        meta.structured_json("sys", "user", {"type": "object"})
+    assert completions.calls == 2
+
+
+def test_budget_blocks_call_before_it_is_sent():
+    meta, completions, guard = make_provider(['{"a": 1}'], cap=0.001)
+    guard.record("text", "muse-spark-1.3", 0.001)
+    with pytest.raises(BudgetExceeded):
+        meta.structured_json("sys", "user", {"type": "object"})
+    assert completions.calls == 0
+
+
+def wav_bytes(rate=24000, seconds=1, channels=1):
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(channels)
+        w.setsampwidth(2)
+        w.setframerate(rate)
+        w.writeframes(b"\x00\x00" * rate * seconds * channels)
+    return buf.getvalue()
+
+
+def test_check_wav():
+    assert check_wav(wav_bytes(), "audio/wav") == 1000
+    with pytest.raises(MetaError):
+        check_wav(wav_bytes(), "audio/webm")
+    with pytest.raises(MetaError):
+        check_wav(wav_bytes(rate=44100), "audio/wav")
+    with pytest.raises(MetaError):
+        check_wav(wav_bytes(channels=2), "audio/wav")
+    with pytest.raises(MetaError):
+        check_wav(b"RIFFjunk", "audio/wav")
