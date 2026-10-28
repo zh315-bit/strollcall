@@ -43,6 +43,7 @@ class InviteView(BaseModel):
     reasons: dict[str, str] = {}  # candidate id -> Meta's reason (validated)
     failure: dict | None = None  # no_feasible_plan: binding constraint and suggestion
     notes: list[str] = []  # honest limits, e.g. "We can't check crowd levels; ..."
+    progress: dict | None = None  # {"step": ..., "seconds": {step: s since B accepted}}
     image_url: str | None = None
     sources: dict[str, str] = {}  # what produced each part: meta / mock / default / local / snapshot ...
     demo_data: bool = False  # true if any visible part is mock or template data
@@ -133,7 +134,7 @@ def view(token: str, key: str | None = None) -> InviteView | None:
         invite_text=invite.invite_text, a_intent=invite.a_intent, b_intent=invite.b_intent,
         candidates=candidates, selected_id=invite.selected_id, error=invite.error,
         places=public.get("places", {}), tradeoff=public.get("tradeoff"), reasons=public.get("reasons", {}),
-        failure=public.get("failure"), notes=public.get("notes", []),
+        failure=public.get("failure"), notes=public.get("notes", []), progress=public.get("progress"),
         image_url=f"/api/invites/{token}/card" if image_ready else None,
         sources=sources, demo_data=any(v in ("mock", "default") for v in sources.values()),
     )
@@ -163,8 +164,40 @@ def accept(token: str, b_origin: tuple[float, float], b_text: str = "") -> str:
     return b_key
 
 
+PROGRESS_STEPS = ("understanding", "balancing", "finding", "done")
+
+
+def _progress(token: str, public: dict, private: dict, step: str, started: float) -> None:
+    """Record the step both pages show, with seconds since B accepted."""
+    import time
+
+    prog = public.setdefault("progress", {"steps": [], "seconds": {}})
+    prog["step"] = step
+    prog["seconds"][step] = round(time.perf_counter() - started, 2)
+    save_invite_extra(token, public, private)
+
+
+def _warm_routing(routing, a_origin, b_origin) -> None:
+    """Run the two Dijkstra searches while Muse Spark reads the preferences (local engine only)."""
+    if hasattr(routing, "equal_time_nodes"):
+        try:
+            routing.matrix([tuple(a_origin), tuple(b_origin)], [tuple(a_origin)])
+        except ProviderError:
+            pass  # the planner reports routing problems itself
+
+
 def run_planning(token: str) -> None:
-    """Background: B's preference, negotiation, wishes, planner, Meta ranking."""
+    """Background, after B accepts. Steps shown on both pages:
+    understanding: B's text parsed, wishes read and both Dijkstra runs, in parallel;
+    balancing: negotiation (needs B's parsed preference);
+    finding: candidates scored with the joint preference, then Muse Spark ranks the top 3;
+    done.
+    """
+    import contextvars
+    import time
+    from concurrent.futures import ThreadPoolExecutor
+
+    from app.core.config import get_settings, reasoning_override
     from app.providers import get_places, get_routing
     from app.services.explain import rank_candidates
     from app.services.intent import negotiate, parse_intent
@@ -175,44 +208,59 @@ def run_planning(token: str) -> None:
     public, private = load_invite_extra(token)
     if invite is None or private is None or invite.status != "planning":
         return
-    a = invite.a_intent
+    started = time.perf_counter()
+    reasoning_override.set(get_settings().accept_reasoning_effort)
+    a, a_text, b_text = invite.a_intent, private.get("a_text", ""), private.get("b_text", "")
     sources = public.setdefault("sources", {})
-    if private.get("b_text"):
-        parsed = parse_intent(private["b_text"])
-        b, sources["b_intent"] = parsed.intent, parsed.source
-    else:
-        b = WalkIntent(duration_min=a.duration_min)  # B gave no preference: no extra limits
-    invite.b_intent = b
+    _progress(token, public, private, "understanding", started)
     try:
         places, routing = get_places(), get_routing()
         sources["routing"], sources["places"] = routing.name, places.name
+
+        def submit(ex, fn, *args):
+            return ex.submit(contextvars.copy_context().run, fn, *args)
+
+        with ThreadPoolExecutor(max_workers=3) as ex:
+            f_parse = submit(ex, parse_intent, b_text) if b_text else None
+            f_wishes = submit(ex, interpret_wishes, a_text, b_text) if (a_text or b_text) else None
+            f_warm = submit(ex, _warm_routing, routing, private["a_origin"], private["b_origin"])
+            if f_parse:
+                parsed = f_parse.result()
+                b, sources["b_intent"] = parsed.intent, parsed.source
+            else:
+                b = WalkIntent(duration_min=a.duration_min)  # B gave no preference: no extra limits
+            wishes = f_wishes.result() if f_wishes else None
+            if wishes is not None:
+                sources["wishes"] = wishes.source
+            f_warm.result()
+        invite.b_intent = b
+
+        _progress(token, public, private, "balancing", started)
         neg = negotiate(a, b)
         sources["negotiation"] = neg.source
-        wishes = None
-        if private.get("a_text") or private.get("b_text"):
-            wishes = interpret_wishes(private.get("a_text", ""), private.get("b_text", ""))
-            sources["wishes"] = wishes.source
+
+        _progress(token, public, private, "finding", started)
         plan = plan_for_two(tuple(private["a_origin"]), tuple(private["b_origin"]), a, b, neg.joint,
                             places, routing, datetime.now(NYC), wishes=wishes)
+        ranking = rank_candidates(plan, a, b, neg.joint, wishes) if plan.status == "proposed" else None
     except ProviderError as e:
         invite.status, invite.error = "error", e.code
         save_invite(invite)
-        save_invite_extra(token, public, private)
+        _progress(token, public, private, "done", started)
         return
 
     public["notes"] = plan.notes
-    if plan.status != "proposed":
+    if ranking is None:
         invite.status, invite.error = "error", plan.status
         public["failure"] = plan.failure.model_dump() if plan.failure else None
     else:
-        ranking = rank_candidates(plan, a, b, neg.joint, wishes)
         sources["ranking"] = ranking.source
         invite.status, invite.candidates = "proposed", ranking.candidates
         public.update({"places": {k: v.model_dump(mode="json") for k, v in plan.places.items()},
                        "tradeoff": neg.tradeoff, "reasons": ranking.reasons})
     save_invite(invite)
-    save_invite_extra(token, public, private)
-    log.info("invite planned: %s", invite.status if not invite.error else invite.error)
+    _progress(token, public, private, "done", started)
+    log.info("invite planned: %s in %.1f s", invite.error or invite.status, public["progress"]["seconds"]["done"])
 
 
 def confirm(token: str, key: str | None, candidate_id: str | None) -> None:

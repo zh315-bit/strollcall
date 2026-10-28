@@ -1,4 +1,5 @@
 import os
+from contextvars import ContextVar
 from functools import lru_cache
 from pathlib import Path
 
@@ -24,6 +25,9 @@ class Settings(BaseSettings):
     voice_model_id: str = "muse-voice-transcribe-1.0"
     # Muse Spark 1.3 reasons by default and reasoning tokens are billed as output.
     reasoning_effort: str = "low"
+    # After B accepts, both people are waiting: these calls run at this effort (about 1-2 s each
+    # instead of 3-8 s at "low"; measured 2026-10-28).
+    accept_reasoning_effort: str = "minimal"
     meta_timeout_s: float = 45.0
     # Cap on output tokens per Spark call, reasoning included. Truncation is logged.
     meta_max_output_tokens: int = 4096  # 2048 truncated 3 of 10 live intent calls (2026-10-28)
@@ -76,3 +80,7 @@ def forbid_live_client_in_tests(what: str) -> None:
     """Tests must never reach a real API: creating a live client under pytest is a bug."""
     if "PYTEST_CURRENT_TEST" in os.environ:
         raise RuntimeError(f"{what}: live API client created inside pytest (use the mocks)")
+
+
+# Set for a block of work (e.g. planning after B accepts) to override Settings.reasoning_effort.
+reasoning_override: ContextVar[str | None] = ContextVar("reasoning_override", default=None)

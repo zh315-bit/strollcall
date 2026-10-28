@@ -32,8 +32,10 @@ async function load() {
     const v = await api(`/api/invites/${token}` + (key ? `?key=${encodeURIComponent(key)}` : ""));
     render(v);
     clearTimeout(pollTimer);
-    if (["pending", "planning"].includes(v.status) && (v.role !== "guest" || v.status === "planning")) {
-      pollTimer = setTimeout(load, 5000); // A waits for B; both wait for planning
+    if (v.status === "planning") {
+      pollTimer = setTimeout(load, 1500); // show each planning step as it happens
+    } else if (v.status === "pending" && v.role !== "guest") {
+      pollTimer = setTimeout(load, 5000); // A waits for B
     } else if (v.status === "pending" && !v.image_url && v.sources.image === "pending") {
       pollTimer = setTimeout(load, 5000); // card image still being drawn
     }
@@ -57,11 +59,21 @@ function render(v) {
   if (v.status === "expired") parts.push(el("p", { class: "error" }, "This invite has expired."));
   else if (v.status === "pending" && v.role === "a") parts.push(waitingForB(v));
   else if (v.status === "pending") parts.push(acceptForm(v));
-  else if (v.status === "planning") parts.push(el("p", {}, el("span", { class: "spinner" }), "Finding a fair place to meet…"));
+  else if (v.status === "planning") parts.push(progressSteps(v.progress));
   else if (v.status === "error") parts.push(problem(v));
   else parts.push(...plan(v));
   app.replaceChildren(...parts);
   if (["proposed", "confirmed"].includes(v.status)) drawPlan(v);
+}
+
+const STEPS = [["understanding", "Understanding your preferences"], ["balancing", "Balancing both of you"],
+               ["finding", "Finding a fair meeting point"], ["done", "Done"]];
+
+function progressSteps(progress) {
+  const current = progress ? STEPS.findIndex(([k]) => k === progress.step) : 0;
+  return el("section", { class: "card" }, el("ol", { class: "steps" }, STEPS.map(([k, label], i) =>
+    el("li", { class: i < current ? "done" : i === current ? "active" : "" },
+      i < current ? "✓ " : i === current ? el("span", { class: "spinner" }) : "", label))));
 }
 
 function waitingForB(v) {

@@ -94,8 +94,12 @@ def _is_preference_mention(text: str, start: int, end: int) -> bool:
     return bool(_CUE_RE.search(window))
 
 
-def unsupported(text: str, evidence: set[str], preferences: str) -> list[str]:
-    """Feature claims in `text` the data does not support; [] when the text is grounded."""
+def unsupported(text: str, evidence: set[str], preferences: str, speaker_is_the_person: bool = False) -> list[str]:
+    """Feature claims in `text` the data does not support; [] when the text is grounded.
+
+    speaker_is_the_person: the text is written as the person (an invite card), so a word they
+    used themselves ("quiet") is their wish, not a claim about a place.
+    """
     problems = []
     if m := _ROUTE_RE.search(text):
         problems.append(f"route claim: '{m.group(0)}'")
@@ -105,7 +109,8 @@ def unsupported(text: str, evidence: set[str], preferences: str) -> list[str]:
             problems.append(f"feature not in data: {key}")
     for key, r in _UNVERIFIABLE_RE.items():
         for m in r.finditer(text):
-            if not (re.search(r.pattern, preferences, re.I) and _is_preference_mention(text, m.start(), m.end())):
+            stated = re.search(r.pattern, preferences, re.I)
+            if not (stated and (speaker_is_the_person or _is_preference_mention(text, m.start(), m.end()))):
                 problems.append(f"unverifiable claim: '{m.group(0)}'")
                 break
     return problems

@@ -20,7 +20,7 @@ import openai
 from openai import OpenAI
 
 from app.core.budget import SpendGuard, image_cost, text_cost, voice_cost
-from app.core.config import Settings, forbid_live_client_in_tests, get_settings
+from app.core.config import Settings, forbid_live_client_in_tests, get_settings, reasoning_override
 from app.core.errors import ProviderError
 
 log = logging.getLogger(__name__)
@@ -94,7 +94,7 @@ class MetaProvider:
                         "type": "json_schema",
                         "json_schema": {"name": name, "schema": schema},
                     },
-                    reasoning_effort=self.settings.reasoning_effort,
+                    reasoning_effort=reasoning_override.get() or self.settings.reasoning_effort,
                     max_completion_tokens=max_tokens,
                 )
             except TRANSIENT_ERRORS as e:

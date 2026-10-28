@@ -53,3 +53,10 @@ def test_tags_and_names_count_as_evidence():
 def test_avoiding_something_is_a_preference_not_a_claim():
     assert unsupported("The walk tries to avoid traffic.", set(), P1) == []
     assert unsupported("There is little traffic on this route.", set(), P1) != []
+
+
+def test_invite_card_may_use_the_persons_own_words():
+    prefs = "quiet cafe"
+    assert unsupported("Fancy a quiet stroll ending at a cafe?", set(), prefs) != []
+    assert unsupported("Fancy a quiet stroll ending at a cafe?", set(), prefs, speaker_is_the_person=True) == []
+    assert unsupported("A safe, quiet stroll?", set(), prefs, speaker_is_the_person=True) != []  # "safe" never said

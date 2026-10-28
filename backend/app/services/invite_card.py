@@ -53,7 +53,7 @@ def invite_text(intent: WalkIntent, a_text: str = "") -> tuple[str, str]:
         return template_text(intent), "default"
     if not text or len(text) > MAX_TEXT_CHARS:
         return template_text(intent), "default"
-    problems = unsupported(text, set(), preference_text(intent) + " " + a_text)
+    problems = unsupported(text, set(), preference_text(intent) + " " + a_text, speaker_is_the_person=True)
     if problems:
         log.warning("invite text discarded (%s); using the template", "; ".join(problems))
         return template_text(intent), "default"

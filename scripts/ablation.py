@@ -256,8 +256,13 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--wish-cases", action="store_true")
     parser.add_argument("--conflict-cases", action="store_true")
+    parser.add_argument("--effort", help="reasoning effort for every Muse Spark call (default: settings)")
     args = parser.parse_args()
     s = get_settings()
+    if args.effort:
+        from app.core.config import reasoning_override
+
+        reasoning_override.set(args.effort)
     places, graph = SnapshotPlaces(load_snapshot(s.places_snapshot_path)), load_graph(s.graph_path)
     guard = SpendGuard()
     before = guard.today_total()
@@ -271,6 +276,7 @@ def main() -> int:
               f"ref met a/a'/b = {row['a']['ref']['met']}/{row['a2']['ref']['met']}/{row['b']['ref']['met']}")
         rows.append(row)
     suffix = "-ablation-wishes" if args.wish_cases else "-ablation-conflicts" if args.conflict_cases else "-ablation"
+    suffix += f"-{args.effort}" if args.effort else ""
     out = ROOT / "benchmarks" / f"{datetime.now(NYC):%Y-%m-%d}{suffix}.md"
     text = report(rows, guard.today_total() - before)
     if args.conflict_cases:
