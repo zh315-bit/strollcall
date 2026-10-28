@@ -10,9 +10,10 @@ from pathlib import Path
 
 from app.core.config import FIXTURES_DIR
 from app.core.errors import ProviderError
-from app.core.geo import coord_key, haversine_m
+from app.core.geo import haversine_m
 from app.models.schemas import Place, RouteLeg
 from app.providers.meta import MetaError, check_wav
+from app.providers.ors import route_key
 
 # 1x1 transparent PNG, so mock mode never pretends to have a Muse Image illustration.
 PLACEHOLDER_PNG = base64.b64decode(
@@ -72,7 +73,7 @@ class MockORS:
         self.fixtures_dir = fixtures_dir
 
     def walk(self, start: tuple[float, float], end: tuple[float, float]) -> RouteLeg:
-        key = f"{coord_key(*start)}|{coord_key(*end)}"
+        key = route_key(start, end)
         for route in _load(self.fixtures_dir, "sample_routes.json"):
             if route["key"] == key:
                 return RouteLeg.model_validate(route["leg"])

@@ -49,3 +49,19 @@ def get_overpass():
 
         _overpass = OverpassProvider()
     return _overpass
+
+
+_ors = None
+
+
+def get_ors():
+    global _ors
+    if get_settings().use_mocks:
+        from app.providers.mock import MockORS
+
+        return MockORS()
+    if _ors is None:
+        from app.providers.ors import ORSProvider
+
+        _ors = ORSProvider()
+    return _ors
