@@ -1,0 +1,1 @@
+{"kind": "destination", "tile": [4070, -5691], "fetched_at": "2026-10-28T17:30:25.046428+00:00", "places": [{"id": "node/2568519070", "name": "Cafe Gitane", "lat": 40.7028271, "lon": -73.9812328, "category": "cafe", "opening_hours": "Mo-Fr 10:00-22:00; Sa-Su 09:00-22:00", "tags": {"amenity": "cafe", "outdoor_seating": "sidewalk"}, "fetched_at": "2026-10-28T17:30:25.046428Z"}]}

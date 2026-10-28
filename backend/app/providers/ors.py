@@ -2,9 +2,11 @@
 
 Points are rounded to 4 decimals (about 11 m) before they are sent, and results are
 cached in memory under those rounded points, so a cached value is exactly what ORS
-returned for them. Free-tier limits (openrouteservice.org/plans): 40 requests per
-minute each for directions and matrix, 2,000 directions and 500 matrix requests per
-day, and at most 3,500 matrix elements per request.
+returned for them. Limits: 40 requests per minute each for directions and matrix and at
+most 3,500 matrix elements per request (openrouteservice.org/plans). Daily quotas are
+per key: on 2026-10-28 our key reported x-ratelimit-limit 200 for directions, and the
+matrix endpoint answered 403 "Quota exceeded" after a few dozen calls, so the daily
+budget is far smaller than the published 2,000 / 500.
 """
 
 import logging

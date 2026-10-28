@@ -14,7 +14,7 @@ from app.core.geo import haversine_m
 from app.models.schemas import Place, RouteLeg, TravelMatrix
 from app.providers.meta import MetaError, check_wav
 from app.providers.ors import route_key
-from app.providers.overpass import DiskCache, _check_types, destination_key, meetup_key
+from app.providers.overpass import TileCache, TiledPlaces
 
 # 1x1 transparent PNG, so mock mode never pretends to have a Muse Image illustration.
 PLACEHOLDER_PNG = base64.b64decode(
@@ -66,21 +66,17 @@ class MockOverpass:
             and (categories is None or p.category in categories)
         ]
 
-
     def meetup_candidates(self, lat: float, lon: float, radius_m: float) -> list[Place]:
-        return self._replay(meetup_key(lat, lon, int(radius_m)))
+        return self._tiles().meetup_candidates(lat, lon, radius_m)
 
     def destination_candidates(
         self, lat: float, lon: float, radius_m: float, types: list[str] | None = None
     ) -> list[Place]:
-        return self._replay(destination_key(lat, lon, int(radius_m), _check_types(types)))
+        return self._tiles().destination_candidates(lat, lon, radius_m, types)
 
-    def _replay(self, key: tuple) -> list[Place]:
-        """Exactly the response recorded by scripts/capture_fixtures.py for this query."""
-        places = DiskCache(self.fixtures_dir, ttl=None).get(key)
-        if places is None:
-            raise ProviderError("places_unavailable", "no captured Overpass response in mock mode")
-        return places
+    def _tiles(self) -> TiledPlaces:
+        """Tiles recorded by scripts/capture_fixtures.py; a missing tile is an error."""
+        return TiledPlaces(TileCache(self.fixtures_dir, ttl=None), fetch=None)
 
 
 class MockORS:

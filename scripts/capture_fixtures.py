@@ -2,8 +2,9 @@
 
 Usage: python scripts/capture_fixtures.py [--places] [--routes] [--planner]
   --planner  runs the planner on every case in fixtures/benchmark_cases.json against the
-             real APIs and records exactly what it fetched: Overpass responses under
-             fixtures/overpass/, ORS matrix entries in ors_matrix_elements.json and ORS
+             real APIs and records what it used: Overpass tiles under
+             fixtures/overpass_tiles/ (run `warm_cache.py --dir fixtures` first to fetch
+             the whole demo area), ORS matrix entries in ors_matrix_elements.json and ORS
              legs in sample_routes.json. Then USE_MOCKS=true replays the same plans.
 Overpass is often at capacity, so each query gets up to 3 attempts with backoff.
 Only public origins from fixtures/nyc_origins.json are queried.
@@ -78,7 +79,7 @@ def _merge_json(path, new: dict) -> dict:
 
 def capture_planner() -> None:
     settings = get_settings().model_copy(
-        update={"overpass_timeout_s": 60.0, "cache_dir": FIXTURES}  # writes fixtures/overpass/
+        update={"overpass_timeout_s": 60.0, "cache_dir": FIXTURES}  # tiles in fixtures/overpass_tiles/
     )
     overpass, ors = OverpassProvider(settings=settings), ORSProvider()
     for case in load_cases():
