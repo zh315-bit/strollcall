@@ -38,16 +38,50 @@ def key_fingerprint(key: str) -> str | None:
     return hashlib.sha256(key.encode()).hexdigest()[:8] if key else None
 
 
+META_ENV_NAMES = ("MODEL_API_KEY", "MODEL_BASE_URL", "MODEL_ID", "IMAGE_MODEL_ID", "VOICE_MODEL_ID",
+                  "OPENAI_API_KEY", "OPENAI_BASE_URL", "OPENAI_ORG_ID", "OPENAI_PROJECT_ID",
+                  "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "NO_PROXY")
+SECRET_HEADERS = {"authorization", "cookie", "openai-organization", "openai-project"}
+
+
 def meta_check(s) -> dict:
-    """One free models.list call: which models this key can use (only when asked)."""
+    """One free models.list call, with the request's shape (no secrets) for comparing environments."""
+    import os
+    import platform
+    import sys
+
+    import httpx
+    import openai
     from openai import OpenAI
 
+    key = s.model_api_key.get_secret_value()
+    out = {
+        "env_vars_set": sorted(n for n in META_ENV_NAMES if os.environ.get(n) or os.environ.get(n.lower())),
+        "versions": {"openai": openai.__version__, "httpx": httpx.__version__,
+                     "python": sys.version.split()[0], "platform": platform.platform()},
+        # The fingerprint hashes exactly the string given to the SDK, which sends "Bearer <key>" unchanged.
+        "key_length": len(key),
+        "key_has_surrounding_whitespace": key != key.strip(),
+    }
     try:
-        client = OpenAI(base_url=s.model_base_url, api_key=s.model_api_key.get_secret_value(), timeout=15, max_retries=0)
-        ids = sorted(m.id for m in client.models.list())
-        return {"reachable": True, "models": ids, "has_text_model": s.model_id in ids}
+        client = OpenAI(base_url=s.model_base_url, api_key=key, timeout=15, max_retries=0)
+        raw = client.models.with_raw_response.list()
+        req = raw.http_request
+        sent = req.headers.get("authorization", "")
+        out["request"] = {
+            "method": req.method, "url": str(req.url),
+            "headers": {k: ("<redacted>" if k.lower() in SECRET_HEADERS else v) for k, v in sorted(req.headers.items())},
+            "authorization_matches_key": sent == f"Bearer {key}",
+        }
+        resp = raw.http_response
+        out["response"] = {"status": resp.status_code,
+                           "headers": {k: v for k, v in sorted(resp.headers.items())
+                                       if k.lower() not in ("set-cookie",)}}
+        ids = sorted(m.id for m in raw.parse())
+        out.update({"reachable": True, "models": ids, "has_text_model": s.model_id in ids})
     except Exception as e:  # report, don't crash /health
-        return {"reachable": False, "error": type(e).__name__}
+        out.update({"reachable": False, "error": type(e).__name__})
+    return out
 
 
 @app.get("/health")
