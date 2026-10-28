@@ -141,8 +141,8 @@ def test_split_categories_only_for_different_wishes():
     park = WalkIntent(duration_min=30, endpoint_type="park")
     green = WalkIntent(duration_min=30, vibes=["green"])
     assert planner.split_categories({"A": cafe, "B": park}) == ["park", "park_gate"]
-    assert planner.split_categories({"A": cafe, "B": green}) == []  # B has no endpoint: nothing to split
-    assert planner.split_categories({"A": green, "B": cafe}) == ["park", "park_gate"]
+    assert planner.split_categories({"A": cafe, "B": green}) == ["park", "park_gate"]  # green meetup for B
+    assert planner.split_categories({"A": green, "B": WalkIntent(duration_min=30)}) == []  # nobody wants an ending
     assert planner.split_categories({"A": cafe, "B": cafe}) == []
 
 
