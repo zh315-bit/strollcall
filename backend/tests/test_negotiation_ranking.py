@@ -124,7 +124,7 @@ def test_meta_reorders_supplied_candidates_only(use_meta, p1_plan):
 
 def test_numbers_from_the_facts_are_accepted(use_meta, p1_plan):
     c1 = p1_plan.candidates[0]
-    reason = f"A walks {round(c1.a_leg.duration_min)} min and B {round(c1.b_leg.duration_min)} min; c1 fits."
+    reason = f"A walks {round(c1.a_leg.duration_min)} min and B {round(c1.b_leg.duration_min)} min; it fits."
     use_meta(FakeMeta(ranking(("c1", reason), ("c2", "ok"), ("c3", "ok"))))
     assert explain.rank_candidates(p1_plan, A, B, JOINT).source == "meta"
 
@@ -132,7 +132,7 @@ def test_numbers_from_the_facts_are_accepted(use_meta, p1_plan):
 @pytest.mark.parametrize("data,note", [
     (ranking(("c1", "x"), ("c2", "y")), "ranking_ids_mismatch"),
     (ranking(("c1", "x"), ("c1", "y"), ("c3", "z")), "ranking_ids_mismatch"),
-    (ranking(("c1", "Only 2 minutes from a quiet garden."), ("c2", "y"), ("c3", "z")), "invented_number"),
+    (ranking(("c1", "Only 97 minutes in total."), ("c2", "y"), ("c3", "z")), "invented_number"),
     (ranking(("c1", "x" * 300), ("c2", "y"), ("c3", "z")), "reason_length"),
     ({"ranking": "c1"}, "invalid_model_output"),
 ])
@@ -193,3 +193,25 @@ def test_combined_strictness_follows_the_shorter_budget():
     forty = WalkIntent(duration_min=40)
     assert combined_intent(only20, forty).duration_strict is True
     assert combined_intent(WalkIntent(duration_min=20), WalkIntent(duration_min=40, duration_strict=True)).duration_strict is False
+
+
+def test_comparative_numbers_are_allowed_internal_labels_are_not(use_meta, p1_plan):
+    c1, c2 = p1_plan.candidates[0], p1_plan.candidates[1]
+    diff = abs(round(c1.total_elapsed_min) - round(c2.total_elapsed_min))
+    other = p1_plan.places[c2.endpoint_place_id].name
+    reason = f"{diff} min different from the {other} plan, same start for both."
+    use_meta(FakeMeta(ranking(("c1", reason), ("c2", "ok"), ("c3", "ok"))))
+    assert explain.rank_candidates(p1_plan, A, B, JOINT).source == "meta"
+    use_meta(FakeMeta(ranking(("c1", "Better than c2."), ("c2", "ok"), ("c3", "ok"))))
+    assert explain.rank_candidates(p1_plan, A, B, JOINT).note == "internal_label_in_reason"
+
+
+def test_digits_in_place_names_are_not_numbers(use_meta, p1_plan):
+    name = p1_plan.places[p1_plan.candidates[0].endpoint_place_id].name
+    use_meta(FakeMeta(ranking(("c1", f"Ends at {name} for A."), ("c2", "ok"), ("c3", "ok"))))
+    from app.models.schemas import Place
+
+    p1_plan.places[p1_plan.candidates[0].endpoint_place_id] = Place(
+        **{**p1_plan.places[p1_plan.candidates[0].endpoint_place_id].model_dump(), "name": "787 Coffee Co."})
+    use_meta(FakeMeta(ranking(("c1", "Ends at 787 Coffee Co. for A."), ("c2", "ok"), ("c3", "ok"))))
+    assert explain.rank_candidates(p1_plan, A, B, JOINT).source == "meta"

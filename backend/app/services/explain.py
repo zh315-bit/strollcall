@@ -20,7 +20,7 @@ from app.services.planner import PlanResult
 
 log = logging.getLogger(__name__)
 
-MAX_REASON_CHARS = 240
+MAX_REASON_CHARS = 280
 NUMBER_RE = re.compile(r"\d+(?:\.\d+)?")
 LABEL_RE = re.compile(r"\bc\d\b")  # candidate labels are not facts
 
@@ -31,8 +31,10 @@ planner has already checked: every plan is walkable, within the time budget and 
 
 Rules:
 - Rank only the candidates given, by id. Return each id exactly once.
-- For each, give one short reason (max 30 words) that refers to A's and B's preferences and says
-  who each part is for, using the "suits" facts (e.g. "meet at the park for B, end at the cafe for A").
+- For each, give one short reason (max 35 words) that compares it with the other options using
+  the facts, e.g. "3 min shorter than the Starbucks plan, but Wi-Fi unconfirmed", and says who each
+  part is for, using the "suits" facts (e.g. "meet at the park for B, end at the cafe for A").
+- Refer to other options by their meeting point or destination name, never by id (c1, c2, c3).
 - Use only the facts given. Do not invent places, opening hours, safety, crowds or noise.
 - Wishes marked "unknown" are not confirmed: never say they are met.
 - Any number you write must appear in that candidate's facts.
@@ -81,8 +83,18 @@ def _facts(result: PlanResult, wishes=None, people=None) -> tuple[dict[str, Meet
     return labelled, facts
 
 
-def _allowed_numbers(fact: dict, a: WalkIntent, b: WalkIntent) -> set[float]:
-    values = [v for k, v in fact.items() if k.endswith("_min")] + [a.duration_min, b.duration_min]
+def _allowed_numbers(facts: list[dict], a: WalkIntent, b: WalkIntent) -> set[float]:
+    """Every measured number of every candidate, and the differences between candidates."""
+    def numbers(f):
+        return {k: v for k, v in f.items() if k.endswith("_min")}
+
+    values = [a.duration_min, b.duration_min]
+    for f in facts:
+        values += numbers(f).values()
+    for f in facts:
+        for g in facts:
+            if f is not g:
+                values += [abs(numbers(f)[k] - numbers(g)[k]) for k in numbers(f)]
     allowed = set()
     for v in values:
         allowed |= {float(v), float(round(v)), round(float(v), 1)}
@@ -135,7 +147,7 @@ def rank_candidates(
         log.warning("ranking fell back to deterministic order: %s (%s)", e.code, e.message)
         return deterministic(result, e.code)
 
-    problem = _check(data, labelled, {f["id"]: f for f in facts}, a, b) or _grounded(data, labelled, result, a, b, wishes)
+    problem = _check(data, labelled, facts, a, b) or _grounded(data, labelled, result, a, b, wishes)
     if problem:
         log.warning("ranking fell back to deterministic order: %s", problem)
         return deterministic(result, problem)
@@ -148,7 +160,7 @@ def rank_candidates(
     )
 
 
-def _check(data: dict, labelled: dict, facts: dict, a: WalkIntent, b: WalkIntent) -> str | None:
+def _check(data: dict, labelled: dict, facts: list[dict], a: WalkIntent, b: WalkIntent) -> str | None:
     """Reason for rejecting the model's ranking, or None if it is usable."""
     items = data.get("ranking") if isinstance(data, dict) else None
     if not isinstance(items, list):
@@ -156,13 +168,21 @@ def _check(data: dict, labelled: dict, facts: dict, a: WalkIntent, b: WalkIntent
     ids = [i.get("id") for i in items if isinstance(i, dict)]
     if sorted(ids) != sorted(labelled):
         return "ranking_ids_mismatch"
+    allowed = _allowed_numbers(facts, a, b)
+    # Digits inside place names ("787 Coffee Co.", "E 13th St") are not claims: remove the names first.
+    names = sorted({f[k]["name"] for f in facts for k in ("meet_at", "destination")}, key=len, reverse=True)
     for item in items:
         reason = str(item.get("reason", "")).strip()
         if not reason or len(reason) > MAX_REASON_CHARS:
             return "reason_length"
-        allowed = _allowed_numbers(facts[item["id"]], a, b)
-        for n in NUMBER_RE.findall(LABEL_RE.sub("", reason)):
+        if LABEL_RE.search(reason):
+            return "internal_label_in_reason"  # users never see c1 / c2 / c3
+        unnamed = reason
+        for name in names:
+            unnamed = unnamed.replace(name, " ")
+        for n in NUMBER_RE.findall(unnamed):
             if float(n) not in allowed:
+                log.warning("ranking reason has a number not in the facts: %s in %r", n, reason[:160])
                 return "invented_number"
     return None
 
