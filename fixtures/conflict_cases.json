@@ -1,0 +1,22 @@
+{
+ "_rule": "Pre-registered 2026-10-28 before any run on these cases. Four A-vs-B conflicts on benchmark origin pairs that are feasible by distance (fixtures/benchmark_cases.json). Arms: (a) structured, (a') keywords, (b) Meta, as in scripts/ablation.py. Reported per arm: (1) hard constraints for both people on the top pick: arrival gap <= 5 min and elapsed <= the shorter budget + 3 min; (2) each person's checkable preferences met by the top pick (destination type, vibes with a deterministic test); (3) 'visibly different': the Meta top pick differs from (a), or its explanation names both people's preferences; (4) c4: no text may claim crowd levels (we have no crowd data).",
+ "depart_at": "2026-10-31T15:00:00-04:00",
+ "cases": [
+  {"id": "c1", "pair": "p9", "conflict": "A wants quiet, B wants lively",
+   "intent": {"duration_min": 30, "vibes": ["quiet"]}, "b_intent": {"duration_min": 30, "vibes": ["lively"]},
+   "a_text": "A quiet walk, 30 minutes, somewhere calm to end up", "b_text": "Something lively, 30 minutes, I want a bit of buzz",
+   "expected_wishes": []},
+  {"id": "c2", "pair": "p2", "conflict": "A wants coffee, B wants a park",
+   "intent": {"duration_min": 30, "endpoint_type": "cafe"}, "b_intent": {"duration_min": 30, "endpoint_type": "park"},
+   "a_text": "30 minutes, coffee at the end", "b_text": "30 minutes, let's end up in a park",
+   "expected_wishes": []},
+  {"id": "c3", "pair": "p1", "conflict": "A has 20 minutes, B has 40",
+   "intent": {"duration_min": 20, "endpoint_type": "cafe"}, "b_intent": {"duration_min": 40, "vibes": ["green"]},
+   "a_text": "I only have 20 minutes, coffee at the end", "b_text": "I have about 40 minutes, something green",
+   "expected_wishes": []},
+  {"id": "c4", "pair": "p5", "conflict": "A avoids crowds, B wants to people-watch",
+   "intent": {"duration_min": 30, "avoid": ["crowds"]}, "b_intent": {"duration_min": 30, "vibes": ["lively"]},
+   "a_text": "30 minutes, I'd rather avoid crowds", "b_text": "30 minutes, somewhere good for people-watching",
+   "expected_wishes": []}
+ ]
+}
