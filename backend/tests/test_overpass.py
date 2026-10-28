@@ -40,11 +40,27 @@ def test_normalizes_and_caches():
     assert len(calls) == 1
 
 
-def test_http_error_is_explicit():
-    overpass, _ = provider_with(lambda r: httpx.Response(429))
+def test_busy_server_gets_one_retry_then_explicit_error(monkeypatch):
+    monkeypatch.setattr("app.providers.overpass.time.sleep", lambda s: None)
+    overpass, calls = provider_with(lambda r: httpx.Response(502))
     with pytest.raises(ProviderError) as e:
         overpass.places_near(40.73, -73.99, 600)
     assert e.value.code == "places_unavailable"
+    assert len(calls) == 2
+
+
+def test_busy_then_ok(monkeypatch):
+    monkeypatch.setattr("app.providers.overpass.time.sleep", lambda s: None)
+    responses = iter([httpx.Response(429), httpx.Response(200, json=ELEMENTS)])
+    overpass, calls = provider_with(lambda r: next(responses))
+    assert len(overpass.places_near(40.73, -73.99, 600)) == 3
+
+
+def test_bad_request_is_not_retried():
+    overpass, calls = provider_with(lambda r: httpx.Response(400))
+    with pytest.raises(ProviderError):
+        overpass.places_near(40.73, -73.99, 600)
+    assert len(calls) == 1
 
 
 def test_query_has_timeout_and_requested_categories():

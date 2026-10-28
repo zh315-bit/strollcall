@@ -86,3 +86,10 @@ def parse_ok(data):
     from app.models.schemas import WalkIntent
 
     return WalkIntent.model_validate(data)
+
+
+def test_mock_ors_serves_captured_smoke_route():
+    from app.providers import get_ors
+
+    leg = get_ors().walk((40.73089, -73.99759), (40.73576, -73.99065))
+    assert leg.duration_min > 0 and len(leg.geometry) > 2

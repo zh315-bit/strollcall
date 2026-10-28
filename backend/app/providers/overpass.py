@@ -20,6 +20,8 @@ CATEGORIES = ("park", "cafe", "bookstore", "landmark")
 MAX_RADIUS_M = 2000
 CACHE_TTL_S = 600
 CACHE_MAX = 256
+BUSY_STATUSES = (429, 502, 503, 504)
+BUSY_WAIT_S = 5
 USER_AGENT = "StrollCall/0.1 (Meta AI hackathon prototype)"
 
 FILTERS = {
@@ -87,12 +89,13 @@ class OverpassProvider:
         if hit and time.monotonic() - hit[0] < CACHE_TTL_S:
             return hit[1]
 
-        try:
-            resp = self.http.post(
-                self.settings.overpass_url, data={"data": build_query(lat, lon, radius, cats)}
-            )
-        except httpx.HTTPError as e:
-            raise ProviderError("places_unavailable", f"Overpass {type(e).__name__}") from e
+        query = build_query(lat, lon, radius, cats)
+        resp = self._post(query)
+        if resp.status_code in BUSY_STATUSES:
+            # Overpass answers "at capacity" often and asks for a backoff: one retry, then give up.
+            log.warning("overpass busy (HTTP %d); retrying once in %ss", resp.status_code, BUSY_WAIT_S)
+            time.sleep(BUSY_WAIT_S)
+            resp = self._post(query)
         if resp.status_code != 200:
             raise ProviderError("places_unavailable", f"Overpass HTTP {resp.status_code}")
 
@@ -108,3 +111,9 @@ class OverpassProvider:
             self._cache.clear()
         self._cache[key] = (time.monotonic(), result)
         return result
+
+    def _post(self, query: str) -> httpx.Response:
+        try:
+            return self.http.post(self.settings.overpass_url, data={"data": query})
+        except httpx.HTTPError as e:
+            raise ProviderError("places_unavailable", f"Overpass {type(e).__name__}") from e
