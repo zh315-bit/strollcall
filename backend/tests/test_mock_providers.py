@@ -70,3 +70,19 @@ def test_budget_exceeded_falls_back_to_mock(monkeypatch, caplog):
     assert source == "mock"
     assert result["duration_min"] == 25
     assert "Falling back to mock" in caplog.text
+
+
+def test_mocks_read_committed_fixtures():
+    """The fixtures in the repo load and are usable offline."""
+    from app.providers import get_ors, get_overpass
+
+    places = get_overpass().places_near(40.73089, -73.99759, 500)
+    assert places and all(p.category in {"park", "cafe", "bookstore", "landmark"} for p in places)
+    assert parse_ok(get_meta().structured_json("s", "u", {}, name="walk_intent"))
+    assert get_ors().name == "mock"
+
+
+def parse_ok(data):
+    from app.models.schemas import WalkIntent
+
+    return WalkIntent.model_validate(data)

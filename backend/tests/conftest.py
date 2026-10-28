@@ -1,3 +1,5 @@
+import socket
+
 import pytest
 
 from app.core.config import get_settings
@@ -13,3 +15,14 @@ def offline_settings(monkeypatch, tmp_path):
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def no_network(monkeypatch):
+    """Fail any test that tries to open a real network connection."""
+
+    def blocked(*args, **kwargs):
+        raise RuntimeError("network access is disabled in tests")
+
+    monkeypatch.setattr(socket.socket, "connect", blocked)
+    monkeypatch.setattr(socket, "create_connection", blocked)
