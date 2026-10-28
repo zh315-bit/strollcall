@@ -24,6 +24,7 @@ SYSTEM_PROMPT = f"""You turn one person's description of a walk into JSON for St
 Rules:
 - Extract only what the person said. Never add preferences they did not express; leave a list empty when nothing was said.
 - duration_min: total walking minutes for the outing, 15 to 60. If no duration was given, use {DEFAULT_DURATION_MIN}. If the given value is outside 15-60, use the nearest bound.
+- duration_strict: true only if the person signals the time is a hard limit ("only have", "must", "at most", "no more than", "have to be back by"). A plain duration ("25 minutes", "about half an hour") is false.
 - vibes: short lowercase phrases for the feel they asked for, such as "quiet", "green", "lively", "scenic".
 - endpoint_type: where the walk should end, one of {", ".join(ENDPOINT_TYPES)}; null if they did not say. "coffee" means cafe, "books" means bookstore, "pastries" means bakery, "ice cream" means ice_cream.
 - avoid: short lowercase phrases for what they want to avoid.
@@ -36,13 +37,14 @@ INTENT_SCHEMA = {
     "type": "object",
     "properties": {
         "duration_min": {"type": "integer", "minimum": 15, "maximum": 60},
+        "duration_strict": {"type": "boolean"},
         "vibes": {"type": "array", "items": {"type": "string"}},
         "endpoint_type": {"type": ["string", "null"], "enum": ENDPOINT_TYPES + [None]},
         "avoid": {"type": "array", "items": {"type": "string"}},
         "hard_constraints": {"type": "array", "items": {"type": "string"}},
         "inferred_fields": {"type": "array", "items": {"type": "string", "enum": INTENT_FIELDS}},
     },
-    "required": INTENT_FIELDS + ["inferred_fields"],
+    "required": INTENT_FIELDS + ["duration_strict", "inferred_fields"],
     "additionalProperties": False,
 }
 
@@ -218,8 +220,11 @@ def combined_intent(a: WalkIntent, b: WalkIntent) -> WalkIntent:
     else:
         endpoint = a.endpoint_type or b.endpoint_type
     merge = lambda x, y: list(dict.fromkeys(x + y))  # noqa: E731
+    shorter = a if a.duration_min <= b.duration_min else b
+    strict = shorter.duration_strict or (a.duration_min == b.duration_min and (a.duration_strict or b.duration_strict))
     return WalkIntent(
         duration_min=min(a.duration_min, b.duration_min),
+        duration_strict=strict,
         vibes=merge(a.vibes, b.vibes),
         endpoint_type=endpoint,
         avoid=merge(a.avoid, b.avoid),

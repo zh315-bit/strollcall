@@ -42,6 +42,11 @@ CONTOUR_GAP_MIN = 0.5  # debug output: nodes where A and B arrive within 30 s of
 CONTOUR_MAX_POINTS = 400
 
 
+def time_slack(intent: WalkIntent) -> float:
+    """Minutes a plan may run over the budget: none when someone stated a hard limit."""
+    return 0.0 if intent.duration_strict else ELAPSED_SLACK_MIN
+
+
 @dataclass
 class MeetupOption:
     place: Place
@@ -275,7 +280,7 @@ def split_destinations(places, kept, chosen, reserve, types, intent, arrive_at, 
     other_types = [t for t in types if t not in MEETUP_MATCH]
     split = sorted((m for m in kept if m.place.category in reserve), key=lambda m: (m.gap, m.place.id))
     have = {p.id for p in chosen}
-    slack = 0.0 if getattr(intent, "duration_strict", False) else ELAPSED_SLACK_MIN
+    slack = time_slack(intent)
     added: list[Place] = []
     for m in split[:SPLIT_MEETUPS_FOR_DESTINATIONS]:
         left = intent.duration_min + slack - m.t_max
@@ -523,7 +528,7 @@ def score_options(
                 _count(cs.stats, "shared_no_route")
                 continue
             elapsed = m.t_max + t_shared
-            if elapsed > intent.duration_min + ELAPSED_SLACK_MIN:
+            if elapsed > intent.duration_min + time_slack(intent):
                 _count(cs.stats, "elapsed_over_budget")
                 continue
             open_at_arrival = is_open(dest.opening_hours, depart_at + timedelta(minutes=elapsed))
@@ -601,7 +606,7 @@ def top_candidates(
         shared_leg: RouteLeg = ors.walk((m.lat, m.lon), (d.lat, d.lon))
         gap = round(abs(a_leg.duration_min - b_leg.duration_min), 2)  # same value the page shows
         elapsed = max(a_leg.duration_min, b_leg.duration_min) + shared_leg.duration_min
-        if gap > MAX_GAP_MIN or elapsed > intent.duration_min + ELAPSED_SLACK_MIN:
+        if gap > MAX_GAP_MIN or elapsed > intent.duration_min + time_slack(intent):
             _count(stats, "directions_broke_constraint")
             continue
         result.append(

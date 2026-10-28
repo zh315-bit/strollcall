@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class WalkIntent(BaseModel):
     duration_min: int = Field(ge=15, le=60)
+    duration_strict: bool = False  # a hard limit ("only", "must", "at most"): no time tolerance
     vibes: list[str] = []
     endpoint_type: str | None = None
     avoid: list[str] = []

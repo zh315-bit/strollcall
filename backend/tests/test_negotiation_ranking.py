@@ -186,3 +186,10 @@ def test_wish_descriptions_count_as_preferences_for_grounding(use_meta, p1_plan)
     b = WalkIntent(duration_min=25, vibes=["green"])
     assert explain.rank_candidates(p1_plan, a, b, JOINT, wishes).source == "meta"
     assert explain.rank_candidates(p1_plan, a, b, JOINT).note == "unsupported_feature"
+
+
+def test_combined_strictness_follows_the_shorter_budget():
+    only20 = WalkIntent(duration_min=20, duration_strict=True)
+    forty = WalkIntent(duration_min=40)
+    assert combined_intent(only20, forty).duration_strict is True
+    assert combined_intent(WalkIntent(duration_min=20), WalkIntent(duration_min=40, duration_strict=True)).duration_strict is False

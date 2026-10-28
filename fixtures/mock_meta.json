@@ -11,7 +11,8 @@
     "hard_constraints": [],
     "inferred_fields": [
       "avoid"
-    ]
+    ],
+    "duration_strict": false
   },
   "transcript": "25 minutes, quiet streets, coffee at the end",
   "joint_preference": {

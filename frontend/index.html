@@ -24,6 +24,7 @@
       <div class="row">
         <label>Minutes <input type="range" id="duration" min="15" max="60" step="5"></label>
         <b id="duration-label"></b>
+        <label class="muted"><input type="checkbox" id="strict"> hard limit</label>
       </div>
       <div class="row">
         <label>End at
@@ -96,6 +97,7 @@ $("parse").addEventListener("click", async () => {
     state.intent = r.intent; state.inferred = r.inferred_fields;
     $("duration").value = r.intent.duration_min; $("duration-label").textContent = r.intent.duration_min;
     $("endpoint").value = r.intent.endpoint_type || "";
+    $("strict").checked = !!r.intent.duration_strict;
     renderChips();
     $("intent-source").replaceChildren(
       r.source === "meta" ? el("span", { class: "muted" }, "Understood by Muse Spark") : sourceBadge(r.source === "default" ? "default" : "mock"));
@@ -106,6 +108,7 @@ $("parse").addEventListener("click", async () => {
 });
 $("duration").addEventListener("input", () => { state.intent.duration_min = +$("duration").value; $("duration-label").textContent = $("duration").value; });
 $("endpoint").addEventListener("change", () => { state.intent.endpoint_type = $("endpoint").value || null; });
+$("strict").addEventListener("change", () => { state.intent.duration_strict = $("strict").checked; });
 
 function refresh() { $("create").disabled = !(state.intent && state.origin); }
 

@@ -161,3 +161,11 @@ def test_end_to_end_on_recorded_fixture_pair():
         assert c.total_elapsed_min <= case["intent"].duration_min + 3
         assert len(c.a_leg.geometry) > 2  # real ORS geometry, not a straight line
         assert c.meeting_place_id in result.places and c.endpoint_place_id in result.places
+
+
+def test_strict_duration_has_no_tolerance():
+    ors = ors_with([(9, 10), (8, 11), (10, 10)], 16)  # elapsed 26-27 for a 25-minute walk
+    loose = planner.plan_walk(A, B, WalkIntent(duration_min=25), FakeOverpass(), ors, WED_15, W)
+    strict = planner.plan_walk(A, B, WalkIntent(duration_min=25, duration_strict=True), FakeOverpass(), ors, WED_15, W)
+    assert loose.status == "proposed"
+    assert strict.status == "no_feasible_plan" and strict.failure.constraint == "time_budget"
