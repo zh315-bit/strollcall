@@ -13,6 +13,7 @@ import base64
 import io
 import json
 import logging
+import time
 import wave
 
 import httpx
@@ -34,6 +35,17 @@ TRANSIENT_ERRORS = (
     openai.RateLimitError,
     openai.InternalServerError,
 )
+RETRY_WAIT_S = 1.5
+
+
+def _transient(e: Exception) -> bool:
+    """Timeouts, 429, 5xx, and the intermittent 404 model_not_found seen on 2026-10-28 for a model
+    the same key can list (it cleared within minutes, locally and on the server alike)."""
+    if isinstance(e, TRANSIENT_ERRORS):
+        return True
+    body = getattr(e, "body", None)
+    code = (body.get("code") or (body.get("error") or {}).get("code")) if isinstance(body, dict) else None
+    return isinstance(e, openai.NotFoundError) and code == "model_not_found"
 
 
 class MetaError(ProviderError):
@@ -97,11 +109,13 @@ class MetaProvider:
                     reasoning_effort=reasoning_override.get() or self.settings.reasoning_effort,
                     max_completion_tokens=max_tokens,
                 )
-            except TRANSIENT_ERRORS as e:
-                last_error = MetaError(f"{type(e).__name__} from Muse Spark")
-                log.warning("Muse Spark attempt %d failed: %s", attempt + 1, type(e).__name__)
-                continue
             except openai.APIError as e:
+                if _transient(e):
+                    last_error = MetaError(f"Muse Spark: {_describe(e)}")
+                    log.warning("Muse Spark attempt %d failed: %s", attempt + 1, _describe(e))
+                    if attempt == 0:
+                        time.sleep(RETRY_WAIT_S)
+                    continue
                 raise MetaError(f"Muse Spark request rejected: {_describe(e)}") from e
 
             self._record_text(resp, model, name)
@@ -155,11 +169,13 @@ class MetaProvider:
                         "tool_enablement": {"enable_web_search": False, "enable_shell": False},
                     },
                 )
-            except TRANSIENT_ERRORS as e:
-                last_error = MetaError(f"{type(e).__name__} from Muse Image")
-                log.warning("Muse Image attempt %d failed: %s", attempt + 1, type(e).__name__)
-                continue
             except openai.APIError as e:
+                if _transient(e):
+                    last_error = MetaError(f"Muse Image: {_describe(e)}")
+                    log.warning("Muse Image attempt %d failed: %s", attempt + 1, _describe(e))
+                    if attempt == 0:
+                        time.sleep(RETRY_WAIT_S)
+                    continue
                 raise MetaError(f"Muse Image request rejected: {_describe(e)}") from e
 
             images = [d.b64_json for d in (resp.data or []) if d.b64_json]

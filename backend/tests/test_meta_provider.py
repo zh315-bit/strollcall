@@ -85,3 +85,35 @@ def test_truncated_output_is_retried_once():
     completions.finish_reasons = ["length", "stop"]
     assert meta.structured_json("sys", "user", {"type": "object"}) == {"a": 1}
     assert completions.calls == 2
+
+
+def test_intermittent_model_not_found_is_retried_once(monkeypatch):
+    import httpx
+    import openai
+
+    monkeypatch.setattr("app.providers.meta.time.sleep", lambda s: None)
+    req = httpx.Request("POST", "https://api.meta.ai/v1/chat/completions")
+    not_found = openai.NotFoundError(
+        "The requested model was not found.", response=httpx.Response(404, request=req),
+        body={"code": "model_not_found", "message": "The requested model was not found."})
+
+    class Flaky(FakeCompletions):
+        def create(self, **kwargs):
+            if self.calls == 0:
+                self.calls += 1
+                raise not_found
+            return super().create(**kwargs)
+
+    completions = Flaky(['{"a": 1}'])
+    meta = MetaProvider(client=SimpleNamespace(chat=SimpleNamespace(completions=completions)),
+                        guard=SpendGuard(daily_cap_usd=15))
+    assert meta.structured_json("s", "u", {"type": "object"}) == {"a": 1}
+    assert completions.calls == 2
+
+
+def test_health_meta_check_needs_debug():
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    assert "meta_check" not in TestClient(app).get("/health", params={"check_meta": 1}).json()

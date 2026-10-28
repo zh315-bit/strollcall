@@ -113,7 +113,8 @@ def health(check_meta: bool = False) -> dict:
         "meta_models": {"text": s.model_id, "image": s.image_model_id, "voice": s.voice_model_id},
         "meta_base_url": s.model_base_url,  # not secret; a wrong base URL shows up as 404s
         "meta_key_fingerprint": key_fingerprint(s.model_api_key.get_secret_value()),
-        **({"meta_check": meta_check(s)} if check_meta and s.model_api_key.get_secret_value() else {}),
+        # Diagnostics (env var names, platform, request shape) only on a DEBUG deployment.
+        **({"meta_check": meta_check(s)} if check_meta and s.debug and s.model_api_key.get_secret_value() else {}),
         "meta_spend_today_usd": round(spent, 6),
         "daily_budget_usd": guard.daily_cap,
         "database": db_health(),
