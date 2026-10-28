@@ -58,6 +58,7 @@ def health() -> dict:
             "places": "mock" if s.use_mocks else s.places_provider,
         },
         "meta_models": {"text": s.model_id, "image": s.image_model_id, "voice": s.voice_model_id},
+        "meta_base_url": s.model_base_url,  # not secret; a wrong base URL shows up as 404s
         "meta_spend_today_usd": round(spent, 6),
         "daily_budget_usd": guard.daily_cap,
         "database": db_health(),
