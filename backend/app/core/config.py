@@ -35,6 +35,15 @@ class Settings(BaseSettings):
     cache_dir: Path = ROOT_DIR / "cache"
 
     daily_budget_usd: float = 15.0
+
+    # Planner score weights; every term is normalized to 0-1 (DEV_DOC 6.3).
+    planner_w_fit: float = 1.0
+    planner_w_gap: float = 0.8
+    planner_w_time_dev: float = 0.6
+    planner_w_detour: float = 0.4
+    planner_w_uncertainty: float = 0.3
+
+    debug: bool = False  # enables /api/dev/*
     use_mocks: bool = False
     db_path: Path = ROOT_DIR / "data" / "strollcall.db"
 

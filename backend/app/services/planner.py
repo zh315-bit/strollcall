@@ -15,7 +15,7 @@ from datetime import datetime, timedelta
 
 from app.core.geo import haversine_m
 from app.core.hours import is_open
-from app.models.schemas import Place, TravelMatrix, WalkIntent
+from app.models.schemas import MeetupCandidate, Place, RouteLeg, TravelMatrix, WalkIntent
 from app.providers.overpass import DESTINATION_TYPES
 
 log = logging.getLogger(__name__)
@@ -196,4 +196,177 @@ def _count(stats: dict, key: str) -> None:
 def _done(result: CandidateSet) -> CandidateSet:
     # Counts only: never coordinates.
     log.info("planner candidates: %s", ", ".join(f"{k}={v}" for k, v in sorted(result.stats.items())))
+    return result
+
+
+# --- Step 2: hard constraints and score (section 6.2 step 6, section 6.3) ---
+
+# Vibe word -> test on a place, using only OSM category and tags. Unknown vibes are ignored.
+VIBE_TESTS = {
+    "green": lambda p: p.category in ("park", "park_gate") or "garden:type" in p.tags or "natural" in p.tags,
+    "shady": lambda p: p.category in ("park", "park_gate"),
+    "quiet": lambda p: p.category in ("park", "park_gate", "bookstore"),
+    "lively": lambda p: p.category in ("cafe", "plaza", "bakery", "ice_cream"),
+    "scenic": lambda p: p.category in ("park", "landmark") or p.tags.get("tourism") == "viewpoint",
+    "historic": lambda p: "historic" in p.tags,
+}
+
+
+@dataclass
+class Weights:
+    fit: float
+    gap: float
+    time_dev: float
+    detour: float
+    uncertainty: float
+
+    @classmethod
+    def from_settings(cls) -> "Weights":
+        from app.core.config import get_settings
+
+        s = get_settings()
+        return cls(s.planner_w_fit, s.planner_w_gap, s.planner_w_time_dev, s.planner_w_detour,
+                   s.planner_w_uncertainty)
+
+
+@dataclass
+class ScoredOption:
+    meetup: MeetupOption
+    destination: Place
+    t_shared: float
+    d_shared: float
+    terms: dict[str, float]
+    score: float
+
+    @property
+    def elapsed(self) -> float:
+        return self.meetup.t_max + self.t_shared
+
+
+def requires_open(intent: WalkIntent) -> bool:
+    return any("open" in c for c in intent.hard_constraints)
+
+
+def fit_term(meetup: Place, destination: Place, intent: WalkIntent) -> float:
+    checks = []
+    if intent.endpoint_type:
+        checks.append(destination.category == intent.endpoint_type)
+    for vibe in intent.vibes:
+        test = VIBE_TESTS.get(vibe)
+        if test:
+            checks.append(test(meetup) or test(destination))
+    return sum(checks) / len(checks) if checks else 0.5
+
+
+def detour_term(a: Point, b: Point, option: MeetupOption) -> float:
+    """How far walking to m is beyond walking straight towards each other; 0-1."""
+    straight = haversine_m(*a, *b) * DETOUR_FACTOR
+    if straight < 50:
+        return 0.0
+    return min(max((option.d_a + option.d_b) / straight - 1, 0.0), 1.0)
+
+
+def score_options(
+    a: Point, b: Point, cs: CandidateSet, intent: WalkIntent, weights: Weights, depart_at: datetime
+) -> list[ScoredOption]:
+    """Every feasible (meetup, destination) pair, best first. Failures go to cs.stats."""
+    if cs.shared is None:
+        return []
+    need_open = requires_open(intent)
+    options = []
+    for i, m in enumerate(cs.meetups):
+        for j, dest in enumerate(cs.destinations):
+            t_shared = cs.shared.durations_min[i][j]
+            if t_shared is None:
+                _count(cs.stats, "shared_no_route")
+                continue
+            elapsed = m.t_max + t_shared
+            if elapsed > intent.duration_min + ELAPSED_SLACK_MIN:
+                _count(cs.stats, "elapsed_over_budget")
+                continue
+            open_at_arrival = is_open(dest.opening_hours, depart_at + timedelta(minutes=elapsed))
+            if open_at_arrival is False:
+                _count(cs.stats, "destination_known_closed")
+                continue
+            if need_open and open_at_arrival is not True:
+                _count(cs.stats, "open_status_unconfirmed")
+                continue
+            terms = {
+                "fit": fit_term(m.place, dest, intent),
+                "gap": min(m.gap / MAX_GAP_MIN, 1.0),
+                "time_dev": min(abs(elapsed - intent.duration_min) / (0.4 * intent.duration_min), 1.0),
+                "detour": detour_term(a, b, m),
+                "uncertainty": 0.0 if open_at_arrival is True else 1.0,
+            }
+            score = (
+                weights.fit * terms["fit"]
+                - weights.gap * terms["gap"]
+                - weights.time_dev * terms["time_dev"]
+                - weights.detour * terms["detour"]
+                - weights.uncertainty * terms["uncertainty"]
+            )
+            options.append(
+                ScoredOption(m, dest, t_shared, cs.shared.distances_m[i][j], terms, round(score, 6))
+            )
+    return rank(options)
+
+
+def rank(options: list[ScoredOption]) -> list[ScoredOption]:
+    """Deterministic: score, then gap, then place ids."""
+    return sorted(
+        options, key=lambda o: (-o.score, o.meetup.gap, o.meetup.place.id, o.destination.id)
+    )
+
+
+TOP_N = 3
+MAX_DIRECTIONS_TRIES = 6  # ranked options checked with full directions to fill the top 3
+
+CATEGORY_LABELS = {"ice_cream": "ice cream shop", "park_gate": "park gate", "subway_entrance": "subway entrance"}
+
+
+def rationale(option: ScoredOption, gap: float, t_a: float, t_b: float, t_shared: float) -> str:
+    m, d = option.meetup.place, option.destination
+    hours = "opening hours unknown" if option.terms["uncertainty"] else "open when you arrive (per OSM)"
+    return (
+        f"Meet at {m.name}: A walks about {t_a:.0f} min, B about {t_b:.0f} min "
+        f"(gap {gap:.1f} min). Then {t_shared:.0f} min together to {d.name} "
+        f"({CATEGORY_LABELS.get(d.category, d.category)}, {hours})."
+    )
+
+
+def top_candidates(
+    a: Point, b: Point, ranked: list[ScoredOption], intent: WalkIntent, ors, stats: dict
+) -> list[MeetupCandidate]:
+    """Fetch real directions for the best options and re-check them with those legs.
+
+    Raises ProviderError when routing fails; a leg is never drawn without ORS geometry.
+    """
+    result: list[MeetupCandidate] = []
+    for option in ranked[:MAX_DIRECTIONS_TRIES]:
+        if len(result) == TOP_N:
+            break
+        m, d = option.meetup.place, option.destination
+        a_leg: RouteLeg = ors.walk(a, (m.lat, m.lon))
+        b_leg: RouteLeg = ors.walk(b, (m.lat, m.lon))
+        shared_leg: RouteLeg = ors.walk((m.lat, m.lon), (d.lat, d.lon))
+        gap = abs(a_leg.duration_min - b_leg.duration_min)
+        elapsed = max(a_leg.duration_min, b_leg.duration_min) + shared_leg.duration_min
+        if gap > MAX_GAP_MIN or elapsed > intent.duration_min + ELAPSED_SLACK_MIN:
+            _count(stats, "directions_broke_constraint")
+            continue
+        result.append(
+            MeetupCandidate(
+                id=f"{m.id}>{d.id}",
+                meeting_place_id=m.id,
+                endpoint_place_id=d.id,
+                a_leg=a_leg,
+                b_leg=b_leg,
+                shared_leg=shared_leg,
+                arrival_gap_min=round(gap, 2),
+                total_elapsed_min=round(elapsed, 2),
+                score=option.score,
+                rationale=rationale(option, gap, a_leg.duration_min, b_leg.duration_min,
+                                    shared_leg.duration_min),
+            )
+        )
     return result
