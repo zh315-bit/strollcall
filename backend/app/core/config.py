@@ -68,7 +68,8 @@ class Settings(BaseSettings):
 
     debug: bool = False  # enables /api/dev/*
     use_mocks: bool = False
-    db_path: Path = ROOT_DIR / "data" / "strollcall.db"
+    db_path: Path = ROOT_DIR / "data" / "strollcall.db"  # SQLite, when DATABASE_URL is not set
+    database_url: SecretStr = SecretStr("")  # Postgres (Neon pooled URL, sslmode=require) when deployed
 
 
 @lru_cache

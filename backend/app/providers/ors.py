@@ -22,7 +22,7 @@ import httpx
 from app.core.config import Settings, forbid_live_client_in_tests, get_settings
 from app.core.errors import ProviderError
 from app.core.geo import coord_key
-from app.models.db import connect
+from app.models.db import db
 from app.models.schemas import RouteLeg, TravelMatrix
 
 log = logging.getLogger(__name__)
@@ -86,65 +86,59 @@ class ORSStore:
             return {}
         cutoff = (_now() - self.ttl).isoformat()
         found = {}
-        with connect(self.db_path) as conn:
-            for i in range(0, len(keys), 500):
-                chunk = keys[i:i + 500]
-                rows = conn.execute(
-                    f"SELECT key, value FROM ors_cache WHERE kind = ? AND fetched_at >= ? "
-                    f"AND key IN ({','.join('?' * len(chunk))})",
-                    [kind, cutoff, *chunk],
-                ).fetchall()
-                found.update({r["key"]: json.loads(r["value"]) for r in rows})
+        for i in range(0, len(keys), 500):
+            chunk = keys[i:i + 500]
+            rows = db(self.db_path).query(
+                f"SELECT key, value FROM ors_cache WHERE kind = ? AND fetched_at >= ? "
+                f"AND key IN ({','.join('?' * len(chunk))})",
+                [kind, cutoff, *chunk],
+            )
+            found.update({r["key"]: json.loads(r["value"]) for r in rows})
         return found
 
     def store(self, kind: str, items: dict[str, object]) -> None:
         now = _now().isoformat()
-        with connect(self.db_path) as conn:
-            conn.executemany(
-                "INSERT OR REPLACE INTO ors_cache (kind, key, value, fetched_at) VALUES (?, ?, ?, ?)",
-                [(kind, k, json.dumps(v), now) for k, v in items.items()],
-            )
+        db(self.db_path).run_many(
+            "INSERT INTO ors_cache (kind, key, value, fetched_at) VALUES (?, ?, ?, ?) "
+            "ON CONFLICT (kind, key) DO UPDATE SET value = excluded.value, fetched_at = excluded.fetched_at",
+            [(kind, k, json.dumps(v), now) for k, v in items.items()],
+        )
 
     def log_request(self, endpoint: str, caller: str, status: int) -> None:
-        with connect(self.db_path) as conn:
-            conn.execute(
-                "INSERT INTO ors_requests (ts, endpoint, caller, status) VALUES (?, ?, ?, ?)",
-                (_now().isoformat(), endpoint, caller, status),
-            )
+        db(self.db_path).run(
+            "INSERT INTO ors_requests (ts, endpoint, caller, status) VALUES (?, ?, ?, ?)",
+            (_now().isoformat(), endpoint, caller, status),
+        )
 
     def requests_24h(self, endpoint: str | None = None) -> int:
         since = (_now() - timedelta(hours=24)).isoformat()
-        sql, args = "SELECT COUNT(*) FROM ors_requests WHERE ts >= ?", [since]
+        sql, args = "SELECT COUNT(*) AS n FROM ors_requests WHERE ts >= ?", [since]
         if endpoint:
             sql, args = sql + " AND endpoint = ?", args + [endpoint]
-        with connect(self.db_path) as conn:
-            return conn.execute(sql, args).fetchone()[0]
+        return int(db(self.db_path).query(sql, args)[0]["n"])
 
     def usage_24h(self) -> dict[str, dict[str, int]]:
         """{endpoint: {caller: count}} over the last 24 h."""
         since = (_now() - timedelta(hours=24)).isoformat()
-        with connect(self.db_path) as conn:
-            rows = conn.execute(
-                "SELECT endpoint, caller, COUNT(*) AS n FROM ors_requests WHERE ts >= ? "
-                "GROUP BY endpoint, caller", (since,)
-            ).fetchall()
+        rows = db(self.db_path).query(
+            "SELECT endpoint, caller, COUNT(*) AS n FROM ors_requests WHERE ts >= ? GROUP BY endpoint, caller",
+            (since,),
+        )
         usage: dict[str, dict[str, int]] = {}
         for r in rows:
             usage.setdefault(r["endpoint"], {})[r["caller"]] = r["n"]
         return usage
 
     def set_quota(self, endpoint: str, remaining: int, reset_at: datetime) -> None:
-        with connect(self.db_path) as conn:
-            conn.execute(
-                "INSERT OR REPLACE INTO ors_quota (endpoint, remaining, reset_at) VALUES (?, ?, ?)",
-                (endpoint, remaining, reset_at.isoformat()),
-            )
+        db(self.db_path).run(
+            "INSERT INTO ors_quota (endpoint, remaining, reset_at) VALUES (?, ?, ?) "
+            "ON CONFLICT (endpoint) DO UPDATE SET remaining = excluded.remaining, reset_at = excluded.reset_at",
+            (endpoint, remaining, reset_at.isoformat()),
+        )
 
     def quota(self, endpoint: str) -> tuple[int, datetime] | None:
-        with connect(self.db_path) as conn:
-            row = conn.execute(
-                "SELECT remaining, reset_at FROM ors_quota WHERE endpoint = ?", (endpoint,)
-            ).fetchone()
+        rows = db(self.db_path).query("SELECT remaining, reset_at FROM ors_quota WHERE endpoint = ?", (endpoint,))
+        row = rows[0] if rows else None
         if not row or row["reset_at"] is None:
             return None
         return row["remaining"], datetime.fromisoformat(row["reset_at"])

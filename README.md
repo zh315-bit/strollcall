@@ -76,6 +76,9 @@ Web service settings:
   `PLACES_SNAPSHOT_PATH=deploy/data/nyc_places.json.gz`, `DAILY_BUDGET_USD`, and the secret
   `MODEL_API_KEY` (set it in the dashboard, never in the repo). `ORS_API_KEY` is optional
   (only for start points outside the local map).
+- Persistent state: Render free web services have an ephemeral filesystem, so set the secret
+  `DATABASE_URL` to a Neon Postgres **pooled** connection string with `sslmode=require`. Tables are
+  created on startup. Without `DATABASE_URL` the app uses a local SQLite file (development, tests).
 
 ### Tests (offline)
 

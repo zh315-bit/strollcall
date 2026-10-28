@@ -50,3 +50,20 @@ def test_pages_are_served():
     page = client.get("/i/sometoken")
     assert page.status_code == 200 and "invite" in page.text.lower()
     assert client.get("/static/js/common.js").status_code == 200
+
+
+def test_health_reports_the_database():
+    assert client.get("/health").json()["database"] == {"backend": "sqlite", "reachable": True}
+
+
+def test_same_sql_runs_on_sqlite_with_upserts(tmp_path):
+    from datetime import datetime, timezone
+
+    from app.models.db import load_invite, save_invite
+    from app.models.schemas import Invite, WalkIntent
+
+    inv = Invite(token="t1", status="pending", expires_at=datetime.now(timezone.utc), invite_text="x",
+                 a_intent=WalkIntent(duration_min=25))
+    save_invite(inv)
+    save_invite(inv.model_copy(update={"status": "proposed"}))  # upsert, not a duplicate-key error
+    assert load_invite("t1").status == "proposed"

@@ -1,22 +1,36 @@
+"""Persistent storage: Postgres when DATABASE_URL is set (deployed, Neon), SQLite otherwise
+(local development and tests, offline).
+
+SQL is written once with `?` placeholders and `ON CONFLICT ... DO UPDATE` upserts, which both
+engines accept; only the DDL differs. Tables are created on first use (idempotent DDL, no
+migration framework). On Postgres a small pool (max 5) is used, prepared statements are off
+(Neon's pooled endpoint runs PgBouncer in transaction mode), and a statement is retried once on
+a connection error, because a Neon compute that scaled to zero takes a moment to wake.
+"""
+
+import logging
 import sqlite3
+import threading
 from pathlib import Path
 
 from app.core.config import get_settings
 
-SCHEMA = """
+log = logging.getLogger(__name__)
+
+_TABLES = """
 CREATE TABLE IF NOT EXISTS meta_spend (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id {serial},
     day TEXT NOT NULL,              -- UTC date, YYYY-MM-DD
     created_at TEXT NOT NULL,
     kind TEXT NOT NULL,             -- text / image / voice
     model TEXT NOT NULL,
-    cost_usd REAL NOT NULL,
+    cost_usd {float} NOT NULL,
     detail TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS meta_spend_day ON meta_spend(day);
 
 CREATE TABLE IF NOT EXISTS ors_requests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id {serial},
     ts TEXT NOT NULL,               -- UTC ISO time
     endpoint TEXT NOT NULL,         -- matrix / directions
     caller TEXT NOT NULL,
@@ -55,57 +69,142 @@ CREATE TABLE IF NOT EXISTS invites (
     data TEXT NOT NULL              -- Invite JSON
 );
 """
+SQLITE_DDL = _TABLES.format(serial="INTEGER PRIMARY KEY AUTOINCREMENT", float="REAL")
+POSTGRES_DDL = _TABLES.format(serial="BIGSERIAL PRIMARY KEY", float="DOUBLE PRECISION")
+
+POOL_MAX = 5
 
 
-def connect(path: Path | None = None) -> sqlite3.Connection:
-    path = Path(path or get_settings().db_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(path)
-    conn.row_factory = sqlite3.Row
-    conn.executescript(SCHEMA)
-    return conn
+class _SQLite:
+    name = "sqlite"
+
+    def __init__(self, path: Path):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self._conn() as conn:
+            conn.executescript(SQLITE_DDL)
+
+    def _conn(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(self.path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def query(self, sql: str, params=()) -> list[dict]:
+        with self._conn() as conn:
+            return [dict(r) for r in conn.execute(sql, params).fetchall()]
+
+    def run(self, sql: str, params=()) -> None:
+        with self._conn() as conn:
+            conn.execute(sql, params)
+
+    def run_many(self, sql: str, rows) -> None:
+        with self._conn() as conn:
+            conn.executemany(sql, rows)
+
+
+class _Postgres:
+    name = "postgres"
+
+    def __init__(self, url: str):
+        import psycopg
+        from psycopg.rows import dict_row
+        from psycopg_pool import ConnectionPool
+
+        self._errors = (psycopg.OperationalError, psycopg.InterfaceError)
+        self.pool = ConnectionPool(
+            url, min_size=0, max_size=POOL_MAX, open=True, timeout=20,
+            kwargs={"row_factory": dict_row, "prepare_threshold": None, "connect_timeout": 15},
+            check=ConnectionPool.check_connection,  # drop connections Neon closed while idle
+        )
+        self._do(lambda cur: [cur.execute(s) for s in POSTGRES_DDL.split(";") if s.strip()])
+
+    def _do(self, work):
+        for attempt in range(2):
+            try:
+                with self.pool.connection() as conn, conn.cursor() as cur:
+                    return work(cur)
+            except self._errors as e:
+                if attempt:
+                    raise
+                log.warning("postgres connection error (%s); retrying once", type(e).__name__)
+
+    @staticmethod
+    def _sql(sql: str) -> str:
+        return sql.replace("?", "%s")
+
+    def query(self, sql: str, params=()) -> list[dict]:
+        def work(cur):
+            cur.execute(self._sql(sql), params)
+            return list(cur.fetchall())
+        return self._do(work)
+
+    def run(self, sql: str, params=()) -> None:
+        self._do(lambda cur: cur.execute(self._sql(sql), params))
+
+    def run_many(self, sql: str, rows) -> None:
+        rows = list(rows)
+        self._do(lambda cur: cur.executemany(self._sql(sql), rows))
+
+
+_backends: dict[str, object] = {}
+_lock = threading.Lock()
+
+
+def db(path: Path | None = None):
+    """The storage backend: Postgres if DATABASE_URL is set, else SQLite at `path` (or DB_PATH)."""
+    settings = get_settings()
+    url = settings.database_url.get_secret_value()
+    key = url or str(Path(path or settings.db_path))
+    with _lock:
+        if key not in _backends:
+            _backends[key] = _Postgres(url) if url else _SQLite(Path(key))
+        return _backends[key]
+
+
+def health() -> dict:
+    """Backend name and whether a trivial query works (never raises)."""
+    try:
+        backend = db()
+        backend.query("SELECT 1 AS ok")
+        return {"backend": backend.name, "reachable": True}
+    except Exception as e:  # report, don't crash /health
+        name = "postgres" if get_settings().database_url.get_secret_value() else "sqlite"
+        return {"backend": name, "reachable": False, "error": type(e).__name__}
 
 
 def save_invite(invite, path: Path | None = None) -> None:
     from datetime import datetime, timezone
 
-    with connect(path) as conn:
-        conn.execute(
-            "INSERT OR REPLACE INTO invites (token, status, created_at, expires_at, data)"
-            " VALUES (?, ?, ?, ?, ?)",
-            (
-                invite.token,
-                invite.status,
-                datetime.now(timezone.utc).isoformat(),
-                invite.expires_at.isoformat(),
-                invite.model_dump_json(),
-            ),
-        )
+    db(path).run(
+        "INSERT INTO invites (token, status, created_at, expires_at, data) VALUES (?, ?, ?, ?, ?) "
+        "ON CONFLICT (token) DO UPDATE SET status = excluded.status, expires_at = excluded.expires_at, "
+        "data = excluded.data",
+        (invite.token, invite.status, datetime.now(timezone.utc).isoformat(), invite.expires_at.isoformat(),
+         invite.model_dump_json()),
+    )
 
 
 def load_invite(token: str, path: Path | None = None):
     from app.models.schemas import Invite
 
-    with connect(path) as conn:
-        row = conn.execute("SELECT data FROM invites WHERE token = ?", (token,)).fetchone()
-    return Invite.model_validate_json(row["data"]) if row else None
+    rows = db(path).query("SELECT data FROM invites WHERE token = ?", (token,))
+    return Invite.model_validate_json(rows[0]["data"]) if rows else None
 
 
 def save_invite_extra(token: str, public: dict, private: dict | None, path: Path | None = None) -> None:
     import json
 
-    with connect(path) as conn:
-        conn.execute(
-            "INSERT OR REPLACE INTO invite_extra (token, public, private) VALUES (?, ?, ?)",
-            (token, json.dumps(public), None if private is None else json.dumps(private)),
-        )
+    db(path).run(
+        "INSERT INTO invite_extra (token, public, private) VALUES (?, ?, ?) "
+        "ON CONFLICT (token) DO UPDATE SET public = excluded.public, private = excluded.private",
+        (token, json.dumps(public), None if private is None else json.dumps(private)),
+    )
 
 
 def load_invite_extra(token: str, path: Path | None = None) -> tuple[dict, dict | None]:
     import json
 
-    with connect(path) as conn:
-        row = conn.execute("SELECT public, private FROM invite_extra WHERE token = ?", (token,)).fetchone()
-    if not row:
+    rows = db(path).query("SELECT public, private FROM invite_extra WHERE token = ?", (token,))
+    if not rows:
         return {}, None
-    return json.loads(row["public"]), (json.loads(row["private"]) if row["private"] else None)
+    return json.loads(rows[0]["public"]), (json.loads(rows[0]["private"]) if rows[0]["private"] else None)

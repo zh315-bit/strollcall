@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api import dev, intents, invites, voice
 from app.core.budget import SpendGuard
 from app.core.config import ROOT_DIR, get_settings
+from app.models.db import health as db_health
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -59,6 +60,7 @@ def health() -> dict:
         "meta_models": {"text": s.model_id, "image": s.image_model_id, "voice": s.voice_model_id},
         "meta_spend_today_usd": round(spent, 6),
         "daily_budget_usd": guard.daily_cap,
+        "database": db_health(),
         "ors_requests_24h": ors_store.usage_24h(),
         "ors_soft_caps": {"matrix": s.ors_matrix_soft_cap, "directions": s.ors_directions_soft_cap},
     }

@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from app.core.config import get_settings
-from app.models.db import connect
+from app.models.db import db
 
 log = logging.getLogger(__name__)
 
@@ -54,11 +54,10 @@ class SpendGuard:
         self.db_path = db_path or settings.db_path
 
     def today_total(self) -> float:
-        with connect(self.db_path) as conn:
-            row = conn.execute(
-                "SELECT COALESCE(SUM(cost_usd), 0) FROM meta_spend WHERE day = ?", (_today(),)
-            ).fetchone()
-        return float(row[0])
+        rows = db(self.db_path).query(
+            "SELECT COALESCE(SUM(cost_usd), 0) AS total FROM meta_spend WHERE day = ?", (_today(),)
+        )
+        return float(rows[0]["total"])
 
     def can_spend(self, estimate_usd: float) -> bool:
         return self.today_total() + estimate_usd <= self.daily_cap
@@ -74,10 +73,8 @@ class SpendGuard:
 
     def record(self, kind: str, model: str, cost_usd: float, detail: str = "") -> None:
         now = datetime.now(timezone.utc)
-        with connect(self.db_path) as conn:
-            conn.execute(
-                "INSERT INTO meta_spend (day, created_at, kind, model, cost_usd, detail)"
-                " VALUES (?, ?, ?, ?, ?, ?)",
-                (now.date().isoformat(), now.isoformat(), kind, model, cost_usd, detail),
-            )
+        db(self.db_path).run(
+            "INSERT INTO meta_spend (day, created_at, kind, model, cost_usd, detail) VALUES (?, ?, ?, ?, ?, ?)",
+            (now.date().isoformat(), now.isoformat(), kind, model, cost_usd, detail),
+        )
         log.info("meta spend: %s %s $%.6f (%s)", kind, model, cost_usd, detail)
