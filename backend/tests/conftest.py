@@ -14,6 +14,7 @@ def offline_settings(monkeypatch, tmp_path):
     monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("CACHE_DIR", str(tmp_path / "cache"))
     get_settings.cache_clear()
+    assert get_settings().use_mocks, "tests must run with USE_MOCKS=true"
     yield
     get_settings.cache_clear()
 

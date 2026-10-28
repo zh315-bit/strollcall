@@ -20,7 +20,7 @@ import openai
 from openai import OpenAI
 
 from app.core.budget import SpendGuard, image_cost, text_cost, voice_cost
-from app.core.config import Settings, get_settings
+from app.core.config import Settings, forbid_live_client_in_tests, get_settings
 from app.core.errors import ProviderError
 
 log = logging.getLogger(__name__)
@@ -60,6 +60,8 @@ class MetaProvider:
         api_key = self.settings.model_api_key.get_secret_value()
         if client is None and not api_key:
             raise MetaError("MODEL_API_KEY is not set")
+        if client is None:
+            forbid_live_client_in_tests("MetaProvider")
         # The OpenAI SDK does not read MODEL_API_KEY on its own, so pass it explicitly.
         # Retries are ours (at most one), not the SDK's.
         self.client = client or OpenAI(
@@ -68,7 +70,7 @@ class MetaProvider:
             timeout=self.settings.meta_timeout_s,
             max_retries=0,
         )
-        self.http = http or httpx.Client(timeout=self.settings.meta_timeout_s)
+        self._http = http  # created on first transcribe
         self._api_key = api_key
 
     def structured_json(self, system: str, user: str, schema: dict, name: str = "result") -> dict:
@@ -169,6 +171,12 @@ class MetaProvider:
         assert last_error is not None
         raise last_error
 
+    def _voice_http(self) -> httpx.Client:
+        if self._http is None:
+            forbid_live_client_in_tests("MetaProvider voice client")
+            self._http = httpx.Client(timeout=self.settings.meta_timeout_s)
+        return self._http
+
     def transcribe(self, audio_bytes: bytes, mime: str) -> str:
         duration_ms = check_wav(audio_bytes, mime)
         model = self.settings.voice_model_id
@@ -179,7 +187,7 @@ class MetaProvider:
         for attempt in range(2):
             self.guard.check(voice_cost(duration_ms))
             try:
-                resp = self.http.post(
+                resp = self._voice_http().post(
                     url,
                     headers={
                         "Authorization": f"Bearer {self._api_key}",

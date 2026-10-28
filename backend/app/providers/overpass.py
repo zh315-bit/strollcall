@@ -31,7 +31,7 @@ from pathlib import Path
 
 import httpx
 
-from app.core.config import Settings, get_settings
+from app.core.config import Settings, forbid_live_client_in_tests, get_settings
 from app.core.errors import ProviderError
 from app.core.geo import haversine_m
 from app.models.schemas import Place
@@ -313,6 +313,8 @@ class OverpassProvider(TiledPlaces):
 
     def __init__(self, settings: Settings | None = None, http: httpx.Client | None = None):
         self.settings = settings or get_settings()
+        if http is None:
+            forbid_live_client_in_tests("OverpassProvider")
         self.http = http or httpx.Client(
             timeout=self.settings.overpass_timeout_s, headers={"User-Agent": USER_AGENT}
         )

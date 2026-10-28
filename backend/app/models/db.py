@@ -15,6 +15,29 @@ CREATE TABLE IF NOT EXISTS meta_spend (
 );
 CREATE INDEX IF NOT EXISTS meta_spend_day ON meta_spend(day);
 
+CREATE TABLE IF NOT EXISTS ors_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts TEXT NOT NULL,               -- UTC ISO time
+    endpoint TEXT NOT NULL,         -- matrix / directions
+    caller TEXT NOT NULL,
+    status INTEGER NOT NULL         -- HTTP status, 0 for a network error
+);
+CREATE INDEX IF NOT EXISTS ors_requests_ts ON ors_requests(ts);
+
+CREATE TABLE IF NOT EXISTS ors_quota (
+    endpoint TEXT PRIMARY KEY,
+    remaining INTEGER,
+    reset_at TEXT                   -- UTC ISO time
+);
+
+CREATE TABLE IF NOT EXISTS ors_cache (
+    kind TEXT NOT NULL,             -- element / leg
+    key TEXT NOT NULL,              -- route_key of the rounded points
+    value TEXT NOT NULL,            -- JSON
+    fetched_at TEXT NOT NULL,
+    PRIMARY KEY (kind, key)
+);
+
 CREATE TABLE IF NOT EXISTS invites (
     token TEXT PRIMARY KEY,
     status TEXT NOT NULL,

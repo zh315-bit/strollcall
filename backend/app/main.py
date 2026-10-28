@@ -24,6 +24,9 @@ def health() -> dict:
     def keyed(has_key: bool) -> str:
         return "mock" if s.use_mocks else ("configured" if has_key else "missing_key")
 
+    from app.providers.ors import ORSStore
+
+    ors_store = ORSStore(s.db_path, s.ors_cache_days)
     meta = keyed(bool(s.model_api_key.get_secret_value()))
     if meta == "configured" and spent >= guard.daily_cap:
         meta = "budget_exceeded_using_mock"
@@ -38,4 +41,6 @@ def health() -> dict:
         "meta_models": {"text": s.model_id, "image": s.image_model_id, "voice": s.voice_model_id},
         "meta_spend_today_usd": round(spent, 6),
         "daily_budget_usd": guard.daily_cap,
+        "ors_requests_24h": ors_store.usage_24h(),
+        "ors_soft_caps": {"matrix": s.ors_matrix_soft_cap, "directions": s.ors_directions_soft_cap},
     }

@@ -138,7 +138,14 @@ def test_timeout_falls_through_to_mirror_then_fails():
 
 
 def test_user_facing_timeout_is_15s():
-    assert OverpassProvider().http.timeout.read == 15.0
+    from app.core.config import get_settings
+
+    assert get_settings().overpass_timeout_s == 15.0
+
+
+def test_live_client_refused_inside_pytest():
+    with pytest.raises(RuntimeError, match="inside pytest"):
+        OverpassProvider()
 
 
 def test_unknown_destination_type_rejected():

@@ -1,13 +1,17 @@
 """Run the planner on the 6 benchmark cases and write benchmarks/YYYY-MM-DD.md.
 
-    python scripts/benchmark.py          # live APIs (needs ORS_API_KEY)
-    python scripts/benchmark.py --mock   # recorded fixtures, offline
+    python scripts/benchmark.py                 # live APIs, warm caches (cheap on quota)
+    python scripts/benchmark.py --cold          # also measure cold latency (uses ORS quota:
+                                                # about 2 matrix + 9 directions per case)
+    python scripts/benchmark.py --mock          # recorded fixtures, offline
+    python scripts/benchmark.py --cases p1,p3   # a subset
 
 Each case runs twice with the same providers:
-  cold   - empty Overpass disk cache and empty ORS memory cache, one attempt;
-  cached - the same query again, served from the caches (if the cold run failed on
-           Overpass, the cached run retries up to 3 times with a pause so the plan
-           itself can still be measured).
+  first  - with --cold: empty Overpass cache and no ORS cache reads, one attempt;
+           otherwise the normal caches (cache/ tiles, ORS SQLite cache);
+  cached - the same query again, served from the caches (if the first run failed on
+           Overpass, it is retried up to 3 times with a pause before this run so the
+           plan itself can still be measured).
 Plan metrics (feasibility, gap, time-budget error) use the top candidate of the cached run.
 The planner makes no Meta calls (fallback rung 2).
 """
@@ -25,6 +29,8 @@ from zoneinfo import ZoneInfo
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--mock", action="store_true", help="use recorded fixtures (offline)")
+parser.add_argument("--cold", action="store_true", help="measure cold latency (spends ORS quota)")
+parser.add_argument("--cases", help="comma-separated case ids, default all")
 ARGS = parser.parse_args()
 os.environ["USE_MOCKS"] = "true" if ARGS.mock else "false"
 
@@ -42,8 +48,11 @@ NYC = ZoneInfo("America/New_York")
 def providers(cache_dir: Path):
     if ARGS.mock:
         return MockOverpass(), MockORS()
-    settings = get_settings().model_copy(update={"overpass_timeout_s": 60.0, "cache_dir": cache_dir})
-    return OverpassProvider(settings=settings), ORSProvider()
+    update = {"overpass_timeout_s": 60.0}
+    if ARGS.cold:
+        update["cache_dir"] = cache_dir
+    settings = get_settings().model_copy(update=update)
+    return OverpassProvider(settings=settings), ORSProvider(disk_cache=not ARGS.cold)
 
 
 def timed(case, overpass, ors) -> tuple[PlanResult, float]:
@@ -98,7 +107,12 @@ def report(rows: list[dict]) -> str:
     errors = [r["time_error"] for r in solved]
     cold_ok = [r["cold_s"] for r in rows if r["cold"].status not in ("places_unavailable", "routing_unavailable")]
     cached_ok = [r["cached_s"] for r in rows if r["cached"].status not in ("places_unavailable", "routing_unavailable")]
-    mode = "recorded fixtures (USE_MOCKS=true, offline)" if ARGS.mock else "live APIs (Overpass + openrouteservice)"
+    if ARGS.mock:
+        mode = "recorded fixtures (USE_MOCKS=true, offline); latencies are fixture reads, not network"
+    elif ARGS.cold:
+        mode = "live APIs, cold first run (no Overpass or ORS cache)"
+    else:
+        mode = "live APIs with warm caches (first run may still fetch what is not cached)"
     now = datetime.now(NYC)
     lines = [
         f"# Planner benchmark {now:%Y-%m-%d}",
@@ -114,12 +128,12 @@ def report(rows: list[dict]) -> str:
         f"| Feasibility rate | {len(solved)}/{n} ({100 * len(solved) / n:.0f}%) |",
         f"| Arrival gap, median / max | {fmt(median(gaps), ' min')} / {fmt(max(gaps) if gaps else None, ' min')} |",
         f"| Time-budget error, median | {fmt(median(errors), ' min')} |",
-        f"| Planning latency, cold, median | {fmt(median(cold_ok), ' s', 2)} ({len(cold_ok)}/{n} cold runs completed) |",
+        f"| Planning latency, {'cold' if ARGS.cold else 'first run'}, median | {fmt(median(cold_ok), ' s', 2)} ({len(cold_ok)}/{n} completed) |",
         f"| Planning latency, cached, median | {fmt(median(cached_ok), ' s', 3)} |",
         "",
         "## Cases",
         "",
-        "| Case | Origins | Intent | Status | Meetup → destination | Gap | Elapsed / budget | Cold | Cached |",
+        "| Case | Origins | Intent | Status | Meetup → destination | Gap | Elapsed / budget | First run | Cached |",
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for r in rows:
@@ -148,7 +162,7 @@ def report(rows: list[dict]) -> str:
         lines.append(f"- **{r['case']['id']}**: {res.status}. {reason}")
     cold_failed = [r for r in rows if r["cold"].status in ("places_unavailable", "routing_unavailable")]
     if cold_failed:
-        lines += ["", "## Cold-run provider failures", ""]
+        lines += ["", "## First-run provider failures", ""]
         for r in cold_failed:
             lines.append(f"- {r['case']['id']}: {r['cold'].status} ({r['cold'].error})")
     lines += ["", "## Filter counts (cached run)", ""]
@@ -161,13 +175,17 @@ def report(rows: list[dict]) -> str:
 def main() -> int:
     rows = []
     with tempfile.TemporaryDirectory() as tmp:
+        wanted = set(ARGS.cases.split(",")) if ARGS.cases else None
         for case in load_cases():
+            if wanted and case["id"] not in wanted:
+                continue
             row = run_case(case, Path(tmp))
             print(f"{case['id']}: cold {row['cold'].status} {row['cold_s']:.2f}s, cached {row['cached'].status} {row['cached_s']:.3f}s")
             rows.append(row)
     out_dir = ROOT / "benchmarks"
     out_dir.mkdir(exist_ok=True)
-    out = out_dir / f"{datetime.now(NYC):%Y-%m-%d}{'-mock' if ARGS.mock else ''}.md"
+    suffix = ("-mock" if ARGS.mock else "") + (f"-{ARGS.cases.replace(',', '')}" if ARGS.cases else "")
+    out = out_dir / f"{datetime.now(NYC):%Y-%m-%d}{suffix}.md"
     out.write_text(report(rows))
     print(f"wrote {out.relative_to(ROOT)}")
     return 0

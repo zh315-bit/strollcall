@@ -1,3 +1,4 @@
+import os
 from functools import lru_cache
 from pathlib import Path
 
@@ -28,6 +29,16 @@ class Settings(BaseSettings):
     meta_max_output_tokens: int = 4096  # 2048 truncated 3 of 10 live intent calls (2026-10-28)
 
     ors_api_key: SecretStr = SecretStr("")
+    # Own ORS budget, counted over a rolling 24 h like the ORS quota itself. Our key's real
+    # quota is lower than the published plan (directions reported 200/day), so the caps
+    # below are a backstop and the x-ratelimit-remaining header is honoured as well.
+    ors_matrix_soft_cap: int = 300
+    ors_directions_soft_cap: int = 1800
+    ors_quota_reserve: int = 5  # stop when the header says this many requests are left
+    ors_cache_days: int = 30
+    # Who is calling (app / capture_fixtures / benchmark / smoke_test / warm_cache), for usage logs.
+    strollcall_caller: str = "app"
+
     overpass_url: str = "https://overpass-api.de/api/interpreter"
     overpass_mirror_url: str = "https://maps.mail.ru/osm/tools/overpass/api/interpreter"
     # User-facing requests fail fast; scripts/capture_fixtures.py raises this to 60 s.
@@ -51,3 +62,9 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+
+
+def forbid_live_client_in_tests(what: str) -> None:
+    """Tests must never reach a real API: creating a live client under pytest is a bug."""
+    if "PYTEST_CURRENT_TEST" in os.environ:
+        raise RuntimeError(f"{what}: live API client created inside pytest (use the mocks)")

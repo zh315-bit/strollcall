@@ -1,9 +1,12 @@
 import json
+import os
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
+# ORS request log: record which script made each call.
+os.environ.setdefault("STROLLCALL_CALLER", Path(sys.argv[0]).stem or "script")
 
 
 def load_origins() -> dict:

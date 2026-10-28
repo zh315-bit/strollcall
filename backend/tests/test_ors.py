@@ -1,4 +1,5 @@
 import json
+import time
 
 import httpx
 import pytest
@@ -101,3 +102,67 @@ def test_rate_limiter_waits_when_window_is_full():
 def test_missing_key():
     with pytest.raises(ProviderError):
         ORSProvider()
+
+
+ROUTE_A, ROUTE_B = (40.73, -73.99), (40.74, -73.98)
+
+
+def test_live_client_refused_inside_pytest():
+    settings = get_settings().model_copy(update={"ors_api_key": SecretStr("test-key")})
+    with pytest.raises(RuntimeError, match="inside pytest"):
+        ORSProvider(settings=settings)
+
+
+def test_disk_cache_survives_a_new_provider():
+    first, calls = provider_with(lambda r: httpx.Response(200, json=GEOJSON))
+    leg = first.walk(ROUTE_A, ROUTE_B)
+    second, calls2 = provider_with(lambda r: httpx.Response(500))
+    assert second.walk(ROUTE_A, ROUTE_B) == leg and calls2 == []
+
+
+def test_matrix_asks_only_for_missing_rows_and_columns():
+    m1 = {"durations": [[600.0], [300.0]], "distances": [[800.0], [400.0]]}
+    m2 = {"durations": [[120.0], [180.0]], "distances": [[160.0], [240.0]]}
+    responses = iter([httpx.Response(200, json=m1), httpx.Response(200, json=m2)])
+    ors, calls = provider_with(lambda r: next(responses))
+    a, b, d1, d2 = (40.73, -74.0), (40.735, -73.99), (40.732, -73.995), (40.74, -73.98)
+    ors.matrix([a, b], [d1])
+    result = ors.matrix([a, b], [d1, d2])  # only the d2 column is new
+    body = json.loads(calls[1].content)
+    assert len(body["sources"]) == 2 and len(body["destinations"]) == 1
+    assert result.durations_min[0][0] == 10.0
+
+
+def test_request_log_by_endpoint_and_caller():
+    ors, _ = provider_with(lambda r: httpx.Response(200, json=GEOJSON))
+    ors.walk(ROUTE_A, ROUTE_B)
+    assert ors.store.usage_24h() == {"directions": {"app": 1}}
+
+
+def test_soft_cap_stops_live_calls(caplog):
+    ors, calls = provider_with(lambda r: httpx.Response(200, json=GEOJSON))
+    ors.caps["directions"] = 1
+    ors.walk(ROUTE_A, ROUTE_B)
+    with pytest.raises(ProviderError) as e:
+        ors.walk((40.70, -74.0), (40.71, -74.0))
+    assert "soft cap" in e.value.message and len(calls) == 1
+    assert "live calls stopped" in caplog.text
+
+
+def test_quota_header_stops_before_ors_does():
+    headers = {"x-ratelimit-remaining": "3", "x-ratelimit-reset": str(int(time.time()) + 3600)}
+    ors, calls = provider_with(lambda r: httpx.Response(200, json=GEOJSON, headers=headers))
+    ors.walk(ROUTE_A, ROUTE_B)
+    with pytest.raises(ProviderError) as e:
+        ors.walk((40.70, -74.0), (40.71, -74.0))
+    assert "quota exhausted" in e.value.message and len(calls) == 1
+
+
+def test_403_quota_exceeded_pauses_live_calls():
+    ors, calls = provider_with(lambda r: httpx.Response(403, json={"error": "Quota exceeded"}))
+    with pytest.raises(ProviderError) as e:
+        ors.walk(ROUTE_A, ROUTE_B)
+    assert "quota exceeded" in e.value.message
+    with pytest.raises(ProviderError):
+        ors.walk((40.70, -74.0), (40.71, -74.0))
+    assert len(calls) == 1  # the second call never left
