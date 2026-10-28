@@ -1,0 +1,12 @@
+{
+  "_note": "Fixed before the first benchmark run. depart_at is fixed so opening-hours checks and recorded fixtures are reproducible.",
+  "depart_at": "2026-10-31T15:00:00-04:00",
+  "cases": [
+    {"pair": "p1", "intent": {"duration_min": 25, "endpoint_type": "cafe", "vibes": ["quiet"]}},
+    {"pair": "p2", "intent": {"duration_min": 25, "endpoint_type": "park", "vibes": ["green"]}},
+    {"pair": "p3", "intent": {"duration_min": 30, "endpoint_type": "cafe"}},
+    {"pair": "p4", "intent": {"duration_min": 30, "endpoint_type": "bookstore"}},
+    {"pair": "p5", "intent": {"duration_min": 30, "vibes": ["green"]}},
+    {"pair": "p6", "intent": {"duration_min": 30, "endpoint_type": "bakery", "vibes": ["lively"]}}
+  ]
+}

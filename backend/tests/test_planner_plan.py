@@ -121,3 +121,24 @@ def test_places_failure():
     overpass = FakeOverpass(error=ProviderError("places_unavailable", "Overpass unavailable"))
     result = planner.plan_walk(A, B, WalkIntent(duration_min=25), overpass, ors_with([(9, 10)] * 3, 14), WED_15, W)
     assert result.status == "places_unavailable"
+
+
+def test_end_to_end_on_recorded_fixture_pair():
+    """Pair p1 replayed offline from fixtures captured against the real APIs."""
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+    from _common import load_cases
+
+    from app.providers import get_ors, get_overpass
+
+    case = next(c for c in load_cases() if c["id"] == "p1")
+    result = planner.plan_walk(case["a"], case["b"], case["intent"], get_overpass(), get_ors(),
+                               case["depart_at"])
+    assert result.status == "proposed" and len(result.candidates) == 3
+    for c in result.candidates:
+        assert c.arrival_gap_min <= 5
+        assert c.total_elapsed_min <= case["intent"].duration_min + 3
+        assert len(c.a_leg.geometry) > 2  # real ORS geometry, not a straight line
+        assert c.meeting_place_id in result.places and c.endpoint_place_id in result.places

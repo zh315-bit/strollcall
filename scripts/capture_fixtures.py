@@ -1,6 +1,10 @@
-"""Capture real Overpass places and ORS legs into fixtures/ for mock mode.
+"""Capture real Overpass and ORS responses into fixtures/ for mock mode.
 
-Usage: python scripts/capture_fixtures.py [--places] [--routes]
+Usage: python scripts/capture_fixtures.py [--places] [--routes] [--planner]
+  --planner  runs the planner on every case in fixtures/benchmark_cases.json against the
+             real APIs and records exactly what it fetched: Overpass responses under
+             fixtures/overpass/, ORS matrix entries in ors_matrix_elements.json and ORS
+             legs in sample_routes.json. Then USE_MOCKS=true replays the same plans.
 Overpass is often at capacity, so each query gets up to 3 attempts with backoff.
 Only public origins from fixtures/nyc_origins.json are queried.
 """
@@ -9,12 +13,13 @@ import argparse
 import json
 import time
 
-from _common import ROOT, load_origins, point
+from _common import ROOT, load_cases, load_origins, point
 
 from app.core.config import get_settings
 from app.core.errors import ProviderError
 from app.providers.ors import ORSProvider, route_key
 from app.providers.overpass import OverpassProvider
+from app.services.planner import plan_walk
 
 FIXTURES = ROOT / "fixtures"
 PLACES_RADIUS_M = 900
@@ -64,13 +69,49 @@ def capture_routes(origins: dict) -> None:
     print(f"wrote {len(routes)} routes")
 
 
+def _merge_json(path, new: dict) -> dict:
+    data = json.loads(path.read_text()) if path.exists() else {}
+    data.update(new)
+    path.write_text(json.dumps(dict(sorted(data.items()))) + "\n")
+    return data
+
+
+def capture_planner() -> None:
+    settings = get_settings().model_copy(
+        update={"overpass_timeout_s": 60.0, "cache_dir": FIXTURES}  # writes fixtures/overpass/
+    )
+    overpass, ors = OverpassProvider(settings=settings), ORSProvider()
+    for case in load_cases():
+        for attempt in range(3):
+            result = plan_walk(case["a"], case["b"], case["intent"], overpass, ors, case["depart_at"])
+            if result.status != "places_unavailable":
+                break
+            print(f"  {case['id']}: Overpass unavailable, waiting {30 * (attempt + 1)}s")
+            time.sleep(30 * (attempt + 1))
+        print(f"{case['id']}: {result.status}, {len(result.candidates)} candidates")
+
+    elements = {k: (None if v is None else list(v)) for k, v in ors.elements.items()}
+    total = _merge_json(FIXTURES / "ors_matrix_elements.json", elements)
+    print(f"ors matrix elements: {len(elements)} recorded, {len(total)} in fixture")
+
+    routes_path = FIXTURES / "sample_routes.json"
+    routes = {r["key"]: r for r in json.loads(routes_path.read_text())}
+    for key, leg in ors.legs.items():
+        routes[key] = {"key": key, "leg": leg.model_dump()}
+    routes_path.write_text(json.dumps([routes[k] for k in sorted(routes)]) + "\n")
+    print(f"ors legs: {len(ors.legs)} recorded, {len(routes)} in fixture")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--places", action="store_true")
     parser.add_argument("--routes", action="store_true")
+    parser.add_argument("--planner", action="store_true")
     args = parser.parse_args()
     origins = load_origins()
-    if args.places or not args.routes:
+    if args.places:
         capture_places(origins)
-    if args.routes or not args.places:
+    if args.routes:
         capture_routes(origins)
+    if args.planner:
+        capture_planner()
