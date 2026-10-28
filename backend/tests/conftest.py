@@ -13,6 +13,7 @@ def offline_settings(monkeypatch, tmp_path):
     monkeypatch.setenv("ORS_API_KEY", "")
     monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.delenv("STROLLCALL_CALLER", raising=False)  # scripts/_common sets it on import
     get_settings.cache_clear()
     assert get_settings().use_mocks, "tests must run with USE_MOCKS=true"
     yield

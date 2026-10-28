@@ -1,11 +1,48 @@
 {
   "walk_intent": {
     "duration_min": 25,
-    "vibes": ["quiet"],
+    "vibes": [
+      "quiet"
+    ],
     "endpoint_type": "cafe",
-    "avoid": ["busy streets"],
+    "avoid": [
+      "busy streets"
+    ],
     "hard_constraints": [],
-    "inferred_fields": ["avoid"]
+    "inferred_fields": [
+      "avoid"
+    ]
   },
-  "transcript": "25 minutes, quiet streets, coffee at the end"
+  "transcript": "25 minutes, quiet streets, coffee at the end",
+  "joint_preference": {
+    "shared_vibes": [
+      "quiet"
+    ],
+    "a_priorities": [
+      "ends at a cafe"
+    ],
+    "b_priorities": [
+      "green"
+    ],
+    "compromises": [
+      "Ends at a cafe for A, with a park on the way for B."
+    ],
+    "tradeoff": "Mock data: a quiet walk that passes green space and ends with coffee."
+  },
+  "candidate_ranking": {
+    "ranking": [
+      {
+        "id": "c1",
+        "reason": "Mock data: best balance of both preferences."
+      },
+      {
+        "id": "c2",
+        "reason": "Mock data: second choice."
+      },
+      {
+        "id": "c3",
+        "reason": "Mock data: third choice."
+      }
+    ]
+  }
 }

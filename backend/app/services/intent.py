@@ -1,11 +1,15 @@
-"""Free text -> WalkIntent with Muse Spark. The model only extracts; Pydantic decides."""
+"""Free text -> WalkIntent, and A + B -> JointPreference, with Muse Spark.
 
+The model only extracts and reconciles; Pydantic and deterministic checks decide.
+"""
+
+import json
 import logging
 
 from pydantic import BaseModel, ValidationError
 
 from app.core.errors import ProviderError
-from app.models.schemas import WalkIntent
+from app.models.schemas import JointPreference, WalkIntent
 from app.providers import meta_or_mock
 from app.providers.overpass import DESTINATION_TYPES
 
@@ -94,3 +98,122 @@ def parse_intent(text: str) -> ParsedIntent:
     intent.hard_constraints = _clean(intent.hard_constraints)
     inferred = [f for f in data.get("inferred_fields", []) if f in INTENT_FIELDS]
     return ParsedIntent(intent=intent, inferred_fields=inferred, source=source)
+
+
+# --- Two-person negotiation (DEV_DOC section 5, P0) ---
+
+NEGOTIATION_PROMPT = """You reconcile two friends' walk preferences for StrollCall. Person A invited person B.
+
+Rules:
+- Use only the preferences given in the JSON. Never invent new ones.
+- shared_vibes: vibes both people asked for, copied exactly from both lists. Empty if none.
+- a_priorities / b_priorities: what matters to each person that the other did not ask for, as short phrases taken from their own preferences.
+- compromises: 0-3 short sentences on how a conflict between the two inputs is weighed, e.g. "A's cafe and B's park are both acceptable endings." Only mention real conflicts.
+- Describe preferences, not the route: never promise stops, places on the way, quiet or busy stretches, or anything else the planner has not checked.
+- tradeoff: one sentence for both people summarising how their preferences are balanced. No numbers unless they appear in the input.
+- Hard constraints and walk length are decided by the planner, not by you; do not change them.
+Return only JSON matching the schema."""
+
+NEGOTIATION_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "shared_vibes": {"type": "array", "items": {"type": "string"}},
+        "a_priorities": {"type": "array", "items": {"type": "string"}},
+        "b_priorities": {"type": "array", "items": {"type": "string"}},
+        "compromises": {"type": "array", "items": {"type": "string"}},
+        "tradeoff": {"type": "string"},
+    },
+    "required": ["shared_vibes", "a_priorities", "b_priorities", "compromises", "tradeoff"],
+    "additionalProperties": False,
+}
+MAX_ITEMS, MAX_ITEM_CHARS, MAX_TRADEOFF_CHARS = 5, 120, 300
+
+
+class Negotiation(BaseModel):
+    joint: JointPreference
+    tradeoff: str
+    source: str  # meta / mock / default
+    note: str | None = None
+
+
+def _wants(intent: WalkIntent) -> list[str]:
+    items = list(intent.vibes)
+    if intent.endpoint_type:
+        items.append(f"ends at a {intent.endpoint_type.replace('_', ' ')}")
+    items += [f"avoid {a}" for a in intent.avoid]
+    return items
+
+
+def default_negotiation(a: WalkIntent, b: WalkIntent, reason: str) -> Negotiation:
+    """Deterministic merge, used when Muse Spark is unavailable or its answer is rejected."""
+    a_wants, b_wants = _wants(a), _wants(b)
+    shared = [v for v in a.vibes if v in b.vibes]
+    compromises = []
+    if a.endpoint_type and b.endpoint_type and a.endpoint_type != b.endpoint_type:
+        compromises.append(f"A asked for a {a.endpoint_type} and B for a {b.endpoint_type}; either can end the walk.")
+    if a.duration_min != b.duration_min:
+        compromises.append("The walk uses the shorter of the two time budgets.")
+    joint = JointPreference(
+        shared_vibes=shared,
+        a_priorities=[w for w in a_wants if w not in shared and w not in b_wants],
+        b_priorities=[w for w in b_wants if w not in shared and w not in a_wants],
+        compromises=compromises,
+    )
+    tradeoff = "Both preferences are kept where they agree; differences are noted above."
+    return Negotiation(joint=joint, tradeoff=tradeoff, source="default", note=reason)
+
+
+def _short_list(items: list[str]) -> list[str]:
+    return [i.strip()[:MAX_ITEM_CHARS] for i in items if i.strip()][:MAX_ITEMS]
+
+
+def negotiate(a: WalkIntent, b: WalkIntent) -> Negotiation:
+    """Muse Spark reconciles both preferences into a JointPreference. It never touches
+    duration or hard constraints; the planner applies those from both intents."""
+    user = json.dumps({"A": a.model_dump(), "B": b.model_dump()})
+    try:
+        data, source = meta_or_mock(
+            lambda meta: meta.structured_json(NEGOTIATION_PROMPT, user, NEGOTIATION_SCHEMA,
+                                              name="joint_preference")
+        )
+    except ProviderError as e:
+        log.warning("negotiation fell back to default: %s (%s)", e.code, e.message)
+        return default_negotiation(a, b, e.code)
+
+    try:
+        joint = JointPreference.model_validate(data)
+        tradeoff = str(data["tradeoff"]).strip()
+    except (ValidationError, KeyError):
+        log.warning("negotiation fell back to default: model JSON failed validation")
+        return default_negotiation(a, b, "invalid_model_output")
+
+    # Shared vibes must be vibes both people actually gave.
+    allowed = set(a.vibes) & set(b.vibes)
+    invented = [v for v in joint.shared_vibes if v.strip().lower() not in allowed]
+    if invented:
+        log.warning("negotiation: dropped %d shared vibes not given by both people", len(invented))
+    joint = JointPreference(
+        shared_vibes=[v.strip().lower() for v in joint.shared_vibes if v.strip().lower() in allowed],
+        a_priorities=_short_list(joint.a_priorities),
+        b_priorities=_short_list(joint.b_priorities),
+        compromises=_short_list(joint.compromises)[:3],
+    )
+    if not tradeoff or len(tradeoff) > MAX_TRADEOFF_CHARS:
+        return default_negotiation(a, b, "invalid_model_output")
+    return Negotiation(joint=joint, tradeoff=tradeoff, source=source)
+
+
+def combined_intent(a: WalkIntent, b: WalkIntent) -> WalkIntent:
+    """Deterministic planner input for two people: hard limits from both, never relaxed."""
+    if a.endpoint_type and b.endpoint_type and a.endpoint_type != b.endpoint_type:
+        endpoint = None  # conflict: any type; the ranking step weighs it
+    else:
+        endpoint = a.endpoint_type or b.endpoint_type
+    merge = lambda x, y: list(dict.fromkeys(x + y))  # noqa: E731
+    return WalkIntent(
+        duration_min=min(a.duration_min, b.duration_min),
+        vibes=merge(a.vibes, b.vibes),
+        endpoint_type=endpoint,
+        avoid=merge(a.avoid, b.avoid),
+        hard_constraints=merge(a.hard_constraints, b.hard_constraints),
+    )
