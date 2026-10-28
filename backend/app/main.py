@@ -2,7 +2,7 @@ import logging
 
 from fastapi import FastAPI
 
-from app.api import dev, intents, invites
+from app.api import dev, intents, invites, voice
 from app.core.budget import SpendGuard
 from app.core.config import get_settings
 
@@ -11,6 +11,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 app = FastAPI(title="StrollCall")
 app.include_router(intents.router)
 app.include_router(invites.router)
+app.include_router(voice.router)
 app.include_router(dev.router)  # answers 404 unless DEBUG=true
 
 

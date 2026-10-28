@@ -53,5 +53,8 @@
         "quote": "sit outside"
       }
     ]
+  },
+  "invite_text": {
+    "text": "Mock data: up for a short walk together this afternoon?"
   }
 }

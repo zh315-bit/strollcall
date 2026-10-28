@@ -38,6 +38,15 @@ CREATE TABLE IF NOT EXISTS ors_cache (
     PRIMARY KEY (kind, key)
 );
 
+-- What an invite shows publicly beyond the Invite model (plan places, explanations,
+-- data sources), and what only the server may see (origins, owner keys, raw texts).
+-- The private row is deleted when the invite expires.
+CREATE TABLE IF NOT EXISTS invite_extra (
+    token TEXT PRIMARY KEY,
+    public TEXT NOT NULL,
+    private TEXT
+);
+
 CREATE TABLE IF NOT EXISTS invites (
     token TEXT PRIMARY KEY,
     status TEXT NOT NULL,
@@ -80,3 +89,23 @@ def load_invite(token: str, path: Path | None = None):
     with connect(path) as conn:
         row = conn.execute("SELECT data FROM invites WHERE token = ?", (token,)).fetchone()
     return Invite.model_validate_json(row["data"]) if row else None
+
+
+def save_invite_extra(token: str, public: dict, private: dict | None, path: Path | None = None) -> None:
+    import json
+
+    with connect(path) as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO invite_extra (token, public, private) VALUES (?, ?, ?)",
+            (token, json.dumps(public), None if private is None else json.dumps(private)),
+        )
+
+
+def load_invite_extra(token: str, path: Path | None = None) -> tuple[dict, dict | None]:
+    import json
+
+    with connect(path) as conn:
+        row = conn.execute("SELECT public, private FROM invite_extra WHERE token = ?", (token,)).fetchone()
+    if not row:
+        return {}, None
+    return json.loads(row["public"]), (json.loads(row["private"]) if row["private"] else None)
