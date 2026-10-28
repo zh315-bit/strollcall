@@ -22,7 +22,19 @@
     "avoid": [
      "traffic"
     ]
-   }
+   },
+   "a_text": "25 minutes, quiet streets, coffee at the end - ideally somewhere we can sit outside, it's supposed to be sunny",
+   "b_text": "Something green please, I'm bringing my dog",
+   "expected_wishes": [
+    [
+     "A",
+     "outdoor_seating"
+    ],
+    [
+     "B",
+     "green_meetup"
+    ]
+   ]
   },
   {
    "pair": "p2",
@@ -41,7 +53,15 @@
     "vibes": [
      "lively"
     ]
-   }
+   },
+   "a_text": "A green walk, maybe end at a little park",
+   "b_text": "Lively, end at a cafe - just please not another Starbucks",
+   "expected_wishes": [
+    [
+     "B",
+     "not_a_chain"
+    ]
+   ]
   },
   {
    "pair": "p3",
@@ -57,7 +77,15 @@
     "vibes": [
      "quiet"
     ]
-   }
+   },
+   "a_text": "30 minutes, coffee at the end",
+   "b_text": "Quiet, ending at a bookstore. I use a wheelchair",
+   "expected_wishes": [
+    [
+     "B",
+     "wheelchair_access"
+    ]
+   ]
   },
   {
    "pair": "p4",
@@ -95,7 +123,15 @@
     "vibes": [
      "quiet"
     ]
-   }
+   },
+   "a_text": "A lively walk to a bakery - I don't eat any animal products",
+   "b_text": "Something quiet, about 25 minutes",
+   "expected_wishes": [
+    [
+     "A",
+     "vegan_options"
+    ]
+   ]
   },
   {
    "pair": "p7",
@@ -132,7 +168,15 @@
     "vibes": [
      "lively"
     ]
-   }
+   },
+   "a_text": "30 minutes, ending at a bookstore",
+   "b_text": "A lively cafe where I can get some work done on my laptop afterwards",
+   "expected_wishes": [
+    [
+     "B",
+     "wifi"
+    ]
+   ]
   },
   {
    "pair": "p10",
@@ -151,7 +195,19 @@
     "vibes": [
      "green"
     ]
-   }
+   },
+   "a_text": "Bakery at the end, 30 minutes, somewhere we can sit down outside",
+   "b_text": "Green, and somewhere with a nice view",
+   "expected_wishes": [
+    [
+     "A",
+     "outdoor_seating"
+    ],
+    [
+     "B",
+     "viewpoint"
+    ]
+   ]
   },
   {
    "pair": "p11",
@@ -176,5 +232,6 @@
   }
  ],
  "_expected_rule": "expected = infeasible_by_distance when the direct A-B walk T_AB (local graph) exceeds 1.2 x duration: a meetup needs max(tA, tB) <= 0.6 x duration and tA + tB >= T_AB. Otherwise feasible (not ruled out by distance). Labels set 2026-10-28 before the run that reports correct-outcome rate.",
- "_b_intent_note": "b_intent: B's preference for the Meta ablation (scripts/ablation.py); each conflicts with A's. Fixed 2026-10-28 before the first ablation run."
+ "_b_intent_note": "b_intent: B's preference for the Meta ablation (scripts/ablation.py); each conflicts with A's. Fixed 2026-10-28 before the first ablation run.",
+ "_wishes_note": "a_text / b_text: what each person typed (consistent with intent / b_intent). expected_wishes: the requirements a careful human reads in the text (menu in backend/app/services/wishes.py). Written 2026-10-28 before the first wishes ablation run; used to score every arm the same way."
 }

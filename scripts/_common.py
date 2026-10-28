@@ -36,6 +36,9 @@ def load_cases() -> list[dict]:
             "depart_at": depart_at,
             "expected": c.get("expected", "feasible"),
             "b_intent": WalkIntent.model_validate(c["b_intent"]) if c.get("b_intent") else None,
+            "a_text": c.get("a_text", ""),
+            "b_text": c.get("b_text", ""),
+            "expected_wishes": [tuple(x) for x in c.get("expected_wishes", [])],
         }
         for c in data["cases"]
     ]
