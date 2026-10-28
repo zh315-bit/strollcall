@@ -32,3 +32,28 @@ def connect(path: Path | None = None) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.executescript(SCHEMA)
     return conn
+
+
+def save_invite(invite, path: Path | None = None) -> None:
+    from datetime import datetime, timezone
+
+    with connect(path) as conn:
+        conn.execute(
+            "INSERT OR REPLACE INTO invites (token, status, created_at, expires_at, data)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (
+                invite.token,
+                invite.status,
+                datetime.now(timezone.utc).isoformat(),
+                invite.expires_at.isoformat(),
+                invite.model_dump_json(),
+            ),
+        )
+
+
+def load_invite(token: str, path: Path | None = None):
+    from app.models.schemas import Invite
+
+    with connect(path) as conn:
+        row = conn.execute("SELECT data FROM invites WHERE token = ?", (token,)).fetchone()
+    return Invite.model_validate_json(row["data"]) if row else None
