@@ -102,7 +102,7 @@ class MetaProvider:
                 log.warning("Muse Spark attempt %d failed: %s", attempt + 1, type(e).__name__)
                 continue
             except openai.APIError as e:
-                raise MetaError(f"Muse Spark request rejected: {type(e).__name__}") from e
+                raise MetaError(f"Muse Spark request rejected: {_describe(e)}") from e
 
             self._record_text(resp, model, name)
             choice = resp.choices[0]
@@ -160,7 +160,7 @@ class MetaProvider:
                 log.warning("Muse Image attempt %d failed: %s", attempt + 1, type(e).__name__)
                 continue
             except openai.APIError as e:
-                raise MetaError(f"Muse Image request rejected: {type(e).__name__}") from e
+                raise MetaError(f"Muse Image request rejected: {_describe(e)}") from e
 
             images = [d.b64_json for d in (resp.data or []) if d.b64_json]
             self.guard.record("image", model, image_cost(len(images)), "invite card")
@@ -217,6 +217,17 @@ class MetaProvider:
 
         assert last_error is not None
         raise last_error
+
+
+def _describe(e: Exception) -> str:
+    """Error type, HTTP status and the API's own message (it never contains our key)."""
+    status = getattr(e, "status_code", None)
+    body = getattr(e, "body", None)
+    message = body.get("message") if isinstance(body, dict) else None
+    if isinstance(body, dict) and isinstance(body.get("error"), dict):
+        message = body["error"].get("message") or body["error"].get("code")
+    parts = [type(e).__name__] + ([f"HTTP {status}"] if status else []) + ([str(message)[:160]] if message else [])
+    return ", ".join(parts)
 
 
 def check_wav(audio_bytes: bytes, mime: str) -> int:
