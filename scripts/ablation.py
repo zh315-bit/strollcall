@@ -1,6 +1,7 @@
 """Meta ablation: what do Muse Spark's jobs change in the plan, measured against a human reference?
 
-    python scripts/ablation.py
+    python scripts/ablation.py                # benchmark conflict cases
+    python scripts/ablation.py --wish-cases   # pre-registered wish cases (fixtures/wish_cases.json)
 
 For every benchmark case with a B preference and free text (fixtures/benchmark_cases.json), on the
 local engine, three arms with identical hard constraints:
@@ -12,6 +13,7 @@ Every arm's top pick is scored against expected_wishes, written by hand before t
 Writes benchmarks/YYYY-MM-DD-ablation.md with explanations side by side for human review.
 """
 
+import argparse
 import os
 import statistics
 import sys
@@ -20,7 +22,7 @@ from zoneinfo import ZoneInfo
 
 os.environ["USE_MOCKS"] = "false"
 
-from _common import ROOT, load_cases  # noqa: E402
+from _common import ROOT, load_cases, load_wish_cases  # noqa: E402
 
 from app.core.budget import SpendGuard  # noqa: E402
 from app.core.config import get_settings  # noqa: E402
@@ -178,20 +180,30 @@ def report(rows, spend) -> str:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--wish-cases", action="store_true")
+    args = parser.parse_args()
     s = get_settings()
     places, graph = SnapshotPlaces(load_snapshot(s.places_snapshot_path)), load_graph(s.graph_path)
     guard = SpendGuard()
     before = guard.today_total()
     rows = []
-    for case in load_cases():
+    for case in (load_wish_cases() if args.wish_cases else load_cases()):
         if case["b_intent"] is None or not case["a_text"]:
             continue
         row = run(case, places, graph)
         print(f"{case['id']}: a={row['a']['pick']} | a'={row['a2']['pick']} | b={row['b']['pick']} | "
               f"ref met a/a'/b = {row['a']['ref']['met']}/{row['a2']['ref']['met']}/{row['b']['ref']['met']}")
         rows.append(row)
-    out = ROOT / "benchmarks" / f"{datetime.now(NYC):%Y-%m-%d}-ablation.md"
-    out.write_text(report(rows, guard.today_total() - before))
+    suffix = "-ablation-wishes" if args.wish_cases else "-ablation"
+    out = ROOT / "benchmarks" / f"{datetime.now(NYC):%Y-%m-%d}{suffix}.md"
+    text = report(rows, guard.today_total() - before)
+    if args.wish_cases:
+        text = text.replace("cases where A and B want different things and typed free text "
+                            "(fixtures/benchmark_cases.json: b_intent, a_text, b_text)",
+                            "pre-registered wish cases (fixtures/wish_cases.json, rule in "
+                            "scripts/make_wish_cases.py, committed before this run)")
+    out.write_text(text)
     print(f"wrote {out.relative_to(ROOT)}")
     return 0
 

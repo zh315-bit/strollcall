@@ -246,3 +246,10 @@ def test_named_poi_wins_when_equally_good():
     ranked = planner.score_options((40.73, -74.0), (40.73, -73.98), cs, WalkIntent(duration_min=25), w,
                                    datetime(2026, 10, 31, 15))
     assert ranked[0].meetup.place.id == "way/2"  # 0.3 min worse gap, but a named place
+
+
+def test_off_network_destination_does_not_sink_the_matrix(graph):
+    routing = LocalRouting(graph[0], fallback=None)
+    far = (LAT0 + 0.05, LON0)
+    m = routing.matrix([node(graph, 0, 0)], [node(graph, 0, 1), far])
+    assert m.durations_min[0][0] is not None and m.durations_min[0][1] is None

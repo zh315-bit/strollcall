@@ -42,3 +42,30 @@ def load_cases() -> list[dict]:
         }
         for c in data["cases"]
     ]
+
+
+def load_wish_cases() -> list[dict]:
+    """fixtures/wish_cases.json in the same shape as load_cases()."""
+    from datetime import datetime
+
+    from app.models.schemas import WalkIntent
+
+    data = json.loads((ROOT / "fixtures" / "wish_cases.json").read_text())
+    depart_at = datetime.fromisoformat(data["depart_at"])
+    return [
+        {
+            "id": c["id"],
+            "pair": {"a": c["a"], "b": c["b"]},
+            "a": point(c["a"]),
+            "b": point(c["b"]),
+            "intent": WalkIntent.model_validate(c["intent"]),
+            "b_intent": WalkIntent.model_validate(c["b_intent"]),
+            "depart_at": depart_at,
+            "expected": "feasible",
+            "a_text": c["a_text"],
+            "b_text": c["b_text"],
+            "expected_wishes": [tuple(x) for x in c["expected_wishes"]],
+            "requirement": c["requirement"],
+        }
+        for c in data["cases"]
+    ]

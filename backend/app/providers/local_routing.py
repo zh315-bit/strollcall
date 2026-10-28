@@ -145,10 +145,19 @@ class LocalRouting:
     def matrix(self, sources: list[Point], destinations: list[Point]) -> TravelMatrix:
         try:
             src = [self.graph.snap(p) for p in sources]
-            dst = [self.graph.snap(p) for p in destinations]
         except OutsideCoverage as e:
             return self._fallback(str(e)).matrix(sources, destinations)
-        self.snap_m.extend(d for _, d in src + dst)
+        # A destination off the network has no walking route here; it must not sink the others.
+        dst = []
+        for p in destinations:
+            try:
+                dst.append(self.graph.snap(p))
+            except OutsideCoverage:
+                dst.append((None, None))
+        if any(n is None for n, _ in dst):
+            log.info("local routing: %d destination(s) more than %.0f m from the network, no route",
+                     sum(n is None for n, _ in dst), SNAP_MAX_M)
+        self.snap_m.extend(d for _, d in src + dst if d is not None)
 
         speed = self.graph.m_per_min
         durations, distances = [], []
@@ -156,7 +165,7 @@ class LocalRouting:
             dist, _ = self._search(s_node)
             row_t, row_d = [], []
             for (d_node, d_snap), d in zip(dst, destinations):
-                t = dist[d_node]
+                t = dist[d_node] if d_node is not None else np.inf
                 if not np.isfinite(t):
                     value = None  # no walking path within SEARCH_LIMIT_MIN
                 else:
