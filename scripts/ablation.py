@@ -2,6 +2,7 @@
 
     python scripts/ablation.py                # benchmark conflict cases
     python scripts/ablation.py --wish-cases   # pre-registered wish cases (fixtures/wish_cases.json)
+    python scripts/ablation.py --conflict-cases   # pre-registered A-vs-B conflicts (fixtures/conflict_cases.json)
 
 For every benchmark case with a B preference and free text (fixtures/benchmark_cases.json), on the
 local engine, three arms with identical hard constraints:
@@ -22,7 +23,9 @@ from zoneinfo import ZoneInfo
 
 os.environ["USE_MOCKS"] = "false"
 
-from _common import ROOT, load_cases, load_wish_cases  # noqa: E402
+import re  # noqa: E402
+
+from _common import ROOT, load_cases, load_conflict_cases, load_wish_cases  # noqa: E402
 
 from app.core.budget import SpendGuard  # noqa: E402
 from app.core.config import get_settings  # noqa: E402
@@ -30,7 +33,7 @@ from app.providers.local_routing import LocalRouting, load_graph  # noqa: E402
 from app.providers.snapshot_places import SnapshotPlaces, load_snapshot  # noqa: E402
 from app.services.explain import rank_candidates  # noqa: E402
 from app.services.intent import combined_intent, default_negotiation, negotiate  # noqa: E402
-from app.services.planner import plan_for_two  # noqa: E402
+from app.services.planner import ELAPSED_SLACK_MIN, MAX_GAP_MIN, VIBE_TESTS, plan_for_two  # noqa: E402
 from app.services.wishes import Wish, interpret_wishes, keyword_wishes, requirement_status  # noqa: E402
 
 NYC = ZoneInfo("America/New_York")
@@ -48,6 +51,37 @@ def reference_status(case, plan, top) -> dict[str, int]:
         status = requirement_status(Wish(requirement=key, who=who, quote="-"), meet, dest)
         counts["met" if status is True else "not met" if status is False else "unknown"] += 1
     return counts
+
+
+CROWD_CLAIM = re.compile(r"\b(crowd(?:s|ed)?|busy|bustling|packed|empty|uncrowded|calm(?:er)?|quiet(?:er)?)\b", re.I)
+
+
+def hard_ok(top, budget) -> bool | None:
+    if top is None:
+        return None
+    return top.arrival_gap_min <= MAX_GAP_MIN and top.total_elapsed_min <= budget + ELAPSED_SLACK_MIN
+
+
+def person_prefs(intent, plan, top) -> tuple[int, int]:
+    """(met, checkable) for one person's destination type and vibes on the top pick."""
+    if top is None:
+        return 0, 0
+    meet, dest = plan.places[top.meeting_place_id], plan.places[top.endpoint_place_id]
+    checks = []
+    if intent.endpoint_type:
+        checks.append(dest.category == intent.endpoint_type)
+    for vibe in intent.vibes:
+        if vibe in VIBE_TESTS:
+            checks.append(VIBE_TESTS[vibe](meet) or VIBE_TESTS[vibe](dest))
+    return sum(checks), len(checks)
+
+
+def crowd_claims(text: str) -> list[str]:
+    """Crowd-level words that are not part of a stated preference ("A wants to avoid crowds")."""
+    from app.services.grounding import _is_preference_mention
+
+    return [m.group(0) for m in CROWD_CLAIM.finditer(text or "")
+            if not _is_preference_mention(text, m.start(), m.end())]
 
 
 def extraction(found, expected) -> tuple[int, int, int]:
@@ -83,7 +117,11 @@ def run(case, places, graph) -> dict:
             "err": abs(top.total_elapsed_min - budget) if top else None,
             "why": reason or (top.rationale if top else "–"),
             "ref": reference_status(case, plan, top),
+            "hard": hard_ok(top, budget),
+            "a_pref": person_prefs(a, plan, top),
+            "b_pref": person_prefs(b, plan, top),
         }
+    out["claims"] = crowd_claims(neg.tradeoff + " " + out["b"]["why"])
     out["neg_source"] = neg.source + (f" ({neg.note})" if neg.note and neg.source != "meta" else "")
     out["tradeoff"] = neg.tradeoff
     return out
@@ -146,6 +184,12 @@ def report(rows, spend) -> str:
                                            for x in ARMS) + " |",
         f"| Time-budget error, median | " + " | ".join(fmt(med([r[x]['err'] for r in rows if r[x]['err'] is not None]))
                                                   for x in ARMS) + " |",
+        "| Hard constraints met for both people | " + " | ".join(
+            f"{sum(r[x]['hard'] is True for r in rows)}/{len(rows)}" for x in ARMS) + " |",
+        "| Checkable preferences met, A · B | " + " | ".join(
+            f"{sum(r[x]['a_pref'][0] for r in rows)}/{sum(r[x]['a_pref'][1] for r in rows)} · "
+            f"{sum(r[x]['b_pref'][0] for r in rows)}/{sum(r[x]['b_pref'][1] for r in rows)}" for x in ARMS) + " |",
+        f"| Ungrounded crowd-level words in Meta text | – | – | {sum(len(r['claims']) for r in rows)} |",
         f"| Meta spend for this run | – | – | ${spend:.4f} |",
         "",
         "## Cases",
@@ -173,7 +217,13 @@ def report(rows, spend) -> str:
             "| Gap / time error | " + " | ".join(f"{fmt(r[x]['gap'])} / {fmt(r[x]['err'])}" for x in ARMS) + " |",
             "| Why this one | " + " | ".join(r[x]["why"] for x in ARMS) + " |",
             "| Ranking | " + " | ".join(r[x]["rank_source"] for x in ARMS) + " |",
+            "| Hard constraints, both people | " + " | ".join(
+                {True: "ok", False: "VIOLATED", None: "–"}[r[x]["hard"]] for x in ARMS) + " |",
+            "| A's / B's checkable preferences met | " + " | ".join(
+                f"{r[x]['a_pref'][0]}/{r[x]['a_pref'][1]} · {r[x]['b_pref'][0]}/{r[x]['b_pref'][1]}" for x in ARMS) + " |",
         ]
+        if r["claims"]:
+            lines.append(f"\nUngrounded crowd-level words in Meta text: {', '.join(r['claims'])}")
     lines += ["", "## For human review", "",
               "For each case: which top pick would A and B choose, and is the Meta explanation accurate?"]
     return "\n".join(lines) + "\n"
@@ -182,22 +232,29 @@ def report(rows, spend) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--wish-cases", action="store_true")
+    parser.add_argument("--conflict-cases", action="store_true")
     args = parser.parse_args()
     s = get_settings()
     places, graph = SnapshotPlaces(load_snapshot(s.places_snapshot_path)), load_graph(s.graph_path)
     guard = SpendGuard()
     before = guard.today_total()
     rows = []
-    for case in (load_wish_cases() if args.wish_cases else load_cases()):
+    cases = load_wish_cases() if args.wish_cases else load_conflict_cases() if args.conflict_cases else load_cases()
+    for case in cases:
         if case["b_intent"] is None or not case["a_text"]:
             continue
         row = run(case, places, graph)
         print(f"{case['id']}: a={row['a']['pick']} | a'={row['a2']['pick']} | b={row['b']['pick']} | "
               f"ref met a/a'/b = {row['a']['ref']['met']}/{row['a2']['ref']['met']}/{row['b']['ref']['met']}")
         rows.append(row)
-    suffix = "-ablation-wishes" if args.wish_cases else "-ablation"
+    suffix = "-ablation-wishes" if args.wish_cases else "-ablation-conflicts" if args.conflict_cases else "-ablation"
     out = ROOT / "benchmarks" / f"{datetime.now(NYC):%Y-%m-%d}{suffix}.md"
     text = report(rows, guard.today_total() - before)
+    if args.conflict_cases:
+        text = text.replace("cases where A and B want different things and typed free text "
+                            "(fixtures/benchmark_cases.json: b_intent, a_text, b_text)",
+                            "pre-registered A-vs-B conflict cases (fixtures/conflict_cases.json, committed "
+                            "before this run; evaluation rules in its _rule field)")
     if args.wish_cases:
         text = text.replace("cases where A and B want different things and typed free text "
                             "(fixtures/benchmark_cases.json: b_intent, a_text, b_text)",
