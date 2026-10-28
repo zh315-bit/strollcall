@@ -138,9 +138,9 @@ def report(rows: list[dict]) -> str:
     errors = [r["time_error"] for r in solved]
     cold_ok = [r["cold_s"] for r in rows if r["cold"].status not in ("places_unavailable", "routing_unavailable")]
     cached_ok = [r["cached_s"] for r in rows if r["cached"].status not in ("places_unavailable", "routing_unavailable")]
+    correct = sum(outcome_ok(r) for r in rows)
     if ARGS.mock:
-        correct = sum(outcome_ok(r) for r in rows)
-    mode = "recorded fixtures (USE_MOCKS=true, offline); latencies are fixture reads, not network"
+        mode = "recorded fixtures (USE_MOCKS=true, offline); latencies are fixture reads, not network"
     elif ARGS.engine == "local":
         g, snap = LOAD["graph"], LOAD["snapshot"]
         mode = (f"local OSM walking graph ({len(g.lat):,} nodes, {g.file_bytes / 1e6:.1f} MB) + place snapshot "
