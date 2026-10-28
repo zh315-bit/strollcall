@@ -134,3 +134,39 @@ def test_conflicting_types_both_represented_in_destinations():
     parks = [place("park0", 40.7400, -73.99, "park")]  # farther than every cafe
     chosen = planner.select_destinations(cafes + parks, meetups, 9.0, WED_15, 4, {}, ["cafe", "park"])
     assert "park0" in [p.id for p in chosen] and len(chosen) == 4
+
+
+def test_split_categories_only_for_different_wishes():
+    cafe = WalkIntent(duration_min=30, endpoint_type="cafe")
+    park = WalkIntent(duration_min=30, endpoint_type="park")
+    green = WalkIntent(duration_min=30, vibes=["green"])
+    assert planner.split_categories({"A": cafe, "B": park}) == ["park", "park_gate"]
+    assert planner.split_categories({"A": cafe, "B": green}) == []  # B has no endpoint: nothing to split
+    assert planner.split_categories({"A": green, "B": cafe}) == ["park", "park_gate"]
+    assert planner.split_categories({"A": cafe, "B": cafe}) == []
+
+
+def test_served_says_who_each_part_is_for():
+    people = {"A": WalkIntent(duration_min=30, endpoint_type="cafe"),
+              "B": WalkIntent(duration_min=30, endpoint_type="park", vibes=["green"])}
+    who = planner.served(place("g", category="park_gate"), place("c", category="cafe"), people)
+    assert who == {"meetup": ["B: park", "B: green"], "destination": ["A: cafe"]}
+    assert planner._for_text(who["meetup"]) == "for B (park, green)"
+
+
+def test_reserved_split_meetup_survives_the_gap_filter():
+    points = [place(f"x{i}", category="plaza") for i in range(10)] + [place("gate", category="park_gate")]
+    times = TravelMatrix(durations_min=[[9] * 10 + [8], [9] * 10 + [11]], distances_m=[[1] * 11, [1] * 11])
+    kept = planner.filter_meetups(points, times, 30, {})
+    assert "gate" not in [o.place.id for o in kept]  # gap 3 loses to ten gap-0 plazas
+    kept = planner.filter_meetups(points, times, 30, {}, reserve=["park", "park_gate"])
+    assert "gate" in [o.place.id for o in kept]
+
+
+def test_split_destinations_fit_the_time_left_after_the_split_meetup():
+    gate = planner.MeetupOption(place("gate", 40.7300, -73.9900, "park_gate"), 10, 12, 800, 900)
+    near_cafe = place("near", 40.7330, -73.9900, "cafe")  # ~330 m, ~5 min
+    far_cafe = place("far", 40.7500, -73.9900, "cafe")  # ~2.2 km, too far for 21 min left
+    added = planner.split_destinations([near_cafe, far_cafe], [gate], [], ["park", "park_gate"],
+                                       ["cafe", "park"], WalkIntent(duration_min=30), WED_15, {})
+    assert [p.id for p in added] == ["near"]

@@ -77,9 +77,40 @@ def meetup_search_radius(a: Point, b: Point) -> int:
     return int(min(max(0.35 * d + 250, 300), 1200))
 
 
-def select_meetup_points(places: list[Place], mid: Point, limit: int, stats: dict) -> list[Place]:
-    """Nearest to the midpoint first, one per spot, at most `limit`."""
-    ordered = sorted(places, key=lambda p: (haversine_m(*mid, p.lat, p.lon), p.id))
+SPLIT_RESERVE_QUERY = 4  # meetup points of a split category always sent to the matrix
+SPLIT_RESERVE_KEPT = 3  # ... and kept after the gap filter, if feasible
+# A destination type or vibe that a meetup point can satisfy, so the two people can be served
+# by different parts of the walk ("meet at the park for B, end at the cafe for A").
+MEETUP_MATCH = {"park": ("park", "park_gate"), "landmark": ("landmark",)}
+VIBE_MEETUP = {"green": ("park", "park_gate"), "shady": ("park", "park_gate"), "scenic": ("park", "landmark")}
+
+
+def split_categories(people: dict[str, WalkIntent] | None) -> list[str]:
+    """Meetup categories that would serve one person while the destination serves the other."""
+    if not people or len(people) != 2:
+        return []
+    a, b = people["A"], people["B"]
+    cats: set[str] = set()
+    for me, other in ((a, b), (b, a)):
+        if not other.endpoint_type:
+            continue
+        if me.endpoint_type in MEETUP_MATCH and me.endpoint_type != other.endpoint_type:
+            cats |= set(MEETUP_MATCH[me.endpoint_type])
+        for vibe in me.vibes:
+            if vibe in VIBE_MEETUP and other.endpoint_type not in MEETUP_MATCH:
+                cats |= set(VIBE_MEETUP[vibe])
+    return sorted(cats)
+
+
+def select_meetup_points(places: list[Place], mid: Point, limit: int, stats: dict,
+                         reserve: list[str] | None = None) -> list[Place]:
+    """Nearest to the midpoint first, one per spot, at most `limit`.
+
+    With `reserve`, the nearest few of those categories go first, so a split plan is possible.
+    """
+    by_distance = sorted(places, key=lambda p: (haversine_m(*mid, p.lat, p.lon), p.id))
+    reserved = [p for p in by_distance if reserve and p.category in reserve][:SPLIT_RESERVE_QUERY]
+    ordered = reserved + [p for p in by_distance if p not in reserved]
     chosen: list[Place] = []
     for p in ordered:
         if any(haversine_m(p.lat, p.lon, c.lat, c.lon) < DEDUPE_M for c in chosen):
@@ -93,7 +124,8 @@ def select_meetup_points(places: list[Place], mid: Point, limit: int, stats: dic
 
 
 def filter_meetups(
-    points: list[Place], times: TravelMatrix, duration_min: int, stats: dict
+    points: list[Place], times: TravelMatrix, duration_min: int, stats: dict,
+    reserve: list[str] | None = None,
 ) -> list[MeetupOption]:
     """times is [A, B] x points. Keep up to MAX_MEETUPS_KEPT with the smallest gap."""
     feasible = []
@@ -111,6 +143,11 @@ def filter_meetups(
             feasible.append(option)
     feasible.sort(key=lambda o: (o.gap, o.t_max, o.place.id))
     kept = feasible[:MAX_MEETUPS_KEPT]
+    if reserve:
+        extra = [o for o in feasible[MAX_MEETUPS_KEPT:] if o.place.category in reserve][:SPLIT_RESERVE_KEPT]
+        kept += extra
+        if extra:
+            stats["meetup_kept_for_split"] = len(extra)
     if len(feasible) > len(kept):
         stats["meetup_beyond_keep_limit"] = len(feasible) - len(kept)
     return kept
@@ -225,6 +262,38 @@ def select_destinations(
 
 
 WISH_WINDOW_MIN = 4.0
+SPLIT_MEETUPS_FOR_DESTINATIONS = 2
+SPLIT_DESTINATIONS_EACH = 2
+
+
+def split_destinations(places, kept, chosen, reserve, types, intent, arrive_at, stats) -> list[Place]:
+    """Destinations of the other person's type that fit the time left after a split meetup.
+
+    The main shortlist is sized for the typical meetup; a park gate further out needs a
+    closer cafe, or every split combination runs over the budget.
+    """
+    other_types = [t for t in types if t not in MEETUP_MATCH]
+    split = sorted((m for m in kept if m.place.category in reserve), key=lambda m: (m.gap, m.place.id))
+    have = {p.id for p in chosen}
+    slack = 0.0 if getattr(intent, "duration_strict", False) else ELAPSED_SLACK_MIN
+    added: list[Place] = []
+    for m in split[:SPLIT_MEETUPS_FOR_DESTINATIONS]:
+        left = intent.duration_min + slack - m.t_max
+        options = []
+        for p in places:
+            if p.category not in other_types or p.id in have or is_open(p.opening_hours, arrive_at) is False:
+                continue
+            est = haversine_m(m.place.lat, m.place.lon, p.lat, p.lon) * DETOUR_FACTOR / WALK_M_PER_MIN
+            if est <= left - 1:  # a minute of margin for the rough estimate
+                options.append((abs(est - 0.8 * left), p.id, p))
+        for _, pid, p in sorted(options)[:SPLIT_DESTINATIONS_EACH]:
+            have.add(pid)
+            added.append(p)
+    if added:
+        stats["destination_added_for_split"] = len(added)
+    return added
+
+
 
 
 def _wishes_met(wishes, destination: Place) -> int:
@@ -241,6 +310,7 @@ def generate_candidates(
     a: Point, b: Point, intent: WalkIntent, overpass, ors, depart_at: datetime,
     endpoint_options: list[str] | None = None,
     wishes=None,
+    people: dict[str, WalkIntent] | None = None,
 ) -> CandidateSet:
     """Step 1 of section 6.2. Raises ProviderError if Overpass or ORS fail."""
     stats: dict[str, int] = {}
@@ -248,12 +318,13 @@ def generate_candidates(
     radius = meetup_search_radius(a, b)
     fetched = overpass.meetup_candidates(*mid, radius)
     stats["meetup_fetched"] = len(fetched)
-    points = select_meetup_points(fetched, mid, MAX_MEETUPS_QUERIED, stats)
+    reserve = split_categories(people)
+    points = select_meetup_points(fetched, mid, MAX_MEETUPS_QUERIED, stats, reserve)
     stats["meetup_queried"] = len(points)
     kept = []
     if points:
         times = ors.matrix([a, b], [(p.lat, p.lon) for p in points])
-        kept = filter_meetups(points, times, intent.duration_min, stats)
+        kept = filter_meetups(points, times, intent.duration_min, stats, reserve)
     kept += equal_time_intersections(ors, a, b, intent.duration_min, stats)
     stats["meetup_kept"] = len(kept)
     if not kept:
@@ -269,6 +340,9 @@ def generate_candidates(
     arrive_at = depart_at + timedelta(minutes=intent.duration_min)
     destinations = select_destinations(fetched_dest, kept, target, arrive_at, MAX_DESTINATIONS, stats,
                                        types if len(types) > 1 and endpoint_options else None, wishes)
+    if reserve:
+        destinations += split_destinations(fetched_dest, kept, destinations, reserve, types, intent,
+                                           arrive_at, stats)
     stats["destination_kept"] = len(destinations)
     if not destinations:
         return _done(CandidateSet(kept, [], None, stats))
@@ -397,6 +471,34 @@ def fit_term(meetup: Place, destination: Place, intent: WalkIntent, joint: Joint
     return sum(checks) / len(checks) if checks else 0.5
 
 
+def served(meetup: Place, destination: Place, people: dict[str, WalkIntent] | None) -> dict[str, list[str]]:
+    """Which part of the walk meets whose stated preference: {"meetup": ["B: park"], ...}."""
+    out: dict[str, list[str]] = {"meetup": [], "destination": []}
+    for who, intent in (people or {}).items():
+        t = intent.endpoint_type
+        if t:
+            if destination.category == t:
+                out["destination"].append(f"{who}: {t.replace('_', ' ')}")
+            elif t in MEETUP_MATCH and meetup.category in MEETUP_MATCH[t]:
+                out["meetup"].append(f"{who}: {t.replace('_', ' ')}")
+        for vibe in intent.vibes:
+            test = VIBE_TESTS.get(vibe)
+            if test and test(meetup):
+                out["meetup"].append(f"{who}: {vibe}")
+            elif test and test(destination):
+                out["destination"].append(f"{who}: {vibe}")
+    return out
+
+
+def _for_text(items: list[str]) -> str:
+    """["B: park", "B: green"] -> "for B (park, green)"; both people listed in order."""
+    by_person: dict[str, list[str]] = {}
+    for item in items:
+        who, what = item.split(": ", 1)
+        by_person.setdefault(who, []).append(what)
+    return "; ".join(f"for {who} ({', '.join(whats)})" for who, whats in sorted(by_person.items()))
+
+
 def detour_term(a: Point, b: Point, option: MeetupOption) -> float:
     """How far walking to m is beyond walking straight towards each other; 0-1."""
     straight = haversine_m(*a, *b) * DETOUR_FACTOR
@@ -467,18 +569,23 @@ CATEGORY_LABELS = {"ice_cream": "ice cream shop", "park_gate": "park gate", "sub
                    "intersection": "street corner"}
 
 
-def rationale(option: ScoredOption, gap: float, t_a: float, t_b: float, t_shared: float) -> str:
+def rationale(option: ScoredOption, gap: float, t_a: float, t_b: float, t_shared: float,
+              people: dict[str, WalkIntent] | None = None) -> str:
     m, d = option.meetup.place, option.destination
     hours = "opening hours unknown" if option.terms["uncertainty"] else "open when you arrive (per OSM)"
+    who = served(m, d, people)
+    meet_for = f", {_for_text(who['meetup'])}" if who["meetup"] else ""
+    dest_for = f"{_for_text(who['destination'])}, " if who["destination"] else ""
     return (
-        f"Meet at {m.name}: A walks about {t_a:.0f} min, B about {t_b:.0f} min "
-        f"(gap {gap:.1f} min). Then {t_shared:.0f} min together to {d.name} "
-        f"({CATEGORY_LABELS.get(d.category, d.category)}, {hours})."
+        f"Meet at {m.name} ({CATEGORY_LABELS.get(m.category, m.category)}{meet_for}): A walks about "
+        f"{t_a:.0f} min, B about {t_b:.0f} min (gap {gap:.1f} min). Then {t_shared:.0f} min together to "
+        f"{d.name} ({CATEGORY_LABELS.get(d.category, d.category)}, {dest_for}{hours})."
     )
 
 
 def top_candidates(
-    a: Point, b: Point, ranked: list[ScoredOption], intent: WalkIntent, ors, stats: dict
+    a: Point, b: Point, ranked: list[ScoredOption], intent: WalkIntent, ors, stats: dict,
+    people: dict[str, WalkIntent] | None = None,
 ) -> list[MeetupCandidate]:
     """Fetch real directions for the best options and re-check them with those legs.
 
@@ -509,7 +616,7 @@ def top_candidates(
                 total_elapsed_min=round(elapsed, 2),
                 score=option.score,
                 rationale=rationale(option, gap, a_leg.duration_min, b_leg.duration_min,
-                                    shared_leg.duration_min),
+                                    shared_leg.duration_min, people),
             )
         )
     return result
@@ -611,17 +718,18 @@ def plan_walk(
     a: Point, b: Point, intent: WalkIntent, overpass, ors, depart_at: datetime,
     weights: Weights | None = None, debug: bool = False,
     joint: JointPreference | None = None, endpoint_options: list[str] | None = None, wishes=None,
+    people: dict[str, WalkIntent] | None = None,
 ) -> PlanResult:
     """Full deterministic planning. Never returns a route the routing engine did not produce."""
     weights = weights or Weights.from_settings()
-    result = _plan(a, b, intent, overpass, ors, depart_at, weights, joint, endpoint_options, wishes)
+    result = _plan(a, b, intent, overpass, ors, depart_at, weights, joint, endpoint_options, wishes, people)
     if result.status == "no_feasible_plan":
         # Replanning is cheap only on the local graph; ORS would spend quota, mocks lack data.
         replan = None
         if getattr(ors, "name", "") == "local":
             def replan(i):
                 return _plan(a, b, i, overpass, ors, depart_at, weights, joint, endpoint_options,
-                             wishes).status == "proposed"
+                             wishes, people).status == "proposed"
         result.failure = explain_failure(result.stats, intent, replan)
         log.info("planner: no feasible plan, binding %s; suggestion %s",
                  result.failure.constraint, result.failure.suggestion_type)
@@ -631,11 +739,11 @@ def plan_walk(
 
 
 def _plan(a, b, intent, overpass, ors, depart_at, weights, joint=None, endpoint_options=None,
-          wishes=None) -> PlanResult:
+          wishes=None, people=None) -> PlanResult:
     try:
-        cs = generate_candidates(a, b, intent, overpass, ors, depart_at, endpoint_options, wishes)
+        cs = generate_candidates(a, b, intent, overpass, ors, depart_at, endpoint_options, wishes, people)
         ranked = score_options(a, b, cs, intent, weights, depart_at, joint, wishes)
-        top = top_candidates(a, b, ranked, intent, ors, cs.stats) if ranked else []
+        top = top_candidates(a, b, ranked, intent, ors, cs.stats, people) if ranked else []
     except ProviderError as e:
         status = "places_unavailable" if e.code == "places_unavailable" else "routing_unavailable"
         log.warning("planner failed: %s (%s)", status, e.message)
@@ -667,4 +775,5 @@ def plan_for_two(
     intent = combined_intent(a_intent, b_intent)
     options = [t for t in (a_intent.endpoint_type, b_intent.endpoint_type) if t]
     return plan_walk(a, b, intent, places, routing, depart_at, debug=debug, joint=joint,
-                     endpoint_options=options if len(set(options)) > 1 else None, wishes=wishes)
+                     endpoint_options=options if len(set(options)) > 1 else None, wishes=wishes,
+                     people={"A": a_intent, "B": b_intent})

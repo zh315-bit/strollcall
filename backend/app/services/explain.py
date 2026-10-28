@@ -31,7 +31,8 @@ planner has already checked: every plan is walkable, within the time budget and 
 
 Rules:
 - Rank only the candidates given, by id. Return each id exactly once.
-- For each, give one short reason (max 30 words) that refers to A's and B's preferences.
+- For each, give one short reason (max 30 words) that refers to A's and B's preferences and says
+  who each part is for, using the "suits" facts (e.g. "meet at the park for B, end at the cafe for A").
 - Use only the facts given. Do not invent places, opening hours, safety, crowds or noise.
 - Wishes marked "unknown" are not confirmed: never say they are met.
 - Any number you write must appear in that candidate's facts.
@@ -45,7 +46,8 @@ class Ranking(BaseModel):
     note: str | None = None
 
 
-def _facts(result: PlanResult, wishes=None) -> tuple[dict[str, MeetupCandidate], list[dict]]:
+def _facts(result: PlanResult, wishes=None, people=None) -> tuple[dict[str, MeetupCandidate], list[dict]]:
+    from app.services.planner import served
     from app.services.wishes import REQUIREMENTS, requirement_status
 
     labelled, facts = {}, []
@@ -53,12 +55,14 @@ def _facts(result: PlanResult, wishes=None) -> tuple[dict[str, MeetupCandidate],
         label = f"c{i}"
         labelled[label] = c
         meet, dest = result.places[c.meeting_place_id], result.places[c.endpoint_place_id]
+        who = served(meet, dest, people)
         facts.append({
             "id": label,
-            "meet_at": {"name": meet.name, "kind": meet.category},
+            "meet_at": {"name": meet.name, "kind": meet.category, "suits": who["meetup"]},
             "destination": {
                 "name": dest.name,
                 "kind": dest.category,
+                "suits": who["destination"],
                 "opening_hours": "listed in OpenStreetMap" if dest.opening_hours else "unknown",
             },
             "a_walk_min": round(c.a_leg.duration_min),
@@ -117,7 +121,7 @@ def rank_candidates(
     if result.status != "proposed" or len(result.candidates) < 2:
         return deterministic(result, "nothing_to_rank")
 
-    labelled, facts = _facts(result, wishes)
+    labelled, facts = _facts(result, wishes, {"A": a, "B": b})
     user = json.dumps({
         "A": a.model_dump(), "B": b.model_dump(), "joint_preference": joint.model_dump(),
         "candidates": facts,
