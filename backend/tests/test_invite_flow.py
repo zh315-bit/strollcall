@@ -68,11 +68,11 @@ def test_full_flow_create_accept_poll_confirm(town):
     assert acc.status_code == 200
     b_key = acc.json()["b_key"]
 
-    a_view = client.get(f"/api/invites/{token}", params={"key": a_key}).json()  # A polls
+    a_view = client.get(f"/api/invites/{token}", headers={"X-Invite-Key": a_key}).json()  # A polls
     assert a_view["status"] == "proposed", a_view
     assert a_view["candidates"] and "node/9" in a_view["places"]
     assert {"routing", "places", "negotiation", "ranking"} <= set(a_view["sources"])
-    b_view = client.get(f"/api/invites/{token}", params={"key": b_key}).json()
+    b_view = client.get(f"/api/invites/{token}", headers={"X-Invite-Key": b_key}).json()
     c_a, c_b = a_view["candidates"][0], b_view["candidates"][0]
     # Each sees their own leg in full and the other's leg trimmed at the start.
     assert len(c_a["a_leg"]["geometry"]) > len(c_b["a_leg"]["geometry"])
@@ -105,7 +105,7 @@ def test_no_feasible_plan_is_reported(town):
     body = client.post("/api/invites", json={"a_intent": {"duration_min": 15, "endpoint_type": "bookstore"},
                                              "a_origin": town["a"]}).json()
     client.post(f"/api/invites/{body['token']}/accept", json={"b_origin": town["b"]})
-    view = client.get(f"/api/invites/{body['token']}", params={"key": body["a_key"]}).json()
+    view = client.get(f"/api/invites/{body['token']}", headers={"X-Invite-Key": body["a_key"]}).json()
     assert view["status"] == "error" and view["error"] == "no_feasible_plan"
     assert view["failure"]["suggestion"]
 
@@ -119,3 +119,9 @@ def test_voice_transcribe_mock_and_rejects_non_wav():
     assert ok.status_code == 200 and ok.json()["source"] == "mock" and ok.json()["transcript"]
     bad = client.post("/api/voice/transcribe", files={"audio": ("a.webm", b"xxxx", "audio/webm")})
     assert bad.status_code == 400
+
+
+def test_key_in_the_url_is_ignored(town):
+    body = create(town)
+    view = client.get(f"/api/invites/{body['token']}", params={"key": body["a_key"]}).json()
+    assert view["role"] == "guest"  # keys only count in the X-Invite-Key header (URLs are logged)

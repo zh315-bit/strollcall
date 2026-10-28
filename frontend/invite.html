@@ -29,7 +29,7 @@ let map = null, layers = [], pollTimer = null, chosen = 0, bOrigin = null, bMark
 
 async function load() {
   try {
-    const v = await api(`/api/invites/${token}` + (key ? `?key=${encodeURIComponent(key)}` : ""));
+    const v = await api(`/api/invites/${token}`, key ? { headers: { "X-Invite-Key": key } } : {});
     render(v);
     clearTimeout(pollTimer);
     if (v.status === "planning") {

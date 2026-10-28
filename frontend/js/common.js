@@ -7,8 +7,8 @@ const SOURCE_LABELS = {
 
 async function api(path, options = {}) {
   const resp = await fetch(path, {
-    headers: { "Content-Type": "application/json" },
     ...options,
+    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
     body: options.body && typeof options.body !== "string" && !(options.body instanceof FormData)
       ? JSON.stringify(options.body) : options.body,
   });

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Response
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from app.models.schemas import WalkIntent
@@ -59,8 +59,9 @@ def create_invite(req: CreateInviteRequest, background: BackgroundTasks) -> Crea
 
 
 @router.get("/{token}")
-def get_invite(token: str, key: str | None = None) -> invites.InviteView:
-    v = invites.view(token, key)
+def get_invite(token: str, x_invite_key: str | None = Header(default=None)) -> invites.InviteView:
+    """The owner key travels in the X-Invite-Key header, never in the URL (URLs end up in access logs)."""
+    v = invites.view(token, x_invite_key)
     if v is None:
         raise HTTPException(status_code=404, detail="invite not found")
     return v
