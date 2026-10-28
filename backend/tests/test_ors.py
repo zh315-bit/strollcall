@@ -1,10 +1,12 @@
+import json
+
 import httpx
 import pytest
 from pydantic import SecretStr
 
 from app.core.config import get_settings
 from app.core.errors import ProviderError
-from app.providers.ors import ORSProvider
+from app.providers.ors import ORSProvider, RateLimiter
 
 GEOJSON = {
     "features": [{
@@ -12,6 +14,12 @@ GEOJSON = {
         "properties": {"summary": {"distance": 712.4, "duration": 513.0}},
     }]
 }
+MATRIX = {"durations": [[600.0, None], [300.0, 720.0]], "distances": [[800.0, None], [400.0, 960.0]]}
+
+
+@pytest.fixture(autouse=True)
+def no_sleep(monkeypatch):
+    monkeypatch.setattr("app.providers.ors.time.sleep", lambda s: None)
 
 
 def provider_with(handler):
@@ -35,12 +43,59 @@ def test_leg_parsed_and_cached():
     assert calls[0].headers["Authorization"] == "test-key"
 
 
-@pytest.mark.parametrize("status,code", [(404, "no_route"), (429, "routing_unavailable"), (500, "routing_unavailable")])
-def test_errors_are_explicit(status, code):
-    ors, _ = provider_with(lambda r: httpx.Response(status, json={"error": {"code": 2099}}))
+def test_matrix_minutes_meters_and_unreachable():
+    ors, calls = provider_with(lambda r: httpx.Response(200, json=MATRIX))
+    a, b, m1, m2 = (40.73, -74.0), (40.735, -73.99), (40.732, -73.995), (40.74, -73.98)
+    result = ors.matrix([a, b], [m1, m2])
+    assert result.durations_min == [[10.0, None], [5.0, 12.0]]
+    assert result.distances_m == [[800.0, None], [400.0, 960.0]]
+    body = json.loads(calls[0].content)
+    assert body["locations"][0] == [-74.0, 40.73]  # [lon, lat]
+    assert body["sources"] == [0, 1] and body["destinations"] == [2, 3]
+    assert ors.matrix([b], [m1]).durations_min == [[5.0]]  # served from element cache
+    assert len(calls) == 1
+
+
+def test_matrix_rejects_oversized_request():
+    ors, _ = provider_with(lambda r: httpx.Response(200, json=MATRIX))
+    pts = [(40.7 + i * 0.001, -74.0) for i in range(60)]
+    with pytest.raises(ValueError):
+        ors.matrix(pts, pts)
+
+
+def test_transient_error_retried_once():
+    responses = iter([httpx.Response(503), httpx.Response(200, json=GEOJSON)])
+    ors, calls = provider_with(lambda r: next(responses))
+    assert ors.walk((40.73, -73.99), (40.74, -73.98)).duration_min == 8.55
+    assert len(calls) == 2
+
+
+@pytest.mark.parametrize("status,code,attempts", [
+    (404, "no_route", 1), (429, "routing_unavailable", 2), (500, "routing_unavailable", 2),
+    (403, "routing_unavailable", 1),
+])
+def test_errors_are_explicit(status, code, attempts):
+    ors, calls = provider_with(lambda r: httpx.Response(status, json={"error": {"code": 2099}}))
     with pytest.raises(ProviderError) as e:
         ors.walk((40.73, -73.99), (40.74, -73.98))
     assert e.value.code == code
+    assert len(calls) == attempts
+
+
+def test_rate_limiter_waits_when_window_is_full():
+    now = [0.0]
+    waits = []
+
+    def sleep(s):
+        waits.append(s)
+        now[0] += s
+
+    limiter = RateLimiter(3, 60, clock=lambda: now[0], sleep=sleep)
+    for _ in range(3):
+        limiter.acquire()
+        now[0] += 1
+    limiter.acquire()  # 4th call within the minute
+    assert waits == [57.0]
 
 
 def test_missing_key():

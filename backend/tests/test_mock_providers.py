@@ -93,3 +93,15 @@ def test_mock_ors_serves_captured_smoke_route():
 
     leg = get_ors().walk((40.73089, -73.99759), (40.73576, -73.99065))
     assert leg.duration_min > 0 and len(leg.geometry) > 2
+
+
+def test_mock_ors_matrix_replays_captured_elements(fixtures_dir):
+    (fixtures_dir / "ors_matrix_elements.json").write_text(json.dumps({
+        "40.7310,-73.9970|40.7350,-73.9910": [8.4, 700.0],
+        "40.7310,-73.9970|40.7400,-73.9800": None,
+    }))
+    mock = MockORS(fixtures_dir)
+    m = mock.matrix([(40.731, -73.997)], [(40.735, -73.991), (40.74, -73.98)])
+    assert m.durations_min == [[8.4, None]] and m.distances_m == [[700.0, None]]
+    with pytest.raises(ProviderError):
+        mock.matrix([(40.70, -74.0)], [(40.735, -73.991)])

@@ -62,3 +62,9 @@ class Place(BaseModel):
     category: str  # park / cafe / bookstore / landmark
     opening_hours: str | None = None  # raw OSM opening_hours; None = unknown
     fetched_at: datetime | None = None  # when the OSM data was read; hours are "as of" this
+
+
+class TravelMatrix(BaseModel):
+    # [source][destination]; None when no walking route was found
+    durations_min: list[list[float | None]]
+    distances_m: list[list[float | None]]

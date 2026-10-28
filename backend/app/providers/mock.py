@@ -11,7 +11,7 @@ from pathlib import Path
 from app.core.config import FIXTURES_DIR
 from app.core.errors import ProviderError
 from app.core.geo import haversine_m
-from app.models.schemas import Place, RouteLeg
+from app.models.schemas import Place, RouteLeg, TravelMatrix
 from app.providers.meta import MetaError, check_wav
 from app.providers.ors import route_key
 
@@ -78,3 +78,19 @@ class MockORS:
             if route["key"] == key:
                 return RouteLeg.model_validate(route["leg"])
         raise ProviderError("routing_unavailable", "no captured route for this pair in mock mode")
+
+    def matrix(self, sources, destinations) -> TravelMatrix:
+        elements = _load(self.fixtures_dir, "ors_matrix_elements.json")
+        durations, distances = [], []
+        for s in sources:
+            durations.append([]), distances.append([])
+            for d in destinations:
+                key = route_key(s, d)
+                if key not in elements:
+                    raise ProviderError(
+                        "routing_unavailable", "no captured matrix entry for this pair in mock mode"
+                    )
+                value = elements[key]  # [minutes, meters] or null = ORS found no route
+                durations[-1].append(None if value is None else value[0])
+                distances[-1].append(None if value is None else value[1])
+        return TravelMatrix(durations_min=durations, distances_m=distances)
