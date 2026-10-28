@@ -44,5 +44,14 @@
         "reason": "Mock data: third choice."
       }
     ]
+  },
+  "wishes": {
+    "wishes": [
+      {
+        "requirement": "outdoor_seating",
+        "who": "A",
+        "quote": "sit outside"
+      }
+    ]
   }
 }

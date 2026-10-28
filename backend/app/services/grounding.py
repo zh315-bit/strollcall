@@ -26,7 +26,11 @@ FEATURES = {
     "viewpoint": r"views?|viewpoints?|scenic|skyline",
     "playground": r"playgrounds?",
     "fountain": r"fountains?",
-    "seating": r"benches?|outdoor seating|patio|terrace",
+    "seating": r"benches?|outdoor seating|seating outside|sit outside|outdoors?|patio|terrace",
+    "vegan": r"vegan|vegetarian|plant[- ]based",
+    "wifi": r"wi-?fi|internet|laptop",
+    "chain": r"chains?|independent|branded",
+    "access": r"step[- ]free|accessible|wheelchair",
     "trees": r"trees?|leafy",
 }
 # Things no data source here can confirm; only allowed as someone's stated preference.
@@ -35,7 +39,6 @@ UNVERIFIABLE = {
     "busy": r"busy|crowd(?:s|ed)?|lively|bustling|noisy|traffic",
     "safety": r"safe(?:ty|r)?|unsafe|well[- ]lit|lit",
     "shade": r"shad(?:e|y|ed)",
-    "access": r"step[- ]free|accessible|wheelchair",
 }
 ROUTE_CLAIMS = r"on the way|along the way|en route|passes|passing|stretch(?:es)?|through (?:a|the) park|detour via|stop at|a .{0,20} stop\b"
 PREFERENCE_CUES = r"(?:\b[AB]'s\b|\bfor [AB]\b|\b[AB] (?:wants|asked|prefers|likes)\b|\bwish|\bwant|\bprefer|\bpreference|\basked|\brequest|\bavoid)"
@@ -63,8 +66,16 @@ def place_evidence(places: list[Place]) -> set[str]:
         found |= features_in(p.name)
         if p.tags.get("tourism") == "viewpoint":
             found.add("viewpoint")
-        if p.tags.get("outdoor_seating") == "yes":
+        if p.tags.get("outdoor_seating") not in (None, "no"):
             found.add("seating")
+        if p.tags.get("diet:vegan") in ("yes", "only") or p.tags.get("diet:vegetarian") in ("yes", "only"):
+            found.add("vegan")
+        if p.tags.get("internet_access") not in (None, "no"):
+            found.add("wifi")
+        if p.tags.get("wheelchair") in ("yes", "designated"):
+            found.add("access")
+        if p.category in ("cafe", "bakery", "ice_cream", "bookstore"):
+            found.add("chain")  # chain status is known from the brand tag either way
         if p.opening_hours:
             found.add("hours")
     return found

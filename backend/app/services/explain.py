@@ -33,6 +33,7 @@ Rules:
 - Rank only the candidates given, by id. Return each id exactly once.
 - For each, give one short reason (max 30 words) that refers to A's and B's preferences.
 - Use only the facts given. Do not invent places, opening hours, safety, crowds or noise.
+- Wishes marked "unknown" are not confirmed: never say they are met.
 - Any number you write must appear in that candidate's facts.
 Return only JSON matching the schema."""
 
@@ -44,7 +45,9 @@ class Ranking(BaseModel):
     note: str | None = None
 
 
-def _facts(result: PlanResult) -> tuple[dict[str, MeetupCandidate], list[dict]]:
+def _facts(result: PlanResult, wishes=None) -> tuple[dict[str, MeetupCandidate], list[dict]]:
+    from app.services.wishes import REQUIREMENTS, requirement_status
+
     labelled, facts = {}, []
     for i, c in enumerate(result.candidates, start=1):
         label = f"c{i}"
@@ -64,6 +67,13 @@ def _facts(result: PlanResult) -> tuple[dict[str, MeetupCandidate], list[dict]]:
             "walk_together_min": round(c.shared_leg.duration_min),
             "total_min": round(c.total_elapsed_min),
         })
+        if wishes is not None and wishes.items:
+            status = {True: "yes", False: "no", None: "unknown (not in OpenStreetMap)"}
+            facts[-1]["wishes"] = [
+                {"who": w.who, "wish": REQUIREMENTS[w.requirement].description,
+                 "met": status[requirement_status(w, meet, dest)]}
+                for w in wishes.items
+            ]
     return labelled, facts
 
 
@@ -102,12 +112,12 @@ def deterministic(result: PlanResult, reason: str) -> Ranking:
 
 
 def rank_candidates(
-    result: PlanResult, a: WalkIntent, b: WalkIntent, joint: JointPreference
+    result: PlanResult, a: WalkIntent, b: WalkIntent, joint: JointPreference, wishes=None
 ) -> Ranking:
     if result.status != "proposed" or len(result.candidates) < 2:
         return deterministic(result, "nothing_to_rank")
 
-    labelled, facts = _facts(result)
+    labelled, facts = _facts(result, wishes)
     user = json.dumps({
         "A": a.model_dump(), "B": b.model_dump(), "joint_preference": joint.model_dump(),
         "candidates": facts,

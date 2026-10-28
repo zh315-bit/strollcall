@@ -193,8 +193,13 @@ def select_destinations(
     limit: int,
     stats: dict,
     types: list[str] | None = None,
+    wishes=None,
 ) -> list[Place]:
-    """Destinations whose estimated shared walk is closest to the time left."""
+    """Destinations whose estimated shared walk is closest to the time left.
+
+    With wishes, places that meet more of them come first among those within
+    WISH_WINDOW_MIN of the ideal shared-walk time.
+    """
     meetup_ids = {m.place.id for m in meetups}
     scored = []
     for p in places:
@@ -207,7 +212,8 @@ def select_destinations(
         straight = min(haversine_m(m.place.lat, m.place.lon, p.lat, p.lon) for m in meetups)
         est_min = straight * DETOUR_FACTOR / WALK_M_PER_MIN
         scored.append((abs(est_min - target_shared_min), p.id, p))
-    scored.sort(key=lambda s: (s[0], s[1]))
+    met = {p.id: _wishes_met(wishes, p) for _, _, p in scored} if wishes else {}
+    scored.sort(key=lambda s: (s[0] > WISH_WINDOW_MIN, -met.get(s[1], 0), s[0], s[1]))
     if len(scored) > limit:
         stats["destination_beyond_limit"] = len(scored) - limit
     if len(types or []) > 1:
@@ -218,9 +224,23 @@ def select_destinations(
     return [p for _, _, p in scored[:limit]]
 
 
+WISH_WINDOW_MIN = 4.0
+
+
+def _wishes_met(wishes, destination: Place) -> int:
+    from app.services.wishes import REQUIREMENTS
+
+    return sum(
+        REQUIREMENTS[w.requirement].target in ("destination", "either")
+        and REQUIREMENTS[w.requirement].check(destination) is True
+        for w in wishes.items
+    )
+
+
 def generate_candidates(
     a: Point, b: Point, intent: WalkIntent, overpass, ors, depart_at: datetime,
     endpoint_options: list[str] | None = None,
+    wishes=None,
 ) -> CandidateSet:
     """Step 1 of section 6.2. Raises ProviderError if Overpass or ORS fail."""
     stats: dict[str, int] = {}
@@ -248,7 +268,7 @@ def generate_candidates(
     stats["destination_fetched"] = len(fetched_dest)
     arrive_at = depart_at + timedelta(minutes=intent.duration_min)
     destinations = select_destinations(fetched_dest, kept, target, arrive_at, MAX_DESTINATIONS, stats,
-                                       types if len(types) > 1 and endpoint_options else None)
+                                       types if len(types) > 1 and endpoint_options else None, wishes)
     stats["destination_kept"] = len(destinations)
     if not destinations:
         return _done(CandidateSet(kept, [], None, stats))
@@ -338,20 +358,33 @@ def preference_test(phrase: str):
     return None
 
 
-def joint_fit(meetup: Place, destination: Place, joint: JointPreference) -> float | None:
-    """Both people's preferences: shared 0.5, A's own 0.25, B's own 0.25 (renormalised)."""
+def joint_fit(meetup: Place, destination: Place, joint: JointPreference | None, wishes=None) -> float | None:
+    """Both people's preferences: shared 0.5, A's own 0.25, B's own 0.25 (renormalised).
+
+    A person's own group includes their wishes (services/wishes.py): 1 met, 0 not met,
+    UNKNOWN_SCORE when the tag is missing.
+    """
+    from app.services.wishes import requirement_score
+
+    groups = {"shared": [], "a": [], "b": []}
+    if joint is not None:
+        for group, phrases in (("shared", joint.shared_vibes), ("a", joint.a_priorities), ("b", joint.b_priorities)):
+            groups[group] += [float(t(meetup, destination)) for t in map(preference_test, phrases) if t]
+    if wishes is not None:
+        for w in wishes.items:
+            groups[w.who.lower()].append(requirement_score(w, meetup, destination))
     total, weight = 0.0, 0.0
-    for group, phrases in (("shared", joint.shared_vibes), ("a", joint.a_priorities), ("b", joint.b_priorities)):
-        tests = [t for t in map(preference_test, phrases) if t]
-        if tests:
-            total += JOINT_WEIGHTS[group] * sum(t(meetup, destination) for t in tests) / len(tests)
+    for group, scores in groups.items():
+        if scores:
+            total += JOINT_WEIGHTS[group] * sum(scores) / len(scores)
             weight += JOINT_WEIGHTS[group]
     return total / weight if weight else None
 
 
-def fit_term(meetup: Place, destination: Place, intent: WalkIntent, joint: JointPreference | None = None) -> float:
-    if joint is not None:
-        value = joint_fit(meetup, destination, joint)
+def fit_term(meetup: Place, destination: Place, intent: WalkIntent, joint: JointPreference | None = None,
+             wishes=None) -> float:
+    if joint is not None or wishes is not None:
+        value = joint_fit(meetup, destination, joint, wishes)
         if value is not None:
             return value
     checks = []
@@ -374,7 +407,7 @@ def detour_term(a: Point, b: Point, option: MeetupOption) -> float:
 
 def score_options(
     a: Point, b: Point, cs: CandidateSet, intent: WalkIntent, weights: Weights, depart_at: datetime,
-    joint: JointPreference | None = None,
+    joint: JointPreference | None = None, wishes=None,
 ) -> list[ScoredOption]:
     """Every feasible (meetup, destination) pair, best first. Failures go to cs.stats."""
     if cs.shared is None:
@@ -399,7 +432,7 @@ def score_options(
                 _count(cs.stats, "open_status_unconfirmed")
                 continue
             terms = {
-                "fit": fit_term(m.place, dest, intent, joint),
+                "fit": fit_term(m.place, dest, intent, joint, wishes),
                 "gap": min(m.gap / MAX_GAP_MIN, 1.0),
                 "time_dev": min(abs(elapsed - intent.duration_min) / (0.4 * intent.duration_min), 1.0),
                 "detour": detour_term(a, b, m),
@@ -577,17 +610,18 @@ def explain_failure(stats, intent, replan=None) -> PlanFailure:
 def plan_walk(
     a: Point, b: Point, intent: WalkIntent, overpass, ors, depart_at: datetime,
     weights: Weights | None = None, debug: bool = False,
-    joint: JointPreference | None = None, endpoint_options: list[str] | None = None,
+    joint: JointPreference | None = None, endpoint_options: list[str] | None = None, wishes=None,
 ) -> PlanResult:
     """Full deterministic planning. Never returns a route the routing engine did not produce."""
     weights = weights or Weights.from_settings()
-    result = _plan(a, b, intent, overpass, ors, depart_at, weights, joint, endpoint_options)
+    result = _plan(a, b, intent, overpass, ors, depart_at, weights, joint, endpoint_options, wishes)
     if result.status == "no_feasible_plan":
         # Replanning is cheap only on the local graph; ORS would spend quota, mocks lack data.
         replan = None
         if getattr(ors, "name", "") == "local":
             def replan(i):
-                return _plan(a, b, i, overpass, ors, depart_at, weights, joint, endpoint_options).status == "proposed"
+                return _plan(a, b, i, overpass, ors, depart_at, weights, joint, endpoint_options,
+                             wishes).status == "proposed"
         result.failure = explain_failure(result.stats, intent, replan)
         log.info("planner: no feasible plan, binding %s; suggestion %s",
                  result.failure.constraint, result.failure.suggestion_type)
@@ -596,10 +630,11 @@ def plan_walk(
     return result
 
 
-def _plan(a, b, intent, overpass, ors, depart_at, weights, joint=None, endpoint_options=None) -> PlanResult:
+def _plan(a, b, intent, overpass, ors, depart_at, weights, joint=None, endpoint_options=None,
+          wishes=None) -> PlanResult:
     try:
-        cs = generate_candidates(a, b, intent, overpass, ors, depart_at, endpoint_options)
-        ranked = score_options(a, b, cs, intent, weights, depart_at, joint)
+        cs = generate_candidates(a, b, intent, overpass, ors, depart_at, endpoint_options, wishes)
+        ranked = score_options(a, b, cs, intent, weights, depart_at, joint, wishes)
         top = top_candidates(a, b, ranked, intent, ors, cs.stats) if ranked else []
     except ProviderError as e:
         status = "places_unavailable" if e.code == "places_unavailable" else "routing_unavailable"
@@ -623,12 +658,13 @@ def _plan(a, b, intent, overpass, ors, depart_at, weights, joint=None, endpoint_
 
 def plan_for_two(
     a: Point, b: Point, a_intent: WalkIntent, b_intent: WalkIntent, joint: JointPreference,
-    places, routing, depart_at: datetime, debug: bool = False,
+    places, routing, depart_at: datetime, debug: bool = False, wishes=None,
 ) -> PlanResult:
-    """Plan for A and B: hard limits from both (combined_intent), fit from the joint preference."""
+    """Plan for A and B: hard limits from both (combined_intent), fit from the joint preference
+    and from the wishes Muse Spark mapped to checkable requirements."""
     from app.services.intent import combined_intent
 
     intent = combined_intent(a_intent, b_intent)
     options = [t for t in (a_intent.endpoint_type, b_intent.endpoint_type) if t]
     return plan_walk(a, b, intent, places, routing, depart_at, debug=debug, joint=joint,
-                     endpoint_options=options if len(set(options)) > 1 else None)
+                     endpoint_options=options if len(set(options)) > 1 else None, wishes=wishes)

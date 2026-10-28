@@ -63,6 +63,8 @@ MEETUP_TYPES = ("park", "park_gate", "subway_entrance", "plaza", "landmark")
 KEPT_TAGS = (
     "leisure", "amenity", "shop", "tourism", "historic", "place", "highway", "railway",
     "barrier", "entrance", "wheelchair", "outdoor_seating", "garden:type", "natural",
+    # for wishes Muse Spark maps to checkable requirements (services/wishes.py)
+    "brand", "cuisine", "diet:vegan", "diet:vegetarian", "dog", "internet_access", "indoor_seating",
 )
 
 
