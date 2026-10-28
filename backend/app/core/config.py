@@ -24,11 +24,15 @@ class Settings(BaseSettings):
     # Muse Spark 1.3 reasons by default and reasoning tokens are billed as output.
     reasoning_effort: str = "low"
     meta_timeout_s: float = 45.0
+    # Cap on output tokens per Spark call, reasoning included. Truncation is logged.
+    meta_max_output_tokens: int = 4096  # 2048 truncated 3 of 10 live intent calls (2026-10-28)
 
     ors_api_key: SecretStr = SecretStr("")
     overpass_url: str = "https://overpass-api.de/api/interpreter"
-    # Overpass queues requests when busy, so allow more than the 25 s query timeout.
-    overpass_timeout_s: float = 60.0
+    overpass_mirror_url: str = "https://overpass.private.coffee/api/interpreter"
+    # User-facing requests fail fast; scripts/capture_fixtures.py raises this to 60 s.
+    overpass_timeout_s: float = 15.0
+    cache_dir: Path = ROOT_DIR / "cache"
 
     daily_budget_usd: float = 15.0
     use_mocks: bool = False

@@ -45,7 +45,7 @@ INTENT_SCHEMA = {
 class ParsedIntent(BaseModel):
     intent: WalkIntent
     inferred_fields: list[str] = []  # fields not stated by the user, shown differently in the UI
-    source: str  # meta / mock / default
+    source: str  # meta (live) / mock (USE_MOCKS or budget cap) / default (provider failed)
     note: str | None = None
 
 

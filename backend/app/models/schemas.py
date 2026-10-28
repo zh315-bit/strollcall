@@ -61,3 +61,4 @@ class Place(BaseModel):
     lon: float
     category: str  # park / cafe / bookstore / landmark
     opening_hours: str | None = None  # raw OSM opening_hours; None = unknown
+    fetched_at: datetime | None = None  # when the OSM data was read; hours are "as of" this

@@ -1,11 +1,23 @@
 """Points of interest from OpenStreetMap via the Overpass API.
 
-Overpass is a shared free service: queries are small, time-limited and cached, and a
-failure is reported as an error (no retry loop).
+Overpass is a shared free service, so results are cached on disk for 7 days and a
+user-facing request makes at most two attempts: the main server, then one mirror.
+
+Usage policies (wiki.openstreetmap.org/wiki/Overpass_API, checked 2026-10-28):
+- overpass-api.de (main, FOSSGIS): for regular use stay under ~100 queries and ~10 MB per
+  day across all users; send a User-Agent that identifies the app; no parallel scripts;
+  after a 429/406 pause 30 s before the next request (we switch to the mirror instead of
+  retrying the main server). The page notes the server is often overloaded.
+- overpass.private.coffee (mirror, formerly overpass.kumi.systems): "Feel free to use our
+  service in any project, there is no rate limit in place"; asks to be notified in
+  advance for large-scale use.
 """
 
+import hashlib
+import json
 import logging
-import time
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import httpx
 
@@ -18,10 +30,7 @@ log = logging.getLogger(__name__)
 
 CATEGORIES = ("park", "cafe", "bookstore", "landmark")
 MAX_RADIUS_M = 2000
-CACHE_TTL_S = 600
-CACHE_MAX = 256
-BUSY_STATUSES = (429, 502, 503, 504)
-BUSY_WAIT_S = 5
+CACHE_TTL = timedelta(days=7)
 USER_AGENT = "StrollCall/0.1 (Meta AI hackathon prototype)"
 
 FILTERS = {
@@ -51,7 +60,7 @@ def category_of(tags: dict) -> str:
     return "landmark"
 
 
-def to_place(element: dict) -> Place | None:
+def to_place(element: dict, fetched_at: datetime) -> Place | None:
     tags = element.get("tags") or {}
     name = tags.get("name")
     point = element if "lat" in element else element.get("center")
@@ -64,7 +73,41 @@ def to_place(element: dict) -> Place | None:
         lon=point["lon"],
         category=category_of(tags),
         opening_hours=tags.get("opening_hours"),
+        fetched_at=fetched_at,
     )
+
+
+class DiskCache:
+    """One JSON file per query under cache/overpass/, valid for CACHE_TTL."""
+
+    def __init__(self, root: Path):
+        self.root = root / "overpass"
+
+    def _path(self, key: tuple) -> Path:
+        digest = hashlib.sha1(json.dumps(key).encode()).hexdigest()[:20]
+        return self.root / f"{digest}.json"
+
+    def get(self, key: tuple) -> list[Place] | None:
+        path = self._path(key)
+        if not path.exists():
+            return None
+        try:
+            data = json.loads(path.read_text())
+            fetched_at = datetime.fromisoformat(data["fetched_at"])
+        except (ValueError, KeyError):
+            return None
+        if datetime.now(timezone.utc) - fetched_at > CACHE_TTL:
+            return None
+        return [Place.model_validate(p) for p in data["places"]]
+
+    def put(self, key: tuple, places: list[Place], fetched_at: datetime) -> None:
+        self.root.mkdir(parents=True, exist_ok=True)
+        data = {
+            "key": list(key),
+            "fetched_at": fetched_at.isoformat(),
+            "places": [p.model_dump(mode="json") for p in places],
+        }
+        self._path(key).write_text(json.dumps(data))
 
 
 class OverpassProvider:
@@ -75,7 +118,7 @@ class OverpassProvider:
         self.http = http or httpx.Client(
             timeout=self.settings.overpass_timeout_s, headers={"User-Agent": USER_AGENT}
         )
-        self._cache: dict[tuple, tuple[float, list[Place]]] = {}
+        self.cache = DiskCache(self.settings.cache_dir)
 
     def places_near(
         self, lat: float, lon: float, radius_m: float, categories: list[str] | None = None
@@ -84,36 +127,40 @@ class OverpassProvider:
         if unknown := set(cats) - set(CATEGORIES):
             raise ValueError(f"unknown categories: {sorted(unknown)}")
         radius = int(min(radius_m, MAX_RADIUS_M))
-        key = (coord_key(lat, lon, 3), radius, tuple(cats))
-        hit = self._cache.get(key)
-        if hit and time.monotonic() - hit[0] < CACHE_TTL_S:
-            return hit[1]
+        key = ("places", coord_key(lat, lon, 3), radius, cats)
+        cached = self.cache.get(key)
+        if cached is not None:
+            return cached
 
-        query = build_query(lat, lon, radius, cats)
-        resp = self._post(query)
-        if resp.status_code in BUSY_STATUSES:
-            # Overpass answers "at capacity" often and asks for a backoff: one retry, then give up.
-            log.warning("overpass busy (HTTP %d); retrying once in %ss", resp.status_code, BUSY_WAIT_S)
-            time.sleep(BUSY_WAIT_S)
-            resp = self._post(query)
-        if resp.status_code != 200:
-            raise ProviderError("places_unavailable", f"Overpass HTTP {resp.status_code}")
-
+        elements = self._fetch(build_query(lat, lon, radius, cats))
+        fetched_at = datetime.now(timezone.utc)
         places: dict[str, Place] = {}
-        for element in resp.json().get("elements", []):
-            place = to_place(element)
+        for element in elements:
+            place = to_place(element, fetched_at)
             if place:
                 places.setdefault(place.id, place)
         result = sorted(places.values(), key=lambda p: (p.category, p.name, p.id))
         log.info("overpass: %d places, radius %d m, categories %s", len(result), radius, cats)
-
-        if len(self._cache) >= CACHE_MAX:
-            self._cache.clear()
-        self._cache[key] = (time.monotonic(), result)
+        self.cache.put(key, result, fetched_at)
         return result
 
-    def _post(self, query: str) -> httpx.Response:
-        try:
-            return self.http.post(self.settings.overpass_url, data={"data": query})
-        except httpx.HTTPError as e:
-            raise ProviderError("places_unavailable", f"Overpass {type(e).__name__}") from e
+    def _fetch(self, query: str) -> list[dict]:
+        """Main server once, then the mirror once. No other retries."""
+        failures = []
+        for url in (self.settings.overpass_url, self.settings.overpass_mirror_url):
+            if not url:
+                continue
+            try:
+                resp = self.http.post(url, data={"data": query})
+            except httpx.HTTPError as e:
+                failures.append(type(e).__name__)
+                continue
+            if resp.status_code == 200:
+                try:
+                    return resp.json().get("elements", [])
+                except ValueError:
+                    failures.append("invalid JSON")
+                    continue
+            failures.append(f"HTTP {resp.status_code}")
+            log.warning("overpass server failed (%s); trying the next one", failures[-1])
+        raise ProviderError("places_unavailable", "Overpass unavailable: " + ", ".join(failures))

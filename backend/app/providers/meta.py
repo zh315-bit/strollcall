@@ -25,7 +25,6 @@ from app.core.errors import ProviderError
 
 log = logging.getLogger(__name__)
 
-MAX_OUTPUT_TOKENS = 4096
 WAV_MIME_TYPES = {"audio/wav", "audio/x-wav", "audio/wave", "audio/vnd.wave"}
 MAX_AUDIO_SECONDS = 600
 
@@ -74,9 +73,10 @@ class MetaProvider:
 
     def structured_json(self, system: str, user: str, schema: dict, name: str = "result") -> dict:
         model = self.settings.model_id
+        max_tokens = self.settings.meta_max_output_tokens
         # Upper bound: ~3 chars per input token, and the full output allowance.
         est_input = (len(system) + len(user) + len(json.dumps(schema))) // 3 + 50
-        estimate = text_cost(est_input, MAX_OUTPUT_TOKENS)
+        estimate = text_cost(est_input, max_tokens)
 
         last_error: MetaError | None = None
         for attempt in range(2):
@@ -93,7 +93,7 @@ class MetaProvider:
                         "json_schema": {"name": name, "schema": schema},
                     },
                     reasoning_effort=self.settings.reasoning_effort,
-                    max_completion_tokens=MAX_OUTPUT_TOKENS,
+                    max_completion_tokens=max_tokens,
                 )
             except TRANSIENT_ERRORS as e:
                 last_error = MetaError(f"{type(e).__name__} from Muse Spark")
@@ -103,7 +103,13 @@ class MetaProvider:
                 raise MetaError(f"Muse Spark request rejected: {type(e).__name__}") from e
 
             self._record_text(resp, model, name)
-            content = resp.choices[0].message.content or ""
+            choice = resp.choices[0]
+            if getattr(choice, "finish_reason", None) == "length":
+                # Output (reasoning included) hit max_completion_tokens; the JSON is cut off.
+                last_error = MetaInvalidJSON(f"Muse Spark output truncated at {max_tokens} tokens")
+                log.warning("Muse Spark attempt %d truncated at %d tokens", attempt + 1, max_tokens)
+                continue
+            content = choice.message.content or ""
             try:
                 data = json.loads(content)
                 if not isinstance(data, dict):
@@ -120,13 +126,14 @@ class MetaProvider:
         usage = resp.usage
         if usage is None:
             # No usage reported: record the worst case rather than nothing.
-            self.guard.record("text", model, text_cost(0, MAX_OUTPUT_TOKENS), f"{name} (no usage)")
+            self.guard.record("text", model, text_cost(0, self.settings.meta_max_output_tokens), f"{name} (no usage)")
             return
         details = getattr(usage, "prompt_tokens_details", None)
         cached = (getattr(details, "cached_tokens", 0) or 0) if details else 0
         cost = text_cost(usage.prompt_tokens, usage.completion_tokens, cached)
         self.guard.record(
-            "text", model, cost, f"{name} in={usage.prompt_tokens} out={usage.completion_tokens}"
+            "text", model, cost, f"{name} in={usage.prompt_tokens} out={usage.completion_tokens} "
+            f"finish={getattr(resp.choices[0], 'finish_reason', None)}"
         )
 
     def generate_image(self, prompt: str) -> bytes:

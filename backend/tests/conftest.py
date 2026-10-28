@@ -12,6 +12,7 @@ def offline_settings(monkeypatch, tmp_path):
     monkeypatch.setenv("MODEL_API_KEY", "")
     monkeypatch.setenv("ORS_API_KEY", "")
     monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
+    monkeypatch.setenv("CACHE_DIR", str(tmp_path / "cache"))
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()

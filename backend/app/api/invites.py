@@ -23,6 +23,9 @@ class CreateInviteResponse(BaseModel):
     invite_path: str
     expires_at: datetime
     invite: Invite
+    # Where invite_text came from: "meta" (live), "mock" or "default" (template).
+    # The frontend labels anything but "meta" as demo data.
+    source: str
 
 
 def template_invite_text(intent: WalkIntent) -> str:
@@ -48,4 +51,5 @@ def create_invite(req: CreateInviteRequest) -> CreateInviteResponse:
         invite_path=f"/i/{invite.token}",
         expires_at=invite.expires_at,
         invite=invite,
+        source="default",
     )

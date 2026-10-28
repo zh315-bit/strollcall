@@ -33,6 +33,7 @@ def test_create_invite_stores_token_with_expiry():
     body = resp.json()
     token = body["token"]
     assert len(token) >= 20 and body["invite_path"] == f"/i/{token}"
+    assert body["source"] == "default"  # template text, not a Meta result
     stored = load_invite(token)
     assert stored.status == "pending"
     hours = (stored.expires_at - datetime.now(timezone.utc)).total_seconds() / 3600
@@ -42,3 +43,27 @@ def test_create_invite_stores_token_with_expiry():
 
 def test_create_invite_validates_intent():
     assert client.post("/api/invites", json={"a_intent": {"duration_min": 90}}).status_code == 422
+
+
+def test_parse_reports_default_when_provider_is_down(monkeypatch):
+    from app.core.errors import ProviderError
+
+    def down():
+        raise ProviderError("model_unavailable", "down")
+
+    monkeypatch.setattr("app.providers.get_meta", down)
+    body = client.post("/api/intents/parse", json={"text": "25 minutes"}).json()
+    assert body["source"] == "default" and body["note"] == "model_unavailable"
+
+
+def test_parse_reports_mock_when_budget_is_exhausted(monkeypatch):
+    from app.core.budget import BudgetExceeded
+
+    class Broke:
+        name = "meta"
+
+        def structured_json(self, *a, **k):
+            raise BudgetExceeded("cap reached")
+
+    monkeypatch.setattr("app.providers.get_meta", lambda: Broke())
+    assert client.post("/api/intents/parse", json={"text": "25 minutes"}).json()["source"] == "mock"

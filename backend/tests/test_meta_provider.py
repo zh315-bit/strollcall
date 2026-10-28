@@ -9,15 +9,18 @@ from app.providers.meta import MetaError, MetaInvalidJSON, MetaProvider, check_w
 
 
 class FakeCompletions:
-    def __init__(self, contents):
+    def __init__(self, contents, finish_reasons=None):
         self.contents = list(contents)
+        self.finish_reasons = list(finish_reasons or [])
         self.calls = 0
 
     def create(self, **kwargs):
         self.calls += 1
         usage = SimpleNamespace(prompt_tokens=100, completion_tokens=50, prompt_tokens_details=None)
         message = SimpleNamespace(content=self.contents.pop(0))
-        return SimpleNamespace(choices=[SimpleNamespace(message=message)], usage=usage)
+        finish = self.finish_reasons.pop(0) if self.finish_reasons else "stop"
+        choice = SimpleNamespace(message=message, finish_reason=finish)
+        return SimpleNamespace(choices=[choice], usage=usage)
 
 
 def make_provider(contents, cap=15.0):
@@ -75,3 +78,10 @@ def test_check_wav():
         check_wav(wav_bytes(channels=2), "audio/wav")
     with pytest.raises(MetaError):
         check_wav(b"RIFFjunk", "audio/wav")
+
+
+def test_truncated_output_is_retried_once():
+    meta, completions, _ = make_provider(['{"a": ', '{"a": 1}'])
+    completions.finish_reasons = ["length", "stop"]
+    assert meta.structured_json("sys", "user", {"type": "object"}) == {"a": 1}
+    assert completions.calls == 2

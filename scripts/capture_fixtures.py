@@ -11,6 +11,7 @@ import time
 
 from _common import ROOT, load_origins, point
 
+from app.core.config import get_settings
 from app.core.errors import ProviderError
 from app.providers.ors import ORSProvider, route_key
 from app.providers.overpass import OverpassProvider
@@ -32,7 +33,8 @@ def with_backoff(fn, attempts=3, first_wait_s=10):
 
 
 def capture_places(origins: dict) -> None:
-    overpass = OverpassProvider()
+    # Scripts may wait for a busy Overpass queue; the app itself gives up after 15 s.
+    overpass = OverpassProvider(settings=get_settings().model_copy(update={"overpass_timeout_s": 60.0}))
     centers = [point(origins["smoke"]["center"])]
     for pair in origins["pairs"]:
         (la, oa), (lb, ob) = point(pair["a"]), point(pair["b"])
@@ -41,7 +43,7 @@ def capture_places(origins: dict) -> None:
     for i, (lat, lon) in enumerate(centers):
         print(f"overpass area {i + 1}/{len(centers)}")
         for p in with_backoff(lambda: overpass.places_near(lat, lon, PLACES_RADIUS_M)):
-            places[p.id] = p.model_dump()
+            places[p.id] = p.model_dump(mode="json")
         time.sleep(2)
     out = sorted(places.values(), key=lambda p: p["id"])
     (FIXTURES / "sample_places.json").write_text(json.dumps(out, indent=1) + "\n")
