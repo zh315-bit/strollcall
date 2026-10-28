@@ -25,6 +25,7 @@ from _common import ROOT
 from app.providers.overpass import DESTINATION_TYPES, KEPT_TAGS, destination_type, meetup_type
 
 WALK_M_PER_MIN = 80.0
+STREET_NAME_RADIUS_M = 20.0  # a walk node takes the names of drive streets this close
 GATE_TO_PARK_M = 15.0
 # (south, west, north, east): Manhattan, northern Brooklyn (to Bed-Stuy/Bushwick) and Long Island City.
 DEFAULT_BBOX = (40.675, -74.025, 40.882, -73.905)
@@ -86,15 +87,75 @@ def build_graph(bbox, out_path) -> None:
     geom_lon = np.array([p[0] for p in flat], dtype=np.float32)
     geom_lat = np.array([p[1] for p in flat], dtype=np.float32)
 
+    osmid = np.array(node_ids, dtype=np.int64)
+    degree = np.diff(indptr)
+    labels = intersection_labels(bbox, lat, lon, degree)
+    label_table = sorted(set(labels.values()))
+    label_index = {n: k for k, n in enumerate(label_table)}
+    node_label = np.full(len(node_ids), -1, dtype=np.int32)
+    for i, label in labels.items():
+        node_label[i] = label_index[label]
+
     np.savez_compressed(
         out_path,
-        lat=lat, lon=lon, indptr=indptr, indices=cols, minutes=minutes,
+        lat=lat, lon=lon, osmid=osmid, indptr=indptr, indices=cols, minutes=minutes,
+        node_label=node_label, labels=np.array("\n".join(label_table)),
         geom_ptr=geom_ptr, geom_lat=geom_lat, geom_lon=geom_lon,
         bbox=np.array(bbox), built_at=np.array(datetime.now(timezone.utc).isoformat()),
         walk_m_per_min=np.array(WALK_M_PER_MIN),
     )
     print(f"wrote {out_path.relative_to(ROOT)}: {len(node_ids)} nodes, {len(keys)} edges, "
           f"{len(flat)} geometry points, {out_path.stat().st_size / 1e6:.1f} MB")
+
+
+ABBREVIATIONS = [
+    # Only numbered streets: "East 86th Street" -> "E 86th St", but "East End Avenue" stays.
+    (r"^East (?=\d)", "E "), (r"^West (?=\d)", "W "), (r"^North (?=\d)", "N "), (r"^South (?=\d)", "S "),
+    (r" Street$", " St"), (r" Avenue$", " Ave"), (r" Boulevard$", " Blvd"), (r" Place$", " Pl"),
+    (r" Road$", " Rd"), (r" Drive$", " Dr"), (r" Parkway$", " Pkwy"), (r" Lane$", " Ln"),
+    (r" Square$", " Sq"), (r" Terrace$", " Ter"),
+]
+
+
+def short_street(name: str) -> str:
+    import re
+
+    for pattern, repl in ABBREVIATIONS:
+        name = re.sub(pattern, repl, name)
+    return name
+
+
+def intersection_labels(bbox, lat, lon, degree) -> dict[int, str]:
+    """'E 86th St & York Ave' for walk nodes (degree >= 3) near two or more named streets.
+
+    NYC sidewalks are mapped as separate unnamed footways, so names come from the drive
+    network: every named street within STREET_NAME_RADIUS_M of the node.
+    """
+    import geopandas as gpd
+    from shapely import STRtree, points
+
+    south, west, north, east = bbox
+    t = time.monotonic()
+    Gd = ox.graph_from_bbox((west, south, east, north), network_type="drive", simplify=True)
+    edges = ox.graph_to_gdfs(Gd, nodes=False)
+    edges = edges[edges["name"].notna()]
+    utm = edges.estimate_utm_crs()
+    edges = edges.to_crs(utm)
+    tree = STRtree(edges.geometry.values)
+    names = edges["name"].values
+    print(f"downloaded drive network for street names: {len(edges)} named edges ({time.monotonic() - t:.0f} s)")
+
+    idx = np.nonzero(degree >= 3)[0]
+    pts = gpd.GeoSeries(points(lon[idx], lat[idx]), crs="EPSG:4326").to_crs(utm).values
+    node_pos, edge_pos = tree.query(pts, predicate="dwithin", distance=STREET_NAME_RADIUS_M)
+    found: dict[int, set] = {}
+    for p, e in zip(node_pos, edge_pos):
+        n = names[e]
+        for name in (n if isinstance(n, list) else [n]):
+            found.setdefault(int(idx[p]), set()).add(short_street(str(name)))
+    labels = {i: " & ".join(sorted(s)[:2]) for i, s in found.items() if len(s) >= 2}
+    print(f"named {len(labels)} of {len(idx)} intersection nodes")
+    return labels
 
 
 def _tags(row) -> dict:

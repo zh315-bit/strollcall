@@ -26,6 +26,7 @@ class DevPlanRequest(BaseModel):
     b: LatLon
     intent: WalkIntent
     depart_at: datetime | None = None  # default: now in New York
+    debug: bool = False  # include the equal-time contour (local routing only)
 
 
 class DevPlanResponse(PlanResult):
@@ -49,6 +50,7 @@ def dev_plan(req: DevPlanRequest) -> DevPlanResponse:
         places,
         routing,
         req.depart_at or datetime.now(NYC),
+        debug=req.debug,
     )
     source = "mock" if settings.use_mocks else f"live:{routing.name}+{places.name}"
     return DevPlanResponse(**result.model_dump(), source=source)

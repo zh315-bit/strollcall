@@ -46,6 +46,10 @@ class WalkGraph:
         self.indptr, self.indices, self.minutes = data["indptr"], data["indices"], data["minutes"]
         self.geom_ptr, self.geom_lat, self.geom_lon = data["geom_ptr"], data["geom_lat"], data["geom_lon"]
         self.m_per_min = float(data["walk_m_per_min"])
+        self.osmid = data["osmid"] if "osmid" in data else np.arange(len(self.lat))
+        self.node_label = data["node_label"] if "node_label" in data else np.full(len(self.lat), -1)
+        self.labels = str(data["labels"]).split("\n") if "labels" in data else []
+        self.degree = np.diff(self.indptr)
         self.bbox = tuple(float(x) for x in data["bbox"])
         n = len(self.lat)
         self.csr = csr_matrix((self.minutes, self.indices, self.indptr), shape=(n, n))
@@ -63,6 +67,11 @@ class WalkGraph:
         if dist > SNAP_MAX_M:
             raise OutsideCoverage(f"point is {dist:.0f} m from the walking network")
         return int(node), float(dist)
+
+    def intersection_name(self, u: int) -> str | None:
+        """'E 86th St & York Ave' for an intersection node, from the build step; else None."""
+        k = int(self.node_label[u])
+        return self.labels[k] if k >= 0 else None
 
     def edge_geometry(self, u: int, v: int) -> list[Point]:
         row = slice(self.indptr[u], self.indptr[u + 1])
@@ -117,6 +126,21 @@ class LocalRouting:
         if len(self._trees) > DIJKSTRA_CACHE:
             self._trees.popitem(last=False)
         return dist, pred
+
+    def equal_time_nodes(self, a: Point, b: Point, max_minutes: float, max_gap: float):
+        """Nodes A and B both reach within max_minutes, arriving within max_gap of each other.
+
+        Returns (node indices, tA, tB) as arrays; times include the snap walk.
+        Raises OutsideCoverage when A or B is off the local map.
+        """
+        (na, sa), (nb, sb) = self.graph.snap(a), self.graph.snap(b)
+        speed = self.graph.m_per_min
+        ta = self._search(na)[0] + sa / speed
+        tb = self._search(nb)[0] + sb / speed
+        with np.errstate(invalid="ignore"):  # inf - inf for nodes neither reaches
+            mask = np.isfinite(ta) & np.isfinite(tb) & (np.abs(ta - tb) <= max_gap) & (np.maximum(ta, tb) <= max_minutes)
+        nodes = np.nonzero(mask)[0]
+        return nodes, ta[nodes], tb[nodes]
 
     def matrix(self, sources: list[Point], destinations: list[Point]) -> TravelMatrix:
         try:

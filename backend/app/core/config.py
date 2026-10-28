@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     planner_w_time_dev: float = 0.6
     planner_w_detour: float = 0.4
     planner_w_uncertainty: float = 0.3
+    planner_w_named_place: float = 0.1  # named POI beats an equally good street corner
 
     debug: bool = False  # enables /api/dev/*
     use_mocks: bool = False

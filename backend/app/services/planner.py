@@ -34,6 +34,12 @@ ELAPSED_SLACK_MIN = 3.0
 WALK_M_PER_MIN = 83.0  # ORS foot-walking is about 5 km/h
 DETOUR_FACTOR = 1.3  # walking distance / straight-line distance, rough
 DEDUPE_M = 40.0  # meetup points closer than this are the same spot
+# Equal-time street intersections (local routing only): arrival gap at most this, spread out.
+INTERSECTION_MAX_GAP_MIN = 2.0
+INTERSECTION_SPACING_M = 100.0
+MAX_INTERSECTIONS = 4
+CONTOUR_GAP_MIN = 0.5  # debug output: nodes where A and B arrive within 30 s of each other
+CONTOUR_MAX_POINTS = 400
 
 
 @dataclass
@@ -110,6 +116,55 @@ def filter_meetups(
     return kept
 
 
+def equal_time_intersections(routing, a: Point, b: Point, duration_min: int, stats: dict) -> list[MeetupOption]:
+    """Named street intersections A and B reach at about the same time, one per 100 m.
+
+    Only with the local graph (routing.equal_time_nodes); other engines return [].
+    """
+    if not hasattr(routing, "equal_time_nodes"):
+        return []
+    from app.providers.local_routing import OutsideCoverage
+
+    try:
+        nodes, ta, tb = routing.equal_time_nodes(a, b, duration_min * MEETUP_TIME_SHARE, INTERSECTION_MAX_GAP_MIN)
+    except OutsideCoverage:
+        return []
+    g = routing.graph
+    order = sorted(range(len(nodes)), key=lambda k: (abs(ta[k] - tb[k]), max(ta[k], tb[k]), int(g.osmid[nodes[k]])))
+    chosen: list[MeetupOption] = []
+    for k in order:
+        n = int(nodes[k])
+        name = g.intersection_name(n) if g.degree[n] >= 3 else None
+        if not name:
+            continue
+        lat, lon = float(g.lat[n]), float(g.lon[n])
+        if any(haversine_m(lat, lon, c.place.lat, c.place.lon) < INTERSECTION_SPACING_M for c in chosen):
+            continue
+        place = Place(id=f"node/{int(g.osmid[n])}", name=name, lat=lat, lon=lon, category="intersection")
+        t_a, t_b = round(float(ta[k]), 2), round(float(tb[k]), 2)
+        chosen.append(MeetupOption(place, t_a, t_b, t_a * g.m_per_min, t_b * g.m_per_min))
+        if len(chosen) == MAX_INTERSECTIONS:
+            break
+    stats["intersection_equal_time_nodes"] = len(nodes)
+    stats["intersection_kept"] = len(chosen)
+    return chosen
+
+
+def equal_time_contour(routing, a: Point, b: Point, duration_min: int) -> list[list[float]]:
+    """Debug: [lat, lon] of graph nodes where A and B arrive within 30 s of each other."""
+    if not hasattr(routing, "equal_time_nodes"):
+        return []
+    from app.providers.local_routing import OutsideCoverage
+
+    try:
+        nodes, _, _ = routing.equal_time_nodes(a, b, duration_min * MEETUP_TIME_SHARE, CONTOUR_GAP_MIN)
+    except OutsideCoverage:
+        return []
+    step = max(1, len(nodes) // CONTOUR_MAX_POINTS)
+    g = routing.graph
+    return [[round(float(g.lat[n]), 6), round(float(g.lon[n]), 6)] for n in nodes[::step]]
+
+
 def destination_types(intent: WalkIntent) -> list[str]:
     if intent.endpoint_type in DESTINATION_TYPES:
         return [intent.endpoint_type]
@@ -168,11 +223,11 @@ def generate_candidates(
     stats["meetup_fetched"] = len(fetched)
     points = select_meetup_points(fetched, mid, MAX_MEETUPS_QUERIED, stats)
     stats["meetup_queried"] = len(points)
-    if not points:
-        return _done(CandidateSet([], [], None, stats))
-
-    times = ors.matrix([a, b], [(p.lat, p.lon) for p in points])
-    kept = filter_meetups(points, times, intent.duration_min, stats)
+    kept = []
+    if points:
+        times = ors.matrix([a, b], [(p.lat, p.lon) for p in points])
+        kept = filter_meetups(points, times, intent.duration_min, stats)
+    kept += equal_time_intersections(ors, a, b, intent.duration_min, stats)
     stats["meetup_kept"] = len(kept)
     if not kept:
         return _done(CandidateSet([], [], None, stats))
@@ -222,6 +277,7 @@ class Weights:
     time_dev: float
     detour: float
     uncertainty: float
+    named_place: float = 0.1  # bonus for a named POI over a street intersection
 
     @classmethod
     def from_settings(cls) -> "Weights":
@@ -229,7 +285,7 @@ class Weights:
 
         s = get_settings()
         return cls(s.planner_w_fit, s.planner_w_gap, s.planner_w_time_dev, s.planner_w_detour,
-                   s.planner_w_uncertainty)
+                   s.planner_w_uncertainty, s.planner_w_named_place)
 
 
 @dataclass
@@ -300,6 +356,7 @@ def score_options(
                 "time_dev": min(abs(elapsed - intent.duration_min) / (0.4 * intent.duration_min), 1.0),
                 "detour": detour_term(a, b, m),
                 "uncertainty": 0.0 if open_at_arrival is True else 1.0,
+                "named_place": 0.0 if m.place.category == "intersection" else 1.0,
             }
             score = (
                 weights.fit * terms["fit"]
@@ -307,6 +364,7 @@ def score_options(
                 - weights.time_dev * terms["time_dev"]
                 - weights.detour * terms["detour"]
                 - weights.uncertainty * terms["uncertainty"]
+                + weights.named_place * terms["named_place"]
             )
             options.append(
                 ScoredOption(m, dest, t_shared, cs.shared.distances_m[i][j], terms, round(score, 6))
@@ -324,7 +382,8 @@ def rank(options: list[ScoredOption]) -> list[ScoredOption]:
 TOP_N = 3
 MAX_DIRECTIONS_TRIES = 6  # ranked options checked with full directions to fill the top 3
 
-CATEGORY_LABELS = {"ice_cream": "ice cream shop", "park_gate": "park gate", "subway_entrance": "subway entrance"}
+CATEGORY_LABELS = {"ice_cream": "ice cream shop", "park_gate": "park gate", "subway_entrance": "subway entrance",
+                   "intersection": "street corner"}
 
 
 def rationale(option: ScoredOption, gap: float, t_a: float, t_b: float, t_shared: float) -> str:
@@ -409,6 +468,7 @@ class PlanResult(BaseModel):
     failure: PlanFailure | None = None
     error: str | None = None
     stats: dict[str, int] = {}
+    debug: dict | None = None  # e.g. {"equal_time_contour": [[lat, lon], ...]} when asked
 
 
 def explain_failure(stats: dict[str, int], intent: WalkIntent) -> PlanFailure:
@@ -441,10 +501,17 @@ def explain_failure(stats: dict[str, int], intent: WalkIntent) -> PlanFailure:
 
 def plan_walk(
     a: Point, b: Point, intent: WalkIntent, overpass, ors, depart_at: datetime,
-    weights: Weights | None = None,
+    weights: Weights | None = None, debug: bool = False,
 ) -> PlanResult:
-    """Full deterministic planning. Never returns a route ORS did not produce."""
+    """Full deterministic planning. Never returns a route the routing engine did not produce."""
     weights = weights or Weights.from_settings()
+    result = _plan(a, b, intent, overpass, ors, depart_at, weights)
+    if debug:
+        result.debug = {"equal_time_contour": equal_time_contour(ors, a, b, intent.duration_min)}
+    return result
+
+
+def _plan(a, b, intent, overpass, ors, depart_at, weights) -> PlanResult:
     try:
         cs = generate_candidates(a, b, intent, overpass, ors, depart_at)
         ranked = score_options(a, b, cs, intent, weights, depart_at)
