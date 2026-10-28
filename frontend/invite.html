@@ -140,6 +140,7 @@ function plan(v) {
         el("span", { class: "muted" }, `Arrival gap ${c.arrival_gap_min.toFixed(1)} min, ${Math.round(c.total_elapsed_min)} min in total.`)),
       el("p", {}, why || c.rationale, why ? (sourceBadge(v.sources.ranking) || el("span", { class: "muted" }, " · Muse Spark")) : null),
       v.tradeoff ? el("p", { class: "muted" }, v.tradeoff, sourceBadge(v.sources.negotiation)) : null,
+      ...(v.notes || []).map((n) => el("p", { class: "muted" }, "ℹ️ ", n)),
       el("p", { class: "muted" }, dest.opening_hours ? `Opening hours (OpenStreetMap, as of ${(dest.fetched_at || "").slice(0, 10)}): ${dest.opening_hours}` : "Opening hours unknown."),
       el("div", { class: "row" },
         el("a", { href: mapsLink(meet.lat, meet.lon), target: "_blank", rel: "noopener" }, el("button", {}, "My way to the meeting point")),

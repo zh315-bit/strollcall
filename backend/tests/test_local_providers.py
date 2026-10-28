@@ -253,3 +253,53 @@ def test_off_network_destination_does_not_sink_the_matrix(graph):
     far = (LAT0 + 0.05, LON0)
     m = routing.matrix([node(graph, 0, 0)], [node(graph, 0, 1), far])
     assert m.durations_min[0][0] is not None and m.durations_min[0][1] is None
+
+
+def test_crowd_proxies_transit_hub_and_large_plaza(tmp_path):
+    def p(pid, lat, lon, cat, **tags):
+        return {"id": pid, "name": pid, "lat": lat, "lon": lon, "category": cat, "opening_hours": None,
+                "tags": tags, "fetched_at": "2026-10-28T12:00:00+00:00"}
+    hub = [p(f"node/{i}", 40.7350 + i * 0.0001, -73.9900, "subway_entrance") for i in range(6)]
+    data = {"fetched_at": "2026-10-28T12:00:00+00:00", "bbox": [40.70, -74.02, 40.76, -73.96],
+            "meetup": hub + [p("node/90", 40.7300, -73.9900, "subway_entrance"),
+                             p("way/1", 40.7200, -73.9800, "plaza", _area_m2="5000"),
+                             p("way/2", 40.7210, -73.9810, "plaza", _area_m2="800")],
+            "destination": [p("node/7", 40.7352, -73.9901, "cafe"), p("node/8", 40.7250, -73.9900, "cafe")]}
+    with gzip.open(tmp_path / "s.json.gz", "wt") as f:
+        json.dump(data, f)
+    snap = Snapshot(tmp_path / "s.json.gz")
+    places = {x.id: x for x in snap.meetup.places + snap.destination.places}
+    assert snap.crowd_risk(places["node/7"]) == "transit hub"  # cafe next to 6 entrances
+    assert snap.crowd_risk(places["node/90"]) is None  # a lone entrance is not a hub
+    assert snap.crowd_risk(places["way/1"]) == "large plaza"
+    assert snap.crowd_risk(places["way/2"]) is None
+    assert snap.crowd_risk(places["node/8"]) is None
+
+
+def test_avoid_crowds_note_and_filter(tmp_path):
+    from datetime import datetime
+
+    from app.models.schemas import Place, WalkIntent
+    from app.services import planner
+
+    g, dlon = grid_graph(tmp_path / "g.npz")
+    busy = Place(id="node/8", name="Busy Cafe", lat=LAT0 + 4 * STEP, lon=LON0 + 2 * dlon, category="cafe")
+    calm = Place(id="node/9", name="Side Cafe", lat=LAT0 + 4 * STEP, lon=LON0 + 3 * dlon, category="cafe")
+
+    class Places:
+        def meetup_candidates(self, lat, lon, r):
+            return []
+
+        def destination_candidates(self, lat, lon, r, types=None):
+            return [busy, calm]
+
+        def crowd_risk(self, place):
+            return "transit hub" if place.id == "node/8" else None
+
+    intent = WalkIntent(duration_min=20, avoid=["crowds"])
+    r = planner.plan_walk(node((g, dlon), 2, 0), node((g, dlon), 2, 4), intent, Places(), LocalRouting(g),
+                          datetime(2026, 10, 31, 15))
+    assert r.status == "proposed"
+    assert all(c.endpoint_place_id == "node/9" for c in r.candidates)
+    assert r.notes == [planner.CROWD_NOTE] and r.stats["destination_excluded_crowd_proxy"] == 1
+    assert "quiet" not in " ".join(c.rationale for c in r.candidates).lower()

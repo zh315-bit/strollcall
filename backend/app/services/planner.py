@@ -207,6 +207,26 @@ def equal_time_contour(routing, a: Point, b: Point, duration_min: int) -> list[l
     return [[round(float(g.lat[n]), 6), round(float(g.lon[n]), 6)] for n in nodes[::step]]
 
 
+CROWD_WORDS = ("crowd", "busy", "tourist", "packed", "people")
+CROWD_NOTE = "We can't check crowd levels; we avoided major transit hubs and large plazas."
+CROWD_NOTE_NO_DATA = "We can't check crowd levels here, so we couldn't avoid busy places."
+
+
+def avoids_crowds(intent: WalkIntent) -> bool:
+    return any(w in a.lower() for a in intent.avoid for w in CROWD_WORDS)
+
+
+def drop_crowded(places_provider, items: list, stats: dict, key: str, place=lambda x: x) -> list:
+    """Remove likely-crowded places (transit hubs, large plazas) using the provider's OSM proxies."""
+    kept = []
+    for item in items:
+        if places_provider.crowd_risk(place(item)):
+            _count(stats, key)
+        else:
+            kept.append(item)
+    return kept
+
+
 def destination_types(intent: WalkIntent) -> list[str]:
     if intent.endpoint_type in DESTINATION_TYPES:
         return [intent.endpoint_type]
@@ -323,6 +343,9 @@ def generate_candidates(
     radius = meetup_search_radius(a, b)
     fetched = overpass.meetup_candidates(*mid, radius)
     stats["meetup_fetched"] = len(fetched)
+    crowd_filter = avoids_crowds(intent) and hasattr(overpass, "crowd_risk")
+    if crowd_filter:
+        fetched = drop_crowded(overpass, fetched, stats, "meetup_excluded_crowd_proxy")
     reserve = split_categories(people)
     points = select_meetup_points(fetched, mid, MAX_MEETUPS_QUERIED, stats, reserve)
     stats["meetup_queried"] = len(points)
@@ -330,7 +353,10 @@ def generate_candidates(
     if points:
         times = ors.matrix([a, b], [(p.lat, p.lon) for p in points])
         kept = filter_meetups(points, times, intent.duration_min, stats, reserve)
-    kept += equal_time_intersections(ors, a, b, intent.duration_min, stats)
+    corners = equal_time_intersections(ors, a, b, intent.duration_min, stats)
+    if crowd_filter:
+        corners = drop_crowded(overpass, corners, stats, "meetup_excluded_crowd_proxy", lambda m: m.place)
+    kept += corners
     stats["meetup_kept"] = len(kept)
     if not kept:
         return _done(CandidateSet([], [], None, stats))
@@ -341,6 +367,8 @@ def generate_candidates(
     if intent.endpoint_type is None and endpoint_options:
         types = sorted(set(endpoint_options))  # A and B asked for different types
     fetched_dest = overpass.destination_candidates(*center, dest_radius, types)
+    if crowd_filter:
+        fetched_dest = drop_crowded(overpass, fetched_dest, stats, "destination_excluded_crowd_proxy")
     stats["destination_fetched"] = len(fetched_dest)
     arrive_at = depart_at + timedelta(minutes=intent.duration_min)
     destinations = select_destinations(fetched_dest, kept, target, arrive_at, MAX_DESTINATIONS, stats,
@@ -652,6 +680,7 @@ class PlanResult(BaseModel):
     error: str | None = None
     stats: dict[str, int] = {}
     debug: dict | None = None  # e.g. {"equal_time_contour": [[lat, lon], ...]} when asked
+    notes: list[str] = []  # honest limits to show the users, e.g. that crowds cannot be checked
 
 
 def binding_constraint(stats: dict[str, int], intent: WalkIntent) -> tuple[str, int]:
@@ -728,6 +757,8 @@ def plan_walk(
     """Full deterministic planning. Never returns a route the routing engine did not produce."""
     weights = weights or Weights.from_settings()
     result = _plan(a, b, intent, overpass, ors, depart_at, weights, joint, endpoint_options, wishes, people)
+    if avoids_crowds(intent):
+        result.notes.append(CROWD_NOTE if hasattr(overpass, "crowd_risk") else CROWD_NOTE_NO_DATA)
     if result.status == "no_feasible_plan":
         # Replanning is cheap only on the local graph; ORS would spend quota, mocks lack data.
         replan = None

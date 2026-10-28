@@ -42,6 +42,7 @@ class InviteView(BaseModel):
     tradeoff: str | None = None
     reasons: dict[str, str] = {}  # candidate id -> Meta's reason (validated)
     failure: dict | None = None  # no_feasible_plan: binding constraint and suggestion
+    notes: list[str] = []  # honest limits, e.g. "We can't check crowd levels; ..."
     image_url: str | None = None
     sources: dict[str, str] = {}  # what produced each part: meta / mock / default / local / snapshot ...
     demo_data: bool = False  # true if any visible part is mock or template data
@@ -132,7 +133,7 @@ def view(token: str, key: str | None = None) -> InviteView | None:
         invite_text=invite.invite_text, a_intent=invite.a_intent, b_intent=invite.b_intent,
         candidates=candidates, selected_id=invite.selected_id, error=invite.error,
         places=public.get("places", {}), tradeoff=public.get("tradeoff"), reasons=public.get("reasons", {}),
-        failure=public.get("failure"),
+        failure=public.get("failure"), notes=public.get("notes", []),
         image_url=f"/api/invites/{token}/card" if image_ready else None,
         sources=sources, demo_data=any(v in ("mock", "default") for v in sources.values()),
     )
@@ -199,6 +200,7 @@ def run_planning(token: str) -> None:
         save_invite_extra(token, public, private)
         return
 
+    public["notes"] = plan.notes
     if plan.status != "proposed":
         invite.status, invite.error = "error", plan.status
         public["failure"] = plan.failure.model_dump() if plan.failure else None

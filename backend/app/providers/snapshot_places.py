@@ -22,6 +22,10 @@ from app.providers.overpass import MAX_RADIUS_M, _check_types
 log = logging.getLogger(__name__)
 
 M_PER_DEG_LAT = 111_320.0
+# Crowd proxies (we have no crowd data). Fixed before use on any test case:
+HUB_RADIUS_M = 150.0  # a major transit hub: >= HUB_MIN_ENTRANCES named subway entrances this close
+HUB_MIN_ENTRANCES = 6
+LARGE_PLAZA_M2 = 2000.0  # named plazas at least this large
 
 
 class _Index:
@@ -48,6 +52,28 @@ class Snapshot:
         self.meetup = _Index([Place.model_validate(p) for p in data["meetup"]], cos_lat)
         self.destination = _Index([Place.model_validate(p) for p in data["destination"]], cos_lat)
         self.file_bytes = path.stat().st_size
+        self.cos_lat = cos_lat
+        self._hubs = self._find_hubs()
+
+    def _xy(self, lat: float, lon: float) -> list[float]:
+        return [lon * M_PER_DEG_LAT * self.cos_lat, lat * M_PER_DEG_LAT]
+
+    def _find_hubs(self):
+        entrances = [p for p in self.meetup.places if p.category == "subway_entrance"]
+        if not entrances:
+            return None
+        tree = cKDTree(np.array([self._xy(p.lat, p.lon) for p in entrances]))
+        counts = [len(tree.query_ball_point(self._xy(p.lat, p.lon), HUB_RADIUS_M)) for p in entrances]
+        hubs = [self._xy(p.lat, p.lon) for p, n in zip(entrances, counts) if n >= HUB_MIN_ENTRANCES]
+        return cKDTree(np.array(hubs)) if hubs else None
+
+    def crowd_risk(self, place: Place) -> str | None:
+        """Why a place is likely crowded ('transit hub' / 'large plaza'), or None. A proxy, not a measurement."""
+        if self._hubs is not None and self._hubs.query_ball_point(self._xy(place.lat, place.lon), HUB_RADIUS_M):
+            return "transit hub"
+        if place.category == "plaza" and float(place.tags.get("_area_m2", 0)) >= LARGE_PLAZA_M2:
+            return "large plaza"
+        return None
 
     def covers(self, lat: float, lon: float, radius_m: float) -> bool:
         s, w, n, e = self.bbox
@@ -103,3 +129,6 @@ class SnapshotPlaces:
         return _sorted([p for p in self.snapshot.destination.within(lat, lon, radius) if p.category in types])
 
     places_near = destination_candidates
+
+    def crowd_risk(self, place: Place) -> str | None:
+        return self.snapshot.crowd_risk(place)

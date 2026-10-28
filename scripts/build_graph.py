@@ -167,7 +167,11 @@ def _tags(row) -> dict:
     return out
 
 
-def _place(element_id, tags: dict, point, name: str, category: str, fetched_at: str) -> dict:
+def _place(element_id, tags: dict, point, name: str, category: str, fetched_at: str,
+           area_m2: float | None = None) -> dict:
+    kept = {k: tags[k] for k in KEPT_TAGS if k in tags}
+    if area_m2:
+        kept["_area_m2"] = str(int(area_m2))  # polygon area, for "large plaza" checks
     return {
         "id": element_id,
         "name": name,
@@ -175,7 +179,7 @@ def _place(element_id, tags: dict, point, name: str, category: str, fetched_at: 
         "lon": round(point.x, 7),
         "category": category,
         "opening_hours": tags.get("opening_hours"),
-        "tags": {k: tags[k] for k in KEPT_TAGS if k in tags},
+        "tags": kept,
         "fetched_at": fetched_at,
     }
 
@@ -214,6 +218,7 @@ def build_places(bbox, out_path) -> None:
 
     meetups, destinations = [], []
     parks = []
+    areas = gdf.to_crs(gdf.estimate_utm_crs()).geometry.area  # m², 0 for points
     for (element, osmid), row in gdf.iterrows():
         tags = _tags(row)
         geom = row.geometry
@@ -221,10 +226,11 @@ def build_places(bbox, out_path) -> None:
         pid = f"{element}/{osmid}"
         if tags.get("leisure") == "park" and tags.get("name") and geom.geom_type in ("Polygon", "MultiPolygon"):
             parks.append((tags["name"], geom))
+        area = float(areas.loc[(element, osmid)]) or None
         if is_destination(tags):
-            destinations.append(_place(pid, tags, point, tags["name"], destination_type(tags), fetched_at))
+            destinations.append(_place(pid, tags, point, tags["name"], destination_type(tags), fetched_at, area))
         if is_meetup(tags, element):
-            meetups.append(_place(pid, tags, point, tags["name"], meetup_type(tags), fetched_at))
+            meetups.append(_place(pid, tags, point, tags["name"], meetup_type(tags), fetched_at, area))
 
     # Park gates: unnamed barrier=gate nodes on a named park's edge, named after that park.
     gates = gdf[(gdf.get("barrier") == "gate") & (gdf.geometry.geom_type == "Point")]
