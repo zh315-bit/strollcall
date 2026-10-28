@@ -1,12 +1,110 @@
 {
-  "_note": "Fixed before the first benchmark run. depart_at is fixed so opening-hours checks and recorded fixtures are reproducible.",
-  "depart_at": "2026-10-31T15:00:00-04:00",
-  "cases": [
-    {"pair": "p1", "intent": {"duration_min": 25, "endpoint_type": "cafe", "vibes": ["quiet"]}},
-    {"pair": "p2", "intent": {"duration_min": 25, "endpoint_type": "park", "vibes": ["green"]}},
-    {"pair": "p3", "intent": {"duration_min": 30, "endpoint_type": "cafe"}},
-    {"pair": "p4", "intent": {"duration_min": 30, "endpoint_type": "bookstore"}},
-    {"pair": "p5", "intent": {"duration_min": 30, "vibes": ["green"]}},
-    {"pair": "p6", "intent": {"duration_min": 30, "endpoint_type": "bakery", "vibes": ["lively"]}}
-  ]
+ "_note": "p1-p6 fixed before the first benchmark run (2026-10-28); p7-p12 fixed before the first local-engine run. depart_at is fixed so opening-hours checks are reproducible.",
+ "depart_at": "2026-10-31T15:00:00-04:00",
+ "cases": [
+  {
+   "pair": "p1",
+   "intent": {
+    "duration_min": 25,
+    "endpoint_type": "cafe",
+    "vibes": [
+     "quiet"
+    ]
+   }
+  },
+  {
+   "pair": "p2",
+   "intent": {
+    "duration_min": 25,
+    "endpoint_type": "park",
+    "vibes": [
+     "green"
+    ]
+   }
+  },
+  {
+   "pair": "p3",
+   "intent": {
+    "duration_min": 30,
+    "endpoint_type": "cafe"
+   }
+  },
+  {
+   "pair": "p4",
+   "intent": {
+    "duration_min": 30,
+    "endpoint_type": "bookstore"
+   }
+  },
+  {
+   "pair": "p5",
+   "intent": {
+    "duration_min": 30,
+    "vibes": [
+     "green"
+    ]
+   }
+  },
+  {
+   "pair": "p6",
+   "intent": {
+    "duration_min": 30,
+    "endpoint_type": "bakery",
+    "vibes": [
+     "lively"
+    ]
+   }
+  },
+  {
+   "pair": "p7",
+   "intent": {
+    "duration_min": 25,
+    "endpoint_type": "park",
+    "vibes": [
+     "green"
+    ]
+   }
+  },
+  {
+   "pair": "p8",
+   "intent": {
+    "duration_min": 25,
+    "endpoint_type": "cafe"
+   }
+  },
+  {
+   "pair": "p9",
+   "intent": {
+    "duration_min": 30,
+    "endpoint_type": "bookstore"
+   }
+  },
+  {
+   "pair": "p10",
+   "intent": {
+    "duration_min": 30,
+    "endpoint_type": "bakery",
+    "vibes": [
+     "lively"
+    ]
+   }
+  },
+  {
+   "pair": "p11",
+   "intent": {
+    "duration_min": 30,
+    "endpoint_type": "ice_cream"
+   }
+  },
+  {
+   "pair": "p12",
+   "intent": {
+    "duration_min": 25,
+    "endpoint_type": "cafe",
+    "vibes": [
+     "quiet"
+    ]
+   }
+  }
+ ]
 }
