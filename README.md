@@ -65,6 +65,18 @@ New York sidewalks are mapped as separate, unnamed footways.
 cd backend && ../.venv/bin/uvicorn app.main:app --reload
 ```
 
+### Deploy (Render)
+
+The deployed app reads the committed map data in `deploy/data/` (ODbL, see its README).
+Web service settings:
+
+- Build: `pip install -r requirements.txt`
+- Start: `cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- Environment: `PYTHON_VERSION=3.11.11`, `GRAPH_PATH=deploy/data/nyc_graph.npz`,
+  `PLACES_SNAPSHOT_PATH=deploy/data/nyc_places.json.gz`, `DAILY_BUDGET_USD`, and the secret
+  `MODEL_API_KEY` (set it in the dashboard, never in the repo). `ORS_API_KEY` is optional
+  (only for start points outside the local map).
+
 ### Tests (offline)
 
 ```bash
