@@ -121,7 +121,7 @@ def rank_candidates(
         log.warning("ranking fell back to deterministic order: %s (%s)", e.code, e.message)
         return deterministic(result, e.code)
 
-    problem = _check(data, labelled, {f["id"]: f for f in facts}, a, b)
+    problem = _check(data, labelled, {f["id"]: f for f in facts}, a, b) or _grounded(data, labelled, result, a, b)
     if problem:
         log.warning("ranking fell back to deterministic order: %s", problem)
         return deterministic(result, problem)
@@ -150,4 +150,19 @@ def _check(data: dict, labelled: dict, facts: dict, a: WalkIntent, b: WalkIntent
         for n in NUMBER_RE.findall(LABEL_RE.sub("", reason)):
             if float(n) not in allowed:
                 return "invented_number"
+    return None
+
+
+def _grounded(data: dict, labelled: dict, result: PlanResult, a: WalkIntent, b: WalkIntent) -> str | None:
+    """Every place feature in a reason must be in that candidate's data or a stated preference."""
+    from app.services.grounding import place_evidence, preference_text, unsupported
+
+    prefs = preference_text(a, b)
+    for item in data["ranking"]:
+        c = labelled[item["id"]]
+        evidence = place_evidence([result.places[c.meeting_place_id], result.places[c.endpoint_place_id]])
+        problems = unsupported(item["reason"], evidence, prefs)
+        if problems:
+            log.warning("ranking reason for %s rejected: %s", item["id"], "; ".join(problems))
+            return "unsupported_feature"
     return None

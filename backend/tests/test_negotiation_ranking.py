@@ -55,13 +55,13 @@ def p1_plan():
 def test_negotiate_with_meta_keeps_only_vibes_both_gave(use_meta):
     use_meta(FakeMeta({
         "shared_vibes": ["Quiet", "green"], "a_priorities": ["ends at a cafe"],
-        "b_priorities": ["green", "avoid traffic"], "compromises": ["Coffee for A, a park on the way for B."],
-        "tradeoff": "Quiet streets for both, ending with coffee.",
+        "b_priorities": ["green", "avoid traffic"], "compromises": ["A's cafe and B's park are both acceptable endings."],
+        "tradeoff": "Both want quiet; A's cafe and B's green wish are weighed equally.",
     }))
     result = negotiate(A, B)
     assert result.source == "meta"
     assert result.joint.shared_vibes == ["quiet"]  # "green" was only B's
-    assert result.tradeoff.startswith("Quiet streets")
+    assert result.tradeoff.startswith("Both want quiet")
 
 
 def test_negotiate_falls_back_when_meta_fails(use_meta):
@@ -155,3 +155,20 @@ def test_mock_ranking_is_labelled(p1_plan):
     result = explain.rank_candidates(p1_plan, A, B, JOINT)
     assert result.source == "mock"
     assert all(r.startswith("Mock data") for r in result.reasons.values())
+
+
+def test_negotiation_route_promise_is_discarded(use_meta):
+    use_meta(FakeMeta({
+        "shared_vibes": ["quiet"], "a_priorities": ["cafe"], "b_priorities": ["green"],
+        "compromises": ["Ends at a cafe for A, with a park on the way for B."],
+        "tradeoff": "Quiet streets for both.",
+    }))
+    result = negotiate(A, B)
+    assert result.source == "default" and result.note == "unsupported_feature"
+
+
+def test_ranking_with_ungrounded_feature_keeps_deterministic_order(use_meta, p1_plan):
+    use_meta(FakeMeta(ranking(("c1", "Right by the waterfront."), ("c2", "ok"), ("c3", "ok"))))
+    result = explain.rank_candidates(p1_plan, A, B, JOINT)
+    assert result.source == "default" and result.note == "unsupported_feature"
+    assert result.candidates == p1_plan.candidates

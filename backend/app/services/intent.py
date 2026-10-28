@@ -200,6 +200,14 @@ def negotiate(a: WalkIntent, b: WalkIntent) -> Negotiation:
     )
     if not tradeoff or len(tradeoff) > MAX_TRADEOFF_CHARS:
         return default_negotiation(a, b, "invalid_model_output")
+    # The model saw only the two intents: any place feature it mentions must come from them.
+    from app.services.grounding import preference_text, unsupported
+
+    problems = [p for text in joint.compromises + [tradeoff]
+                for p in unsupported(text, set(), preference_text(a, b))]
+    if problems:
+        log.warning("negotiation text discarded (%s); using the deterministic one", "; ".join(problems))
+        return default_negotiation(a, b, "unsupported_feature")
     return Negotiation(joint=joint, tradeoff=tradeoff, source=source)
 
 

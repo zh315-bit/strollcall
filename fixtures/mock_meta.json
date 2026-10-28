@@ -25,9 +25,9 @@
       "green"
     ],
     "compromises": [
-      "Ends at a cafe for A, with a park on the way for B."
+      "Mock data: A's cafe and B's park are both acceptable endings."
     ],
-    "tradeoff": "Mock data: a quiet walk that passes green space and ends with coffee."
+    "tradeoff": "Mock data: A's cafe wish and B's green wish are weighed equally."
   },
   "candidate_ranking": {
     "ranking": [
