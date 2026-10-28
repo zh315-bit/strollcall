@@ -85,13 +85,29 @@ def test_same_inputs_same_plan():
     assert run() == run()
 
 
-def test_time_budget_failure_suggests_closer_destination():
+def test_time_budget_failure_without_replanning_is_generic():
     ors = ors_with([(9, 10), (8, 11), (10, 10)], 25)  # elapsed 35 > 28
     result = planner.plan_walk(A, B, WalkIntent(duration_min=25), FakeOverpass(), ors, WED_15, W)
     assert result.status == "no_feasible_plan" and result.candidates == []
     assert result.failure.constraint == "time_budget"
-    assert result.failure.suggestion_type == "closer_destination"
-    assert "35 minutes" in result.failure.suggestion
+    assert result.failure.suggestion_type == "longer_time"
+    assert result.failure.needs_duration_min is None and not result.failure.verified
+
+
+def test_minimum_duration_found_by_replanning():
+    ors = ors_with([(9, 10), (8, 11), (10, 10)], 25)  # elapsed 35: needs duration >= 32
+    ors.name = "local"  # cheap engine: replanning allowed
+    result = planner.plan_walk(A, B, WalkIntent(duration_min=25), FakeOverpass(), ors, WED_15, W)
+    assert result.failure.needs_duration_min == 35 and result.failure.verified
+    assert "about 35 minutes" in result.failure.suggestion
+
+
+def test_too_far_apart_when_nothing_up_to_60_minutes_works():
+    ors = ors_with([(40, 41), (40, 42), (41, 41)], 10)  # meetup legs alone exceed 0.6 x 60
+    ors.name = "local"
+    result = planner.plan_walk(A, B, WalkIntent(duration_min=30), FakeOverpass(), ors, WED_15, W)
+    assert result.failure.constraint == "time_budget"
+    assert result.failure.suggestion_type == "closer_start"
 
 
 def test_gap_failure_suggests_longer_time():
@@ -107,8 +123,11 @@ def test_no_places_of_wanted_type():
     intent = WalkIntent(duration_min=25, endpoint_type="bookstore")
     result = planner.plan_walk(A, B, intent, FakeOverpass(), ors, WED_15, W)
     assert result.status == "no_feasible_plan"
-    assert result.failure.constraint == "no_destination_places"
+    assert result.failure.constraint == "no_destination_of_type"
     assert result.failure.suggestion_type == "relaxed_preference"
+    ors.name = "local"
+    verified = planner.plan_walk(A, B, intent, FakeOverpass(), ors, WED_15, W).failure
+    assert verified.verified and "any destination type works within 25 minutes" in verified.suggestion
 
 
 def test_routing_failure_is_reported_not_drawn():

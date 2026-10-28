@@ -108,6 +108,14 @@ def run_case(case, cache_dir: Path) -> dict:
     }
 
 
+def outcome_ok(row) -> bool:
+    expected = row["case"]["expected"]
+    status = row["cached"].status
+    if expected == "feasible":
+        return status == "proposed"
+    return status == "no_feasible_plan"  # infeasible by distance: an honest no-plan is correct
+
+
 def fmt(x, unit="", nd=1):
     return "–" if x is None else f"{x:.{nd}f}{unit}"
 
@@ -131,7 +139,8 @@ def report(rows: list[dict]) -> str:
     cold_ok = [r["cold_s"] for r in rows if r["cold"].status not in ("places_unavailable", "routing_unavailable")]
     cached_ok = [r["cached_s"] for r in rows if r["cached"].status not in ("places_unavailable", "routing_unavailable")]
     if ARGS.mock:
-        mode = "recorded fixtures (USE_MOCKS=true, offline); latencies are fixture reads, not network"
+        correct = sum(outcome_ok(r) for r in rows)
+    mode = "recorded fixtures (USE_MOCKS=true, offline); latencies are fixture reads, not network"
     elif ARGS.engine == "local":
         g, snap = LOAD["graph"], LOAD["snapshot"]
         mode = (f"local OSM walking graph ({len(g.lat):,} nodes, {g.file_bytes / 1e6:.1f} MB) + place snapshot "
@@ -148,12 +157,16 @@ def report(rows: list[dict]) -> str:
         f"- Run: {now:%Y-%m-%d %H:%M} ET, commit `{git_commit()}`, mode: {mode}",
         f"- Cases: fixtures/benchmark_cases.json (departure {rows[0]['case']['depart_at'].isoformat()})",
         "- Planner only, no Meta calls (fallback rung 2). Metrics use each case's top candidate.",
+        "- Expected outcome: infeasible by distance when the direct A-B walk exceeds 1.2 x duration "
+        "(rule in fixtures/benchmark_cases.json), otherwise feasible.",
         "",
         "## Summary",
         "",
         "| Metric | Value |",
         "| --- | --- |",
         f"| Feasibility rate | {len(solved)}/{n} ({100 * len(solved) / n:.0f}%) |",
+        f"| Correct outcome rate | {correct}/{n} ({100 * correct / n:.0f}%): plan found where expected, "
+        f"honest no-plan where the pair is too far apart (see Expected) |",
         f"| Arrival gap, median / max | {fmt(median(gaps), ' min')} / {fmt(max(gaps) if gaps else None, ' min')} |",
         f"| Time-budget error, median | {fmt(median(errors), ' min')} |",
         f"| Planning latency, {'cold' if ARGS.cold else 'first run'}, median | {fmt(median(cold_ok), ' s', 3)} ({len(cold_ok)}/{n} completed) |",
@@ -161,8 +174,8 @@ def report(rows: list[dict]) -> str:
         "",
         "## Cases",
         "",
-        "| Case | Origins | Intent | Status | Meetup → destination | Gap | Elapsed / budget | First run | Cached |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| Case | Origins | Intent | Expected | Status | Meetup → destination | Gap | Elapsed / budget | First run | Cached |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for r in rows:
         c, top, res = r["case"], r["top"], r["cached"]
@@ -174,7 +187,8 @@ def report(rows: list[dict]) -> str:
         failed = r["cold"].status in ("places_unavailable", "routing_unavailable")
         cold = r["cold"].status if failed else fmt(r["cold_s"], " s", 2)
         lines.append(
-            f"| {c['id']} | {c['pair']['a']['name']} ↔ {c['pair']['b']['name']} | {what} | {res.status} | "
+            f"| {c['id']} | {c['pair']['a']['name']} ↔ {c['pair']['b']['name']} | {what} | "
+            f"{c['expected'].replace('_', ' ')} | {res.status}{'' if outcome_ok(r) else ' ✗'} | "
             f"{route} | {fmt(top.arrival_gap_min if top else None, ' min')} | "
             f"{fmt(top.total_elapsed_min if top else None)} / {intent.duration_min} | {cold} | "
             f"{fmt(r['cached_s'], ' s', 3)} |"
@@ -185,8 +199,10 @@ def report(rows: list[dict]) -> str:
         lines.append("None.")
     for r in unsolved:
         res = r["cached"]
-        reason = (f"{res.failure.constraint} failed {res.failure.count}× — suggestion: {res.failure.suggestion}"
+        reason = (f"binding constraint: {res.failure.constraint} ({res.failure.count} candidates removed). "
+                  f"Suggestion{' (verified by replanning)' if res.failure.verified else ''}: {res.failure.suggestion}"
                   if res.failure else res.error or "")
+        reason += f" Expected: {r['case']['expected'].replace('_', ' ')}."
         lines.append(f"- **{r['case']['id']}**: {res.status}. {reason}")
     cold_failed = [r for r in rows if r["cold"].status in ("places_unavailable", "routing_unavailable")]
     if cold_failed:

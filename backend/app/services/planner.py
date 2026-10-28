@@ -436,29 +436,19 @@ def top_candidates(
 
 # --- Fallback ladder (section 6.4) ---
 
-# Drop counter -> (constraint that failed, one suggested change)
-FAILURE_REASONS = {
-    "meetup_no_route": ("route_exists", "longer_time"),
-    "shared_no_route": ("route_exists", "closer_destination"),
-    "meetup_over_time_share": ("time_budget", "longer_time"),
-    "elapsed_over_budget": ("time_budget", "closer_destination"),
-    "meetup_gap_over_max": ("fair_gap", "longer_time"),
-    "destination_known_closed": ("destination_open", "relaxed_preference"),
-    "open_status_unconfirmed": ("destination_open", "relaxed_preference"),
-    "directions_broke_constraint": ("time_budget", "longer_time"),
-}
-SUGGESTIONS = {
-    "longer_time": "Allow a longer walk, for example {longer} minutes.",
-    "closer_destination": "Pick a destination closer to the meetup point, or allow {longer} minutes.",
-    "relaxed_preference": "Relax a preference: allow any destination type or drop 'open now'.",
-}
+MAX_DURATION_MIN = 60  # WalkIntent's upper bound
+DURATION_STEP_MIN = 5
 
 
 class PlanFailure(BaseModel):
-    constraint: str  # which hard constraint failed most often
-    count: int
-    suggestion_type: str  # longer_time / closer_destination / relaxed_preference
+    # The constraint that emptied the pipeline: no_meetup_points / time_budget / fair_gap /
+    # route_exists / no_destination_of_type / no_destinations / destination_open
+    constraint: str
+    count: int  # how many candidates it removed
+    suggestion_type: str  # longer_time / relaxed_preference / closer_start
     suggestion: str
+    needs_duration_min: int | None = None  # verified by replanning; None if not searched or not found
+    verified: bool = False  # the suggestion was checked by replanning
 
 
 class PlanResult(BaseModel):
@@ -471,32 +461,69 @@ class PlanResult(BaseModel):
     debug: dict | None = None  # e.g. {"equal_time_contour": [[lat, lon], ...]} when asked
 
 
-def explain_failure(stats: dict[str, int], intent: WalkIntent) -> PlanFailure:
-    longer = min(intent.duration_min + 10, 60)
-    counts: dict[str, int] = {}
-    first_key: dict[str, str] = {}
-    for key, (constraint, _) in FAILURE_REASONS.items():
-        if stats.get(key):
-            counts[constraint] = counts.get(constraint, 0) + stats[key]
-            if constraint not in first_key or stats[key] > stats[first_key[constraint]]:
-                first_key[constraint] = key
-    if not counts:
-        # Nothing to filter: OSM had no candidate places of the wanted kind nearby.
-        missing = "destination" if stats.get("meetup_kept") else "meetup"
-        return PlanFailure(
-            constraint=f"no_{missing}_places",
-            count=0,
-            suggestion_type="relaxed_preference",
-            suggestion=SUGGESTIONS["relaxed_preference"],
-        )
+def binding_constraint(stats: dict[str, int], intent: WalkIntent) -> tuple[str, int]:
+    """Where the pipeline ran out of candidates, and how many that step removed."""
+    g = stats.get
+    if not g("meetup_kept"):
+        if not g("meetup_fetched") and not g("intersection_kept"):
+            return "no_meetup_points", 0
+        counts = {"time_budget": g("meetup_over_time_share", 0), "fair_gap": g("meetup_gap_over_max", 0),
+                  "route_exists": g("meetup_no_route", 0)}
+    elif not g("destination_kept"):
+        if not g("destination_fetched"):
+            return ("no_destination_of_type" if intent.endpoint_type else "no_destinations"), 0
+        return "destination_open", g("destination_known_closed", 0)
+    else:
+        counts = {"time_budget": g("elapsed_over_budget", 0) + g("directions_broke_constraint", 0),
+                  "destination_open": g("destination_known_closed", 0) + g("open_status_unconfirmed", 0),
+                  "route_exists": g("shared_no_route", 0)}
     constraint = max(sorted(counts), key=lambda c: counts[c])
-    suggestion_type = FAILURE_REASONS[first_key[constraint]][1]
-    return PlanFailure(
-        constraint=constraint,
-        count=counts[constraint],
-        suggestion_type=suggestion_type,
-        suggestion=SUGGESTIONS[suggestion_type].format(longer=longer),
-    )
+    return constraint, counts[constraint]
+
+
+def relaxed(intent: WalkIntent) -> WalkIntent:
+    """Any destination type, no 'open now'; duration, avoid and other limits unchanged."""
+    return intent.model_copy(update={
+        "endpoint_type": None,
+        "hard_constraints": [c for c in intent.hard_constraints if "open" not in c],
+    })
+
+
+def explain_failure(stats, intent, replan=None) -> PlanFailure:
+    """Pick the suggestion from the binding constraint; verify it by replanning when allowed.
+
+    replan(intent) -> bool runs the planner again (cheap with the local graph); None skips it.
+    """
+    constraint, count = binding_constraint(stats, intent)
+    wanted = (intent.endpoint_type or "destination").replace("_", " ")
+    dest_problem = constraint in ("no_destination_of_type", "destination_open")
+
+    def failure(kind, text, needs=None, verified=False):
+        return PlanFailure(constraint=constraint, count=count, suggestion_type=kind, suggestion=text,
+                           needs_duration_min=needs, verified=verified)
+
+    if replan is None:
+        if dest_problem:
+            return failure("relaxed_preference", f"No {wanted} fits this walk; try allowing any destination.")
+        return failure("longer_time", "Try allowing a longer walk.")
+
+    if dest_problem and (intent.endpoint_type or requires_open(intent)) and replan(relaxed(intent)):
+        return failure("relaxed_preference",
+                       f"No {wanted} fits; any destination type works within {intent.duration_min} minutes.",
+                       verified=True)
+    for minutes in range(intent.duration_min + DURATION_STEP_MIN, MAX_DURATION_MIN + 1, DURATION_STEP_MIN):
+        if replan(intent.model_copy(update={"duration_min": minutes})):
+            return failure("longer_time", f"Needs about {minutes} minutes: try a {minutes}-minute walk.",
+                           needs=minutes, verified=True)
+    if not dest_problem and (intent.endpoint_type or requires_open(intent)):
+        for minutes in range(intent.duration_min, MAX_DURATION_MIN + 1, DURATION_STEP_MIN):
+            if replan(relaxed(intent).model_copy(update={"duration_min": minutes})):
+                return failure("relaxed_preference",
+                               f"Needs about {minutes} minutes and any destination type.",
+                               needs=minutes, verified=True)
+    return failure("closer_start",
+                   f"Too far apart for a walk within {MAX_DURATION_MIN} minutes: pick start points closer together.",
+                   verified=True)
 
 
 def plan_walk(
@@ -506,6 +533,15 @@ def plan_walk(
     """Full deterministic planning. Never returns a route the routing engine did not produce."""
     weights = weights or Weights.from_settings()
     result = _plan(a, b, intent, overpass, ors, depart_at, weights)
+    if result.status == "no_feasible_plan":
+        # Replanning is cheap only on the local graph; ORS would spend quota, mocks lack data.
+        replan = None
+        if getattr(ors, "name", "") == "local":
+            def replan(i):
+                return _plan(a, b, i, overpass, ors, depart_at, weights).status == "proposed"
+        result.failure = explain_failure(result.stats, intent, replan)
+        log.info("planner: no feasible plan, binding %s; suggestion %s",
+                 result.failure.constraint, result.failure.suggestion_type)
     if debug:
         result.debug = {"equal_time_contour": equal_time_contour(ors, a, b, intent.duration_min)}
     return result
@@ -523,9 +559,7 @@ def _plan(a, b, intent, overpass, ors, depart_at, weights) -> PlanResult:
 
     cs.stats["feasible_options"] = len(ranked)
     if not top:
-        failure = explain_failure(cs.stats, intent)
-        log.info("planner: no feasible plan, %s failed %d times", failure.constraint, failure.count)
-        return PlanResult(status="no_feasible_plan", failure=failure, stats=cs.stats)
+        return PlanResult(status="no_feasible_plan", stats=cs.stats)  # failure filled by plan_walk
 
     places = {o.meetup.place.id: o.meetup.place for o in ranked}
     places.update({o.destination.id: o.destination for o in ranked})

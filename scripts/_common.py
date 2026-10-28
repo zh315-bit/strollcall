@@ -34,6 +34,8 @@ def load_cases() -> list[dict]:
             "b": point(pairs[c["pair"]]["b"]),
             "intent": WalkIntent.model_validate(c["intent"]),
             "depart_at": depart_at,
+            "expected": c.get("expected", "feasible"),
+            "b_intent": WalkIntent.model_validate(c["b_intent"]) if c.get("b_intent") else None,
         }
         for c in data["cases"]
     ]

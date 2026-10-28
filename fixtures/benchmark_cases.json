@@ -10,7 +10,9 @@
     "vibes": [
      "quiet"
     ]
-   }
+   },
+   "t_ab_min": 12.1,
+   "expected": "feasible"
   },
   {
    "pair": "p2",
@@ -20,21 +22,27 @@
     "vibes": [
      "green"
     ]
-   }
+   },
+   "t_ab_min": 16.8,
+   "expected": "feasible"
   },
   {
    "pair": "p3",
    "intent": {
     "duration_min": 30,
     "endpoint_type": "cafe"
-   }
+   },
+   "t_ab_min": 27.3,
+   "expected": "feasible"
   },
   {
    "pair": "p4",
    "intent": {
     "duration_min": 30,
     "endpoint_type": "bookstore"
-   }
+   },
+   "t_ab_min": 22.5,
+   "expected": "feasible"
   },
   {
    "pair": "p5",
@@ -43,7 +51,9 @@
     "vibes": [
      "green"
     ]
-   }
+   },
+   "t_ab_min": 19.5,
+   "expected": "feasible"
   },
   {
    "pair": "p6",
@@ -53,7 +63,9 @@
     "vibes": [
      "lively"
     ]
-   }
+   },
+   "t_ab_min": 28.3,
+   "expected": "feasible"
   },
   {
    "pair": "p7",
@@ -63,21 +75,27 @@
     "vibes": [
      "green"
     ]
-   }
+   },
+   "t_ab_min": 21.5,
+   "expected": "feasible"
   },
   {
    "pair": "p8",
    "intent": {
     "duration_min": 25,
     "endpoint_type": "cafe"
-   }
+   },
+   "t_ab_min": 13.4,
+   "expected": "feasible"
   },
   {
    "pair": "p9",
    "intent": {
     "duration_min": 30,
     "endpoint_type": "bookstore"
-   }
+   },
+   "t_ab_min": 20.0,
+   "expected": "feasible"
   },
   {
    "pair": "p10",
@@ -87,14 +105,18 @@
     "vibes": [
      "lively"
     ]
-   }
+   },
+   "t_ab_min": 23.8,
+   "expected": "feasible"
   },
   {
    "pair": "p11",
    "intent": {
     "duration_min": 30,
     "endpoint_type": "ice_cream"
-   }
+   },
+   "t_ab_min": 36.3,
+   "expected": "infeasible_by_distance"
   },
   {
    "pair": "p12",
@@ -104,7 +126,10 @@
     "vibes": [
      "quiet"
     ]
-   }
+   },
+   "t_ab_min": 14.8,
+   "expected": "feasible"
   }
- ]
+ ],
+ "_expected_rule": "expected = infeasible_by_distance when the direct A-B walk T_AB (local graph) exceeds 1.2 x duration: a meetup needs max(tA, tB) <= 0.6 x duration and tA + tB >= T_AB. Otherwise feasible (not ruled out by distance). Labels set 2026-10-28 before the run that reports correct-outcome rate."
 }
