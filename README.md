@@ -50,6 +50,15 @@ uv pip install --python .venv/bin/python -r requirements-build.txt
 This writes `data/nyc_graph.npz` (walking graph) and `data/nyc_places.json.gz` (places) for
 Manhattan, northern Brooklyn and Long Island City. `data/` is not committed.
 
+**Walking speed.** Walking times assume **80 m/min (4.8 km/h)**, deliberately a little slower than
+typical routing engines (openrouteservice uses about 5 km/h), to leave room for street crossings and
+traffic lights that the graph does not model. Checked against 442 recorded openrouteservice walking
+times for the same point pairs (`scripts/validate_local_routing.py`): median absolute difference
+**0.83 min**, 90th percentile 1.76 min; local times are about 6% longer, as intended.
+
+Street-corner meetup points ("E 81st St & East End Ave") are named from the drive network, because
+New York sidewalks are mapped as separate, unnamed footways.
+
 ### Run
 
 ```bash
