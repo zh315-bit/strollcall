@@ -67,3 +67,22 @@ def test_parse_reports_mock_when_budget_is_exhausted(monkeypatch):
 
     monkeypatch.setattr("app.providers.get_meta", lambda: Broke())
     assert client.post("/api/intents/parse", json={"text": "25 minutes"}).json()["source"] == "mock"
+
+
+P1 = {"a": {"lat": 40.73164, "lon": -74.00099}, "b": {"lat": 40.72985, "lon": -73.99139},
+      "intent": {"duration_min": 25, "endpoint_type": "cafe", "vibes": ["quiet"]},
+      "depart_at": "2026-10-31T15:00:00-04:00"}
+
+
+def test_dev_plan_hidden_without_debug():
+    assert client.post("/api/dev/plan", json=P1).status_code == 404
+
+
+def test_dev_plan_with_fixtures(monkeypatch):
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("DEBUG", "true")
+    get_settings.cache_clear()
+    body = client.post("/api/dev/plan", json=P1).json()
+    assert body["status"] == "proposed" and body["source"] == "mock"
+    assert len(body["candidates"]) == 3
