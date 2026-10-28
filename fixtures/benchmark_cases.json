@@ -12,7 +12,17 @@
     ]
    },
    "t_ab_min": 12.1,
-   "expected": "feasible"
+   "expected": "feasible",
+   "b_intent": {
+    "duration_min": 30,
+    "endpoint_type": "park",
+    "vibes": [
+     "green"
+    ],
+    "avoid": [
+     "traffic"
+    ]
+   }
   },
   {
    "pair": "p2",
@@ -24,7 +34,14 @@
     ]
    },
    "t_ab_min": 16.8,
-   "expected": "feasible"
+   "expected": "feasible",
+   "b_intent": {
+    "duration_min": 25,
+    "endpoint_type": "cafe",
+    "vibes": [
+     "lively"
+    ]
+   }
   },
   {
    "pair": "p3",
@@ -33,7 +50,14 @@
     "endpoint_type": "cafe"
    },
    "t_ab_min": 27.3,
-   "expected": "feasible"
+   "expected": "feasible",
+   "b_intent": {
+    "duration_min": 30,
+    "endpoint_type": "bookstore",
+    "vibes": [
+     "quiet"
+    ]
+   }
   },
   {
    "pair": "p4",
@@ -65,7 +89,13 @@
     ]
    },
    "t_ab_min": 28.3,
-   "expected": "feasible"
+   "expected": "feasible",
+   "b_intent": {
+    "duration_min": 25,
+    "vibes": [
+     "quiet"
+    ]
+   }
   },
   {
    "pair": "p7",
@@ -95,7 +125,14 @@
     "endpoint_type": "bookstore"
    },
    "t_ab_min": 20.0,
-   "expected": "feasible"
+   "expected": "feasible",
+   "b_intent": {
+    "duration_min": 30,
+    "endpoint_type": "cafe",
+    "vibes": [
+     "lively"
+    ]
+   }
   },
   {
    "pair": "p10",
@@ -107,7 +144,14 @@
     ]
    },
    "t_ab_min": 23.8,
-   "expected": "feasible"
+   "expected": "feasible",
+   "b_intent": {
+    "duration_min": 30,
+    "endpoint_type": "park",
+    "vibes": [
+     "green"
+    ]
+   }
   },
   {
    "pair": "p11",
@@ -131,5 +175,6 @@
    "expected": "feasible"
   }
  ],
- "_expected_rule": "expected = infeasible_by_distance when the direct A-B walk T_AB (local graph) exceeds 1.2 x duration: a meetup needs max(tA, tB) <= 0.6 x duration and tA + tB >= T_AB. Otherwise feasible (not ruled out by distance). Labels set 2026-10-28 before the run that reports correct-outcome rate."
+ "_expected_rule": "expected = infeasible_by_distance when the direct A-B walk T_AB (local graph) exceeds 1.2 x duration: a meetup needs max(tA, tB) <= 0.6 x duration and tA + tB >= T_AB. Otherwise feasible (not ruled out by distance). Labels set 2026-10-28 before the run that reports correct-outcome rate.",
+ "_b_intent_note": "b_intent: B's preference for the Meta ablation (scripts/ablation.py); each conflicts with A's. Fixed 2026-10-28 before the first ablation run."
 }

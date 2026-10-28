@@ -101,3 +101,36 @@ def test_top_candidates_recheck_with_directions():
     assert stats == {"directions_broke_constraint": 1}
     assert top[0].total_elapsed_min == 24 and top[0].arrival_gap_min == 1
     assert "m2" in top[0].rationale and "unknown" in top[0].rationale
+
+
+def test_joint_fit_weighs_both_people():
+    from app.models.schemas import JointPreference
+
+    joint = JointPreference(shared_vibes=["quiet"], a_priorities=["ends at a cafe"],
+                            b_priorities=["green", "avoid traffic"], compromises=[])
+    park_meet, plaza_meet = place("p", category="park"), place("q", category="plaza")
+    cafe, books = place("c", category="cafe"), place("b", category="bookstore")
+    intent = WalkIntent(duration_min=25)
+    # park meetup + cafe: quiet (park) yes, A's cafe yes, B's green yes -> 1.0
+    assert planner.fit_term(park_meet, cafe, intent, joint) == 1.0
+    # plaza + cafe: quiet no (0.5*0), A yes (0.25), B green no -> 0.25
+    assert planner.fit_term(plaza_meet, cafe, intent, joint) == 0.25
+    # plaza + bookstore: quiet yes via bookstore (0.5), A no, B no -> 0.5
+    assert planner.fit_term(plaza_meet, books, intent, joint) == 0.5
+
+
+def test_unmeasurable_preferences_fall_back_to_intent_fit():
+    from app.models.schemas import JointPreference
+
+    joint = JointPreference(shared_vibes=[], a_priorities=["avoid traffic"], b_priorities=["chatty"],
+                            compromises=[])
+    assert planner.fit_term(place("m"), place("c", category="cafe"),
+                            WalkIntent(duration_min=25, endpoint_type="cafe"), joint) == 1.0
+
+
+def test_conflicting_types_both_represented_in_destinations():
+    meetups = [planner.MeetupOption(place("m", 40.7300, -73.9900), 8, 9, 600, 700)]
+    cafes = [place(f"cafe{i}", 40.7350 + i * 0.0001, -73.99, "cafe") for i in range(6)]
+    parks = [place("park0", 40.7400, -73.99, "park")]  # farther than every cafe
+    chosen = planner.select_destinations(cafes + parks, meetups, 9.0, WED_15, 4, {}, ["cafe", "park"])
+    assert "park0" in [p.id for p in chosen] and len(chosen) == 4
