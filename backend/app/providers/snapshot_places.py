@@ -1,7 +1,9 @@
 """Places from the local OpenStreetMap snapshot (built by scripts/build_graph.py).
 
-Same interface as the Overpass provider. Queries whose circle leaves the snapshot's
-bounding box go to the fallback provider (Overpass), or fail with places_unavailable.
+Same interface as the Overpass provider. A query centred inside the snapshot uses the snapshot,
+even if its circle reaches past the edge (places beyond the edge are simply not candidates;
+the walking graph has the same edge). Only a centre outside it goes to the fallback provider
+(Overpass), or fails with places_unavailable.
 Opening hours are as of the snapshot's fetched_at. Map data © OpenStreetMap contributors, ODbL.
 """
 
@@ -75,6 +77,10 @@ class Snapshot:
             return "large plaza"
         return None
 
+    def contains(self, lat: float, lon: float) -> bool:
+        s, w, n, e = self.bbox
+        return s <= lat <= n and w <= lon <= e
+
     def covers(self, lat: float, lon: float, radius_m: float) -> bool:
         s, w, n, e = self.bbox
         dlat = radius_m / M_PER_DEG_LAT
@@ -115,7 +121,7 @@ class SnapshotPlaces:
 
     def meetup_candidates(self, lat: float, lon: float, radius_m: float) -> list[Place]:
         radius = min(radius_m, MAX_RADIUS_M)
-        if not self.snapshot.covers(lat, lon, radius):
+        if not self.snapshot.contains(lat, lon):
             return self._outside().meetup_candidates(lat, lon, radius_m)
         return _sorted(self.snapshot.meetup.within(lat, lon, radius))
 
@@ -124,7 +130,7 @@ class SnapshotPlaces:
     ) -> list[Place]:
         types = _check_types(types)
         radius = min(radius_m, MAX_RADIUS_M)
-        if not self.snapshot.covers(lat, lon, radius):
+        if not self.snapshot.contains(lat, lon):
             return self._outside().destination_candidates(lat, lon, radius_m, types)
         return _sorted([p for p in self.snapshot.destination.within(lat, lon, radius) if p.category in types])
 

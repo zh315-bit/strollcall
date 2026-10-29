@@ -303,3 +303,10 @@ def test_avoid_crowds_note_and_filter(tmp_path):
     assert all(c.endpoint_place_id == "node/9" for c in r.candidates)
     assert r.notes == [planner.CROWD_NOTE] and r.stats["destination_excluded_crowd_proxy"] == 1
     assert "quiet" not in " ".join(c.rationale for c in r.candidates).lower()
+
+
+def test_snapshot_used_when_the_circle_crosses_the_edge(tmp_path):
+    # bbox west edge is -74.02; a 1.5 km circle at -74.015 reaches past it. No fallback is
+    # configured, so the old behaviour (fall back when the circle leaves the box) would raise.
+    places = SnapshotPlaces(snapshot_file(tmp_path / "p.json.gz"), fallback=None)
+    assert [p.id for p in places.meetup_candidates(40.7300, -74.0150, 1500)] == ["way/1"]
