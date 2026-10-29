@@ -81,7 +81,7 @@
 <script src="/static/js/walk.js"></script>
 <script>
 const state = { intent: null, inferred: [], origin: null, text: "", mode: "pair", solo: null, chosen: 0,
-                near: null, nearFor: null, nearOpen: null, passBy: [] };
+                near: null, nearFor: null, nearOpen: null, passBy: [], nearSeen: [], nearMore: false, nearNote: "" };
 const $ = (id) => document.getElementById(id);
 const map = makeMap("map");
 drawCoverage(map);
@@ -248,8 +248,11 @@ function nearCard() {
       el("p", { class: "muted" }, "No parks, open cafes or landmarks within about 15 minutes' walk in our map data."), NEAR_CREDIT(), passing);
   }
   return el("section", { class: "card near-card" },
-    el("h2", {}, "Near you"), nearImage(),
-    el("p", { class: "muted small" }, "Within about 15 minutes' walk. Tap one to see it on the map."),
+    el("div", { class: "near-title" }, el("h2", {}, "Near you"),
+      el("button", { type: "button", class: "near-refresh", "aria-label": "Show other places nearby", title: "Show other places",
+        onclick: (e) => refreshNear(e.currentTarget) }, REFRESH_ICON())),
+    nearImage(),
+    el("p", { class: "muted small" }, state.nearNote || "Within about 15 minutes' walk. Tap one to see it on the map."),
     el("ul", { class: "near-list" }, state.near.map(nearItem)), passing, NEAR_CREDIT());
 }
 
@@ -258,17 +261,56 @@ function showNear() {
   $("solo-result").replaceChildren(nearCard());
 }
 
+function REFRESH_ICON() {  // a circular arrow, drawn in the text colour
+  const span = el("span", { class: "near-refresh-icon", "aria-hidden": "true" });
+  span.innerHTML = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4" ' +
+    'stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.34 5.66"/><path d="M20 4v7h-7"/></svg>';
+  return span;
+}
+
+async function fetchNear(exclude) {
+  return api("/api/nearby", { method: "POST", body: { origin: state.origin, exclude_ids: exclude } });
+}
+
+function clearNearPin() {
+  state.nearOpen = null;
+  nearLayers.forEach((l) => l.remove()); nearLayers = [];
+}
+
 async function loadNear() {
   if (!state.origin) { state.near = null; showNear(); return; }
   const seq = ++nearSeq;
-  state.near = null; state.nearOpen = null;
-  nearLayers.forEach((l) => l.remove()); nearLayers = [];
+  state.near = null; state.nearSeen = []; state.nearNote = "";
+  clearNearPin();
   showNear();
   try {
-    const [r] = await Promise.all([api("/api/nearby", { method: "POST", body: { origin: state.origin } }), loadPoiIntros()]);
+    const [r] = await Promise.all([fetchNear([]), loadPoiIntros()]);
     if (seq !== nearSeq) return;  // a newer start point is loading
-    state.near = r.highlights;
+    state.near = r.highlights; state.nearMore = r.more;
+    state.nearSeen = r.highlights.map((h) => h.id);
   } catch (e) { if (seq === nearSeq) state.near = []; }
+  showNear();
+}
+
+// The refresh arrow: five places not shown yet; after the last ones, start again from the nearest.
+async function refreshNear(btn) {
+  if (!state.origin || !state.near) return;
+  const seq = ++nearSeq;
+  btn.classList.add("spinning");
+  btn.setAttribute("disabled", "");
+  try {
+    let r = await fetchNear(state.nearSeen);
+    let note = "";
+    if (!r.highlights.length) {
+      r = await fetchNear([]);
+      state.nearSeen = [];
+      note = "That's everything within about 15 minutes. Back to the nearest places.";
+    }
+    if (seq !== nearSeq) return;
+    clearNearPin();
+    state.near = r.highlights; state.nearMore = r.more; state.nearNote = note;
+    state.nearSeen = state.nearSeen.concat(r.highlights.map((h) => h.id));
+  } catch (e) { state.nearNote = `Couldn't load other places: ${e.message}`; }
   showNear();
 }
 

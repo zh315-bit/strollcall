@@ -374,3 +374,14 @@ html:active-view-transition-type(fade)::view-transition-new(page) { animation: 2
 /* The button effect (specular.js) centres a label span inside each button: list rows read left to right */
 .near-head.specular-button { display: flex; justify-content: flex-start; }
 .near-head .specular-button__label { flex: 1; gap: 10px; justify-content: flex-start; min-width: 0; }
+
+/* Near you: title row with the refresh arrow */
+.near-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.near-title h2 { margin: 0; }
+.near-refresh { width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%; display: inline-grid;
+  place-items: center; color: var(--accent-deep, var(--ink)); flex: none; }
+.near-refresh:active:not(:disabled) { margin: 0; }
+.near-refresh.spinning .near-refresh-icon { animation: near-spin .7s linear infinite; }
+.near-refresh-icon { display: inline-grid; }
+@keyframes near-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .near-refresh.spinning .near-refresh-icon { animation: none; opacity: .5; } }

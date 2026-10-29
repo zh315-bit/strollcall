@@ -82,28 +82,35 @@ def _spots(origin, places, pois) -> list[Spot]:
     return out
 
 
-def highlights(origin: tuple[float, float], now: datetime | None = None) -> list[Highlight]:
-    """2-3 places within about 15 minutes' walk, for variety: a park, a cafe open now, a landmark
-    (preferring one with a sourced intro). Fewer when the area has fewer."""
+def highlights(origin: tuple[float, float], now: datetime | None = None, limit: int = 5,
+               exclude: set[str] | None = None) -> tuple[list[Highlight], bool]:
+    """Up to `limit` places within about 15 minutes' walk, taken in turn from each kind for variety
+    (park, cafe open now, landmark preferring a sourced intro), skipping `exclude` (already shown).
+    Returns (highlights, whether more remain for another round)."""
     from app.providers import get_places, get_routing
 
     routing, places = get_routing(), get_places()
     if not hasattr(routing, "graph"):
-        return []  # only on the local walking graph: no external routing for a browse
+        return [], False  # only on the local walking graph: no external routing for a browse
     now = now or datetime.now(NYC)
-    intros = intro_ids()
+    intros, exclude = intro_ids(), exclude or set()
     spots = _spots(origin, places, getattr(routing, "pois", None))
 
     by_kind: dict[str, list[Spot]] = {"park": [], "cafe": [], "landmark": []}
     for s in spots:
+        if s.id in exclude:
+            continue
         if s.kind == "cafe" and is_open(s.opening_hours, now) is not True:
-            continue  # "one cafe open now": only when OSM hours say so
+            continue  # cafes only when OSM hours say they are open now
         by_kind[s.kind].append(s)
-    picks: list[Highlight] = []
+    queues: dict[str, list[Highlight]] = {}
+    left_over = False
     for kind, group in by_kind.items():
         # Nearest first; a landmark with a sourced intro beats one without.
         group.sort(key=lambda s: ((kind == "landmark" and s.id not in intros), haversine_m(*origin, *s.nearest(origin))))
+        left_over |= len(group) > PER_KIND
         group = group[:PER_KIND]
+        queues[kind] = []
         if not group:
             continue
         targets = [s.nearest(origin) for s in group]
@@ -111,16 +118,21 @@ def highlights(origin: tuple[float, float], now: datetime | None = None) -> list
         for s, t, (lat, lon) in zip(group, times, targets):
             if t is None or t > NEAR_MIN:
                 continue
-            picks.append(Highlight(
+            queues[kind].append(Highlight(
                 id=s.id, name=s.name, kind=kind, category=s.category, lat=lat, lon=lon, walk_min=max(1, round(t)),
                 opening_hours=s.opening_hours,
                 hours_source=f"OpenStreetMap, as of {str(s.fetched_at)[:10]}" if s.opening_hours and s.fetched_at else None,
                 open_now=is_open(s.opening_hours, now) if s.opening_hours else None,
                 has_intro=s.id in intros,
             ))
-            break
+    picks: list[Highlight] = []
+    while len(picks) < limit and any(queues.values()):
+        for kind in ("park", "cafe", "landmark"):
+            if queues[kind] and len(picks) < limit:
+                picks.append(queues[kind].pop(0))
+    more = left_over or any(queues.values())
     log.info("nearby: %d highlights", len(picks))  # counts only, never the start point
-    return picks
+    return picks, more
 
 
 @dataclass

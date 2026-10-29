@@ -46,12 +46,12 @@ def town(tmp_path, monkeypatch):
 
 
 def test_highlights_one_of_each_kind_open_now_and_sourced_first(town):
-    found = nearby.highlights(town(0, 0), NOON)
+    found, _ = nearby.highlights(town(0, 0), NOON)
     by_kind = {h.kind: h for h in found}
     assert set(by_kind) == {"park", "cafe", "landmark"}
     assert by_kind["cafe"].name == "Day Cafe" and by_kind["cafe"].open_now is True  # the closed one is skipped
     assert by_kind["cafe"].hours_source == "OpenStreetMap, as of 2026-10-28"
-    assert by_kind["landmark"].name == "Old Statue" and by_kind["landmark"].has_intro  # sourced beats nearer
+    assert found[2].name == "Old Statue" and found[2].has_intro  # the first landmark: sourced beats nearer
     assert (by_kind["park"].lat, by_kind["park"].lon) == town(3, 2)  # the park's edge nearest the start
     assert all(1 <= h.walk_min <= 15 for h in found)
 
@@ -105,3 +105,14 @@ def test_invite_keeps_resolved_pass_by_places_for_planning(town):
                                          "pass_by_ids": ["way/1", "not-a-place"]})
     public, _ = load_invite_extra(r.json()["token"])
     assert [p["name"] for p in public["pass_by"]] == ["Grid Park"] and public["pass_by"][0]["pts"]
+
+
+def test_five_in_turn_by_kind_and_refresh_shows_the_rest(town):
+    found, more = nearby.highlights(town(0, 0), NOON, limit=5)
+    assert [h.kind for h in found] == ["park", "cafe", "landmark", "landmark"]  # one park, one open cafe here
+    assert not more
+    again, more = nearby.highlights(town(0, 0), NOON, limit=5, exclude={h.id for h in found[:3]})
+    assert [h.name for h in again] == ["New Mural"] and not more
+    r = client.post("/api/nearby", json={"origin": {"lat": town(0, 0)[0], "lon": town(0, 0)[1]},
+                                         "exclude_ids": [h.id for h in found]})
+    assert r.json() == {"highlights": [], "more": False}
