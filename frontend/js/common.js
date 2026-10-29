@@ -93,7 +93,8 @@ function encodeWav(samples, rate) {
 // A mic button that fills `textarea` with the transcript (the user can edit it before parsing).
 function micButton(textarea, onSource) {
   let stop = null;
-  const btn = el("button", { type: "button", "aria-label": "Speak instead of typing" }, "🎙 Speak");
+  const label = () => [el("span", { class: "i i-mic", "aria-hidden": "true" }), " Speak"];
+  const btn = el("button", { type: "button", "aria-label": "Speak instead of typing" }, label());
   btn.addEventListener("click", async () => {
     if (stop) { stop(); return; }
     let resolveStop;
@@ -116,7 +117,7 @@ function micButton(textarea, onSource) {
       stop = null;
       btn.disabled = false;
       btn.classList.remove("recording");
-      btn.textContent = "🎙 Speak";
+      btn.replaceChildren(...label());
     }
   });
   if (!navigator.mediaDevices || !window.MediaRecorder) btn.disabled = true;
@@ -186,11 +187,6 @@ const MASCOTS_SVG = `<svg viewBox="0 0 116 88" aria-hidden="true">
 function decorate() {
   const sky = el("div", { class: "sky", "aria-hidden": "true" },
     el("div", { class: "cloud c1" }), el("div", { class: "cloud c2" }), el("div", { class: "cloud c3" }));
-  for (let i = 0; i < 14; i++) {
-    sky.append(el("div", { class: "petal", style:
-      `left:${Math.random() * 100}%;animation-duration:${9 + Math.random() * 9}s;animation-delay:${-Math.random() * 18}s;`
-      + `transform:scale(${0.6 + Math.random() * 0.7})` }));
-  }
   document.body.prepend(sky);
 
   // Wrap the page's <h1> (and .tagline, if any) into the mascot header with a speech bubble.

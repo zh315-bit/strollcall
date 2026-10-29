@@ -87,11 +87,13 @@
     let timer = 0;
     const type = () => {
       clearTimeout(timer);
+      typed.classList.remove("tt-done");
       const full = tagline.textContent;
       let i = 0;
       const step = () => {
         typed.textContent = full.slice(0, ++i);
         if (i < full.length) timer = setTimeout(step, full[i - 1] === "." ? 220 : 26 + Math.random() * 30);
+        else timer = setTimeout(() => typed.classList.add("tt-done"), 1200); // the cursor leaves once the line is said
       };
       step();
     };

@@ -10,6 +10,7 @@
 .tt-typed::after { content: ""; display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -2px;
   background: var(--accent); animation: tt-blink 1s steps(1) infinite; }
 @keyframes tt-blink { 50% { opacity: 0; } }
+.tt-typed.tt-done::after { display: none; }
 
 /* Tilted Card */
 .tilt { position: relative; border-radius: 14px; transition: transform .25s ease-out; will-change: transform; }

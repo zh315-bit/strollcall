@@ -86,7 +86,7 @@ function progressSteps(progress) {
   const current = progress ? STEPS.findIndex(([k]) => k === progress.step) : 0;
   return el("section", { class: "card" }, el("ol", { class: "steps" }, STEPS.map(([k, label], i) =>
     el("li", { class: i < current ? "done" : i === current ? "active" : "" },
-      i < current ? "✓ " : i === current ? el("span", { class: "spinner" }) : "", label))));
+      i < current ? el("span", { class: "i i-check", "aria-hidden": "true" }) : i === current ? el("span", { class: "spinner" }) : "", label))));
 }
 
 function waitingForB(v) {
@@ -171,14 +171,14 @@ function plan(v) {
         el("span", { class: "muted" }, `Arrival gap ${c.arrival_gap_min.toFixed(1)} min, ${Math.round(c.total_elapsed_min)} min in total.`)),
       el("p", {}, why || c.rationale, why ? (sourceBadge(v.sources.ranking) || el("span", { class: "muted" }, " · Muse Spark")) : null),
       v.tradeoff ? el("p", { class: "muted" }, v.tradeoff, sourceBadge(v.sources.negotiation)) : null,
-      ...(v.notes || []).map((n) => el("p", { class: "muted" }, "ℹ️ ", n)),
+      ...(v.notes || []).map((n) => el("p", { class: "muted" }, el("span", { class: "i i-info", "aria-hidden": "true" }), " ", n)),
       el("p", { class: "muted" }, dest.opening_hours ? `Opening hours (OpenStreetMap, as of ${(dest.fetched_at || "").slice(0, 10)}): ${dest.opening_hours}` : "Opening hours unknown."),
-      v.role !== "guest" ? el("button", { class: "primary start-walk", onclick: () => walkThePlan(v, c) }, "🚶 Start walking") : null,
+      v.role !== "guest" ? el("button", { class: "primary start-walk", onclick: () => walkThePlan(v, c) }, el("span", { class: "i i-footprints", "aria-hidden": "true" }), " Start walking") : null,
       el("div", { class: "row" },
         el("a", { href: mapsLink(meet.lat, meet.lon), target: "_blank", rel: "noopener" }, el("button", {}, "Map app: to the meeting point")),
         el("a", { href: mapsLink(dest.lat, dest.lon), target: "_blank", rel: "noopener" }, el("button", {}, "Map app: on to the destination"))),
       v.status === "confirmed"
-        ? el("p", {}, v.selected_id === c.id ? "✅ Confirmed. See you there!" : "Another option was confirmed.")
+        ? el("p", {}, v.selected_id === c.id ? [el("span", { class: "i i-check", "aria-hidden": "true" }), " Confirmed. See you there!"] : "Another option was confirmed.")
         : (v.role !== "guest" ? el("div", { class: "row" }, el("button", { class: "primary", onclick: async () => {
             await api(`/api/invites/${token}/confirm`, { method: "POST", body: { key, candidate_id: c.id } }); load(); } }, "Confirm this plan")) : null),
       el("p", { class: "legend muted" }, el("span", { style: "background:var(--a)" }), "A", el("span", { style: "background:var(--b)" }), "B",
@@ -196,7 +196,7 @@ let surveySent = false;
 
 function survey(v) {
   if (v.feedback_given || surveySent) {
-    return el("section", { class: "card survey" }, el("p", {}, "🙏 Thanks for telling us how it went!"));
+    return el("section", { class: "card survey" }, el("p", {}, el("span", { class: "i i-heart", "aria-hidden": "true" }), " Thanks for telling us how it went!"));
   }
   const send = el("button", { class: "primary", disabled: "" }, "Send");
   const consent = el("input", { type: "checkbox", id: "consent" });
