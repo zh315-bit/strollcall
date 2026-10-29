@@ -5,7 +5,7 @@ const assert = require("node:assert");
 const path = require("node:path");
 const fs = require("node:fs");
 
-const { WALK, WalkFollower, projectOnRoute, distanceM, formatRemaining, stepInfo, formatStep } =
+const { WALK, WalkFollower, projectOnRoute, distanceM, formatRemaining, stepInfo, formatStep, promptFor, spokenText } =
   require(path.join(__dirname, "../../../frontend/js/walk.js"));
 const fx = JSON.parse(fs.readFileSync(path.join(__dirname, "../../../fixtures/walk_track_p1.json"), "utf8"));
 
@@ -155,4 +155,39 @@ test("points of interest along the real route get one card each, in walking orde
   assert.deepEqual(seen, [...new Set(seen)], "each place at most once");
   const order = seen.map((n) => expected.indexOf(n));
   assert.deepEqual(order, [...order].sort((a, b) => a - b), "in the order they lie along the route");
+});
+
+test("spoken prompts: departure, each turn ahead and at the corner, arrival; each once, in order", () => {
+  const f = new WalkFollower(legs());
+  f.nextLeg();
+  const said = new Set(), spoken = [];
+  let t = 0;
+  for (const p of along(fx.shared_leg, 0, lengthOf(fx.shared_leg), 5)) {
+    for (let k = 0; k < 2; k++) {  // each position twice: nothing is said twice
+      const text = promptFor(f.update({ lat: p[0], lon: p[1], accuracy: 10, t: (t += 2) }), said);
+      if (text) spoken.push(text);
+    }
+  }
+  assert.equal(spoken[0], spokenText(fx.shared_steps[0].text));
+  for (const step of fx.shared_steps.slice(1)) {
+    const tail = spokenText(step.text.charAt(0).toLowerCase() + step.text.slice(1));
+    const ahead = spoken.findIndex((x) => x.startsWith("In about") && x.endsWith(`${tail}.`));
+    const now = spoken.indexOf(`Now, ${tail}.`);
+    assert.ok(now >= 0, `said at the corner: ${tail}\n${spoken.join("\n")}`);
+    if (step.along_m - fx.shared_steps[fx.shared_steps.indexOf(step) - 1].along_m > 130) assert.ok(ahead >= 0 && ahead < now);
+  }
+  assert.equal(spoken[spoken.length - 1], "You've arrived.");
+  assert.equal(new Set(spoken).size, spoken.length);
+});
+
+test("spoken text spells out street abbreviations, not Saint", () => {
+  assert.equal(spokenText("Turn left onto E 20th St"), "Turn left onto East 20th Street");
+  assert.equal(spokenText("Bear right onto St Marks Pl"), "Bear right onto St Marks Place");
+});
+
+test("a re-plan is announced once", () => {
+  const said = new Set();
+  const ev = { type: "replan", leg: 0, from: [40.73, -74.0] };
+  assert.match(promptFor(ev, said), /off the route/);
+  assert.equal(promptFor(ev, said), null);
 });

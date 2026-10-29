@@ -65,6 +65,36 @@ function formatStep(info) {
   return info.next ? `In ${roundDist(info.toNextM)}: ${info.next.text}` : info.finalText;
 }
 
+// ---- Spoken prompts (P2): what to say, decided here; speaking is the browser's speech synthesis ----
+
+const SPEAK_AHEAD_M = 120;  // announce a turn once when it is this close ...
+const SPEAK_NOW_M = 40;     // ... and again at the corner
+
+// Street abbreviations read badly aloud ("E 20th St"): spell them out for speech only.
+const SPOKEN = [[/\bE (?=\d)/g, "East "], [/\bW (?=\d)/g, "West "], [/\bN (?=\d)/g, "North "], [/\bS (?=\d)/g, "South "],
+                [/\bSt\b(?!\.? [A-Z])/g, "Street"], [/\bAve\b/g, "Avenue"], [/\bPl\b/g, "Place"], [/\bBlvd\b/g, "Boulevard"],
+                [/\bDr\b/g, "Drive"], [/\bRd\b/g, "Road"], [/\bPkwy\b/g, "Parkway"], [/\bLn\b/g, "Lane"], [/\bSq\b/g, "Square"]];
+function spokenText(text) {
+  return SPOKEN.reduce((t, [re, word]) => t.replace(re, word), text);
+}
+
+// The prompt to speak for this event, at most once each (keys remembered in `said`), or null.
+function promptFor(ev, said) {
+  const once = (key, text) => (said.has(key) ? null : (said.add(key), spokenText(text)));
+  if (ev.type === "arrived") return once(`arrived:${ev.leg}`, ev.legKind === "meetup" ? "You're at the meeting point." : "You've arrived.");
+  if (ev.type === "replan") return once(`replan:${ev.leg}:${Math.round(ev.from[0] * 1e4)}`, "You seem to be off the route. Finding a way from here.");
+  const info = ev.step;
+  if (!info || ev.type !== "on_route") return null;
+  if (info.index === 0 && info.current.kind === "depart" && !said.has(`depart:${ev.leg}`)) {
+    return once(`depart:${ev.leg}`, info.current.text);
+  }
+  if (!info.next) return null;
+  const key = `${ev.leg}:${info.next.along_m}`;
+  if (info.toNextM <= SPEAK_NOW_M) return once(`now:${key}`, `Now, ${info.next.text.charAt(0).toLowerCase()}${info.next.text.slice(1)}.`);
+  if (info.toNextM <= SPEAK_AHEAD_M) return once(`ahead:${key}`, `In about ${roundDist(info.toNextM).replace(" m", " meters")}, ${info.next.text.charAt(0).toLowerCase()}${info.next.text.slice(1)}.`);
+  return null;
+}
+
 function roundDist(m) {
   const r = m < 95 ? Math.max(10, Math.round(m / 10) * 10) : Math.round(m / 50) * 50;
   return r < 1000 ? `${r} m` : `${(m / 1000).toFixed(1)} km`;
@@ -105,7 +135,7 @@ class WalkFollower {
     const p = projectOnRoute(leg.geometry, pos);
     const toTarget = distanceM(pos, leg.target);
     const remainingM = Math.max(p.total - p.along, 0) + (p.dist > o.OFF_ROUTE_M ? p.dist : 0);
-    const base = { leg: this.leg, distToRoute: p.dist, toTarget, remainingM, along: p.along,
+    const base = { leg: this.leg, legKind: leg.kind, distToRoute: p.dist, toTarget, remainingM, along: p.along,
                    remainingMin: remainingM / o.M_PER_MIN, accuracy: fix.accuracy,
                    step: stepInfo(leg.steps, p.along, leg.name) };
     this.last = base;
@@ -163,7 +193,8 @@ function formatRemaining(m) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { WALK, WalkFollower, projectOnRoute, distanceM, formatRemaining, stepInfo, formatStep };
+  module.exports = { WALK, WalkFollower, projectOnRoute, distanceM, formatRemaining, stepInfo, formatStep,
+                     promptFor, spokenText };
 }
 
 // ---- The walking view (browser only) ----
@@ -211,9 +242,31 @@ function startWalk(legs, opts = {}) {
   const screenNote = el("p", { class: "muted small walk-note" });
   const fallback = el("a", { target: "_blank", rel: "noopener" }, "Open in a map app instead");
   const endBtn = el("button", { type: "button", onclick: () => finish() }, "End walk");
+  // Voice prompts: off unless the walker turned them on (remembered on this phone only).
+  const canSpeak = typeof speechSynthesis !== "undefined" && typeof SpeechSynthesisUtterance !== "undefined";
+  let voiceOn = false;
+  try { voiceOn = canSpeak && localStorage.getItem("strollcall:voice") === "on"; } catch (e) { /* default off */ }
+  const said = new Set();
+  function say(text) {
+    if (!voiceOn || !text) return;
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = "en-US";
+    speechSynthesis.cancel();  // never queue stale prompts behind new ones
+    speechSynthesis.speak(u);
+  }
+  const voiceBtn = el("button", { type: "button", class: "voice-toggle", "aria-pressed": String(voiceOn),
+    onclick: () => {
+      voiceOn = !voiceOn;
+      voiceBtn.setAttribute("aria-pressed", String(voiceOn));
+      voiceBtn.textContent = voiceOn ? "🔊 Voice on" : "🔇 Voice off";
+      try { localStorage.setItem("strollcall:voice", voiceOn ? "on" : "off"); } catch (e) { /* fine */ }
+      if (voiceOn) say("Voice prompts on.");  // speaking inside the tap unlocks audio on iPhone
+      else speechSynthesis.cancel();
+    } }, voiceOn ? "🔊 Voice on" : "🔇 Voice off");
+  if (!canSpeak) voiceBtn.hidden = true;
   const screen = el("div", { class: "walk-screen", role: "dialog", "aria-label": "Walking" },
     stepEl, mapEl, poiEl, statsEl, noticeEl,
-    el("div", { class: "row walk-actions" }, endBtn, fallback), screenNote);
+    el("div", { class: "row walk-actions" }, endBtn, voiceBtn, fallback), screenNote);
   document.body.append(screen);
   document.body.classList.add("walking");
 
@@ -290,6 +343,7 @@ function startWalk(legs, opts = {}) {
     } else { me.setLatLng(ll); meCircle.setLatLng(ll).setRadius(fix.accuracy); }
     if (follow) map.panTo(ll);
     const ev = follower.update(fix);
+    say(promptFor(ev, said));
     const nextText = ev.type === "arrived" ? "" : formatStep(ev.step);
     const nextEl = stepEl.querySelector(".walk-next");
     if (nextEl && nextText !== null && nextEl.textContent !== nextText) nextEl.textContent = nextText;
@@ -325,6 +379,7 @@ function startWalk(legs, opts = {}) {
   document.addEventListener("visibilitychange", onVisible);
 
   function finish(done) {
+    if (canSpeak) speechSynthesis.cancel();
     if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     watchId = null;
     if (wakeLock) wakeLock.release().catch(() => {});
