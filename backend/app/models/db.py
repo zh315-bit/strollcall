@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS feedback (
 );
 
 -- A walk recap someone chose to share: meeting point, destination, the shared route, minutes
--- walked and places passed; never a start point. Deleted RECAP_DAYS after it was made.
+-- walked and places passed, never a start point. Deleted RECAP_TTL (30 days) after it was made.
 CREATE TABLE IF NOT EXISTS recaps (
     id TEXT PRIMARY KEY,
     created_at TEXT NOT NULL,

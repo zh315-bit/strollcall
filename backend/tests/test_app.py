@@ -101,3 +101,13 @@ def test_every_page_serves_with_the_nav_and_privacy_link_script():
     for path in ("/", "/i/abc", "/how", "/walks", "/privacy", "/r/abc"):
         r = client.get(path)
         assert r.status_code == 200 and "/static/js/common.js" in r.text, path
+
+
+def test_postgres_ddl_splits_into_clean_statements():
+    """Postgres runs the DDL split on ';' (SQLite runs it whole), so a ';' inside a comment breaks
+    every database call on the deployed app. Each piece must be comments plus one CREATE."""
+    from app.models.db import POSTGRES_DDL
+
+    for piece in POSTGRES_DDL.split(";"):
+        sql = "\n".join(line.split("--")[0] for line in piece.splitlines()).strip()
+        assert not sql or sql.startswith("CREATE "), repr(piece[:80])
