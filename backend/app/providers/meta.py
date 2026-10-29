@@ -96,7 +96,7 @@ class MetaProvider:
         for attempt in range(2):
             self.guard.check(estimate)
             try:
-                resp = self.client.chat.completions.create(
+                resp = _create_logged(self.client.chat.completions, "Muse Spark",
                     model=model,
                     messages=[
                         {"role": "system", "content": system},
@@ -159,7 +159,7 @@ class MetaProvider:
         for attempt in range(2):
             self.guard.check(image_cost(1))
             try:
-                resp = self.client.images.generate(
+                resp = _create_logged(self.client.images, "Muse Image", method="generate",
                     model=model,
                     prompt=prompt,
                     n=1,
@@ -219,6 +219,8 @@ class MetaProvider:
                 log.warning("Voice attempt %d failed: %s", attempt + 1, type(e).__name__)
                 continue
 
+            log.info("Muse Voice call model=%s status=%s request_id=%s", model, resp.status_code,
+                     request_id(resp.headers))
             if resp.status_code in (429, 500, 502, 503, 504):
                 last_error = MetaError(f"Muse Voice Transcribe HTTP {resp.status_code}")
                 log.warning("Voice attempt %d got HTTP %d", attempt + 1, resp.status_code)
@@ -235,15 +237,40 @@ class MetaProvider:
         raise last_error
 
 
+def request_id(headers) -> str | None:
+    """Meta's request ID, for support tickets (never contains anything secret)."""
+    if headers is None:
+        return None
+    return headers.get("x-request-id") or headers.get("request-id") or headers.get("x-fb-trace-id")
+
+
+def _create_logged(resource, label: str, method: str = "create", **kwargs):
+    """resource.<method>(**kwargs), logging status and request ID for every call, ok or not."""
+    raw_api = getattr(resource, "with_raw_response", None)
+    if raw_api is None:  # test doubles
+        return getattr(resource, method)(**kwargs)
+    try:
+        raw = getattr(raw_api, method)(**kwargs)
+    except openai.APIStatusError as e:
+        log.warning("%s call model=%s status=%s request_id=%s", label, kwargs.get("model"), e.status_code,
+                    request_id(e.response.headers))
+        raise
+    log.info("%s call model=%s status=%s request_id=%s", label, kwargs.get("model"), raw.http_response.status_code,
+             request_id(raw.headers))
+    return raw.parse()
+
+
 def _describe(e: Exception) -> str:
-    """Error type, HTTP status and the API's own message (it never contains our key)."""
+    """Error type, HTTP status, the API's own message and request ID (none contain our key)."""
     status = getattr(e, "status_code", None)
     body = getattr(e, "body", None)
     message = body.get("message") if isinstance(body, dict) else None
     if isinstance(body, dict) and isinstance(body.get("error"), dict):
         message = body["error"].get("message") or body["error"].get("code")
+    response = getattr(e, "response", None)
+    rid = request_id(getattr(response, "headers", None))
     parts = [type(e).__name__] + ([f"HTTP {status}"] if status else []) + ([str(message)[:160]] if message else [])
-    return ", ".join(parts)
+    return ", ".join(parts + ([f"request_id {rid}"] if rid else []))
 
 
 def check_wav(audio_bytes: bytes, mime: str) -> int:

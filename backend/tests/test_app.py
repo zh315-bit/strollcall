@@ -67,3 +67,7 @@ def test_same_sql_runs_on_sqlite_with_upserts(tmp_path):
     save_invite(inv)
     save_invite(inv.model_copy(update={"status": "proposed"}))  # upsert, not a duplicate-key error
     assert load_invite("t1").status == "proposed"
+
+
+def test_meta_diag_is_off_by_default():
+    assert client.get("/api/dev/meta_diag").status_code == 404

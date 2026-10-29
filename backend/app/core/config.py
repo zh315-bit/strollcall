@@ -67,6 +67,7 @@ class Settings(BaseSettings):
     planner_w_named_place: float = 0.1  # named POI beats an equally good street corner
 
     debug: bool = False  # enables /api/dev/*
+    meta_diag: bool = False  # enables /api/dev/meta_diag only, for a support ticket; switch off afterwards
     use_mocks: bool = False
     db_path: Path = ROOT_DIR / "data" / "strollcall.db"  # SQLite, when DATABASE_URL is not set
     database_url: SecretStr = SecretStr("")  # Postgres (Neon pooled URL, sslmode=require) when deployed
