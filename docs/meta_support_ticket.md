@@ -58,7 +58,7 @@ The same 404 has also appeared intermittently from the New York connection (for 
 `00684a19-df8d-4b7f-9ddf-22bcbc530580`, 2026-10-28 around 22:05 UTC), so this may be entitlement
 caching rather than region alone. It happened again locally on 2026-10-29 at 16:58:44Z and 16:58:45Z
 (request IDs `c179ebe0-c4b2-40d8-97d4-f8b8e44c9589`, `20b7074d-3458-4ce6-8923-4063646cc485`), while
-`muse-image-1.0` image generation from the same machine succeeded 24 times between 17:02Z and 17:08Z.
+`muse-image-1.0` image generation from the same machine succeeded 24 times between 17:03Z and 17:08Z (manifest times are when each file was saved).
 
 ### Render server, Oregon (temporary test service)
 
