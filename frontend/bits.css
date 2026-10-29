@@ -1,0 +1,25 @@
+/* Styles for js/bits.js (vanilla ports of React Bits effects). */
+
+/* Click Spark */
+.spark-layer { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 9999; }
+
+/* Text Type: the transparent source reserves the space, the typed copy sits on top */
+.tt { position: relative; }
+.tt .tt-source { color: transparent; }
+.tt-typed { position: absolute; inset: 0; color: var(--muted); }
+.tt-typed::after { content: ""; display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -2px;
+  background: var(--accent); animation: tt-blink 1s steps(1) infinite; }
+@keyframes tt-blink { 50% { opacity: 0; } }
+
+/* Tilted Card */
+.tilt { position: relative; border-radius: 14px; transition: transform .25s ease-out; will-change: transform; }
+.tilt .card-image { position: relative; }
+.tilt-glare { position: absolute; inset: 0; border-radius: 14px; pointer-events: none; opacity: 0; transition: opacity .25s;
+  mix-blend-mode: soft-light; }
+
+/* Animated Content: a springy pop, like a sticker slapped onto the page */
+.pop-in { animation: pop-in .55s cubic-bezier(.34, 1.56, .64, 1) both; }
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(24px) scale(.94) rotate(-1.5deg); }
+  to { opacity: 1; transform: none; }
+}
