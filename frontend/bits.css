@@ -6,6 +6,9 @@
 /* Text Type: the transparent source reserves the space, the typed copy sits on top */
 .tt { position: relative; }
 .tt .tt-source { color: transparent; }
+/* The title tagline (.page-head.lead-only .tagline sets a colour) must stay hidden too, or the full line
+   shows under the typing copy and only the cursor seems to move. */
+.page-head .tt .tt-source.tagline { color: transparent; }
 .tt-typed { position: absolute; inset: 0; color: var(--muted); }
 .lead-only .tt-typed { color: var(--ink); }
 .tt-typed::after { content: ""; display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -2px;

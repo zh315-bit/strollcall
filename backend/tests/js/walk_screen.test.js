@@ -102,3 +102,9 @@ test("click handlers use currentTarget: buttons hold a canvas and a label (specu
     assert.ok(!/\be\.target\b/.test(src), `${file}: use e.currentTarget, e.target may be the label inside a button`);
   }
 });
+
+test("the typing tagline's source line stays transparent on every page head", () => {
+  // .page-head.lead-only .tagline sets a colour; the typing copy's source must win over it.
+  const hide = rule(".page-head .tt .tt-source.tagline");
+  assert.equal(hide.color, "transparent");
+});
