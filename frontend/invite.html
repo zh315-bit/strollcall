@@ -210,7 +210,9 @@ function survey(v) {
   const update = () => ready() ? send.removeAttribute("disabled") : send.setAttribute("disabled", "");
   consent.addEventListener("change", update);
   const choice = (k, value, label) => el("button", { type: "button", role: "radio", "aria-checked": String(answers[k] === value),
-    onclick: (e) => { answers[k] = value; e.target.parentNode.querySelectorAll("button").forEach((b) => b.setAttribute("aria-checked", String(b === e.target))); update(); } }, label);
+    // currentTarget, not the event target: buttons hold a canvas and a label span (specular.js).
+    onclick: (e) => { const btn = e.currentTarget; answers[k] = value;
+      btn.closest(".choices").querySelectorAll("button").forEach((b) => b.setAttribute("aria-checked", String(b === btn))); update(); } }, label);
   send.addEventListener("click", async () => {
     send.setAttribute("disabled", "");
     const n = parseInt(minutes.value, 10);

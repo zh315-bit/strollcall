@@ -12,6 +12,17 @@ from app.models.db import health as db_health
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 app = FastAPI(title="StrollCall")
+
+
+@app.middleware("http")
+async def revalidate_pages_and_code(request, call_next):
+    """Pages, scripts and styles are revalidated on every load (cheap: ETag / 304), so a fix
+    reaches testers' phones right after a deploy instead of whenever their cache expires."""
+    response = await call_next(request)
+    path = request.url.path
+    if path == "/" or path.startswith("/i/") or path.endswith((".html", ".js", ".css", ".json")):
+        response.headers.setdefault("Cache-Control", "no-cache")
+    return response
 app.include_router(coverage.router)
 app.include_router(intents.router)
 app.include_router(invites.router)

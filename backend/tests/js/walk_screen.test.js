@@ -8,7 +8,8 @@ const path = require("node:path");
 
 const FRONT = path.join(__dirname, "../../../frontend");
 const read = (p) => fs.readFileSync(path.join(FRONT, p), "utf8");
-const css = read("style.css") + "\n" + (fs.existsSync(path.join(FRONT, "bits.css")) ? read("bits.css") : "");
+const css = (read("style.css") + "\n" + (fs.existsSync(path.join(FRONT, "bits.css")) ? read("bits.css") : ""))
+  .replace(/\/\*[\s\S]*?\*\//g, "");  // comments would read as part of the next selector
 const walk = read("js/walk.js");
 const common = read("js/common.js");
 
@@ -71,6 +72,7 @@ test("the walking screen covers the viewport above the map and its map can grow"
   assert.ok(parseInt(s["z-index"], 10) >= 1000, "above Leaflet's panes and controls (z-index up to 1000)");
   assert.match(s.display || "", /flex/);
   assert.ok(s.background || s["background-color"], "opaque: the page must not show through");
+  assert.ok(["auto", "scroll"].includes(s["overflow-y"]), "scrollable: End walk must stay reachable on short phones");
   const mapRule = rule(".walk-map");
   assert.ok(/1/.test(mapRule.flex || mapRule["flex-grow"] || ""), "the map takes the free height");
   assert.ok(parseInt(mapRule["min-height"], 10) >= 150, "the map keeps a usable height on 320x640");
@@ -91,5 +93,12 @@ test("touch targets in the walking screen are at least 44 px tall", () => {
     const r = rule(sel);
     const h = parseInt(r["min-height"], 10);
     assert.ok(h >= 36, `${sel} min-height ${r["min-height"]}`);
+  }
+});
+
+test("click handlers use currentTarget: buttons hold a canvas and a label (specular.js)", () => {
+  for (const file of ["index.html", "invite.html", "js/walk.js", "js/common.js"]) {
+    const src = read(file);
+    assert.ok(!/\be\.target\b/.test(src), `${file}: use e.currentTarget, e.target may be the label inside a button`);
   }
 });

@@ -261,3 +261,18 @@ body.walking { overflow: hidden; }
 .poi-pin { font-size: 18px; line-height: 24px; text-align: center; filter: drop-shadow(0 1px 1px rgba(0,0,0,.4)); }
 .voice-toggle { min-height: 44px; }
 .voice-toggle[aria-pressed="true"] { background: var(--sun); }
+
+/* Short phones (e.g. 320x640): keep End walk and the voice toggle on screen with a place card open */
+.walk-screen { overflow-y: auto; overscroll-behavior: contain; }
+.walk-actions, .walk-stats, .walk-step { flex: none; }
+@media (max-height: 700px) {
+  .walk-screen { gap: 6px; }
+  .walk-step { padding: 6px 12px; font-size: 1rem; }
+  .walk-map { min-height: 150px; }
+  .poi-card { max-height: 22vh; padding: 8px 12px; }
+  .walk-stats > div { padding: 2px 6px; }
+  .walk-stats b { font-size: 1.25rem; }
+  .walk-note { font-size: .75rem; }
+}
+/* Outdoors the map must read in sunlight: full-contrast tiles while walking (planning pages stay muted) */
+.walk-map .leaflet-tile-pane { filter: none; }

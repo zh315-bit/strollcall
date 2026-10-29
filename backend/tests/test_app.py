@@ -89,3 +89,9 @@ def test_db_region_names_the_cloud_region_only():
 
     assert db_region("postgresql://u:p@ep-cool-x-pooler.us-east-1.aws.neon.tech/db?sslmode=require") == "aws us-east-1"
     assert db_region("postgresql://u:p@localhost/db") is None
+
+
+def test_pages_and_code_are_revalidated_after_a_deploy():
+    for path in ("/", "/i/abc", "/static/js/walk.js", "/static/style.css"):
+        assert client.get(path).headers.get("cache-control") == "no-cache", path
+    assert "no-cache" not in client.get("/static/illustrations/lively-cafe.jpg").headers.get("cache-control", "")
