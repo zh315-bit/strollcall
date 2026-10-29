@@ -106,13 +106,14 @@ def role_of(token: str, key: str | None) -> str:
 
 
 def trim_start(leg: RouteLeg, meters: float = TRIM_M) -> RouteLeg:
-    """Drop the first `meters` of a leg's geometry (times stay the same)."""
+    """Drop the first `meters` of a leg's geometry (times stay the same) and its turn steps,
+    whose first one starts at the walker's origin."""
     pts, walked = leg.geometry, 0.0
     for i in range(1, len(pts)):
         walked += haversine_m(*pts[i - 1], *pts[i])
         if walked >= meters:
-            return leg.model_copy(update={"geometry": pts[i:]})
-    return leg.model_copy(update={"geometry": pts[-1:]})
+            return leg.model_copy(update={"geometry": pts[i:], "steps": []})
+    return leg.model_copy(update={"geometry": pts[-1:], "steps": []})
 
 
 def view(token: str, key: str | None = None) -> InviteView | None:

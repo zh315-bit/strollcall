@@ -15,6 +15,19 @@ M_PER_DEG = 111_320.0
 N = 5
 
 
+def street_name_arrays(n):
+    """Grid node (i, j) is near "Street i" and "Ave j" (the isolated node is near none)."""
+    table = [f"Street {i}" for i in range(N)] + [f"Ave {j}" for j in range(N)]
+    ptr, flat = [0], []
+    for k in range(n):
+        if k < N * N:
+            i, j = divmod(k, N)
+            flat += [i, N + j]
+        ptr.append(len(flat))
+    return {"node_names_ptr": np.array(ptr, dtype=np.int64), "node_names": np.array(flat, dtype=np.int32),
+            "street_names": np.array("\n".join(table))}
+
+
 def grid_graph(path, extra_isolated=True):
     """5x5 street grid, ~111 m blocks, plus one isolated node; one edge has a bend."""
     cos = math.cos(math.radians(LAT0))
@@ -62,6 +75,7 @@ def grid_graph(path, extra_isolated=True):
         osmid=np.arange(1000, 1000 + n), node_label=np.array(labels, dtype=np.int32),
         labels=np.array("\n".join(label_table)),
         built_at=np.array("2026-10-28T00:00:00+00:00"), walk_m_per_min=np.array(80.0),
+        **street_name_arrays(n),
     )
     return WalkGraph(path), dlon
 
@@ -329,3 +343,11 @@ def test_coverage_grid_marks_cells_with_streets(graph):
     assert len(cov["covered"]) == cov["rows"] * cov["cols"] and "1" in cov["covered"]
     s, w = cov["bbox"][:2]
     assert cov["covered"][0] == "1"  # the grid's corner node sits in the first cell
+
+
+def test_walk_has_turn_steps_from_street_names(graph):
+    routing = LocalRouting(graph[0])
+    leg = routing.walk(node(graph, 0, 0), node(graph, 3, 0))  # straight north along Ave 0
+    assert [s["text"] for s in leg.steps] == ["Head north on Ave 0"]
+    leg = routing.walk(node(graph, 0, 0), node(graph, 0, 3))  # east along Street 0
+    assert leg.steps[0]["text"] == "Head east on Street 0"

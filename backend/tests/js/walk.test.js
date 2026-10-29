@@ -5,7 +5,7 @@ const assert = require("node:assert");
 const path = require("node:path");
 const fs = require("node:fs");
 
-const { WALK, WalkFollower, projectOnRoute, distanceM, formatRemaining } =
+const { WALK, WalkFollower, projectOnRoute, distanceM, formatRemaining, stepInfo, formatStep } =
   require(path.join(__dirname, "../../../frontend/js/walk.js"));
 const fx = JSON.parse(fs.readFileSync(path.join(__dirname, "../../../fixtures/walk_track_p1.json"), "utf8"));
 
@@ -30,8 +30,8 @@ function along(line, fromM, toM, step = 4) {
 }
 const lengthOf = (line) => projectOnRoute(line, line[0]).total;
 const legs = () => [
-  { name: fx.meetup.name, kind: "meetup", target: [fx.meetup.lat, fx.meetup.lon], geometry: fx.a_leg },
-  { name: fx.destination.name, kind: "destination", target: [fx.destination.lat, fx.destination.lon], geometry: fx.shared_leg },
+  { name: fx.meetup.name, kind: "meetup", target: [fx.meetup.lat, fx.meetup.lon], geometry: fx.a_leg, steps: fx.a_steps },
+  { name: fx.destination.name, kind: "destination", target: [fx.destination.lat, fx.destination.lon], geometry: fx.shared_leg, steps: fx.shared_steps },
 ];
 
 test("a full walk: on route, detour, re-plan, meetup, destination", () => {
@@ -69,7 +69,7 @@ test("a full walk: on route, detour, re-plan, meetup, destination", () => {
   assert.equal(feed(jitter(fx.detour_point, 5)).type, "off_route", "only one re-plan request at a time");
 
   // 4. The server's new route (from the fixture, the same endpoint's output) is followed to the meetup.
-  f.setRoute(fx.replan_leg);
+  f.setRoute(fx.replan_leg, fx.replan_steps);
   let arrived = null;
   for (const p of along(fx.replan_leg, 0, lengthOf(fx.replan_leg))) {
     const ev = feed(jitter(p));
@@ -112,4 +112,30 @@ test("a failed re-plan is retried after a pause", () => {
 test("remaining time is rounded honestly", () => {
   assert.deepEqual(formatRemaining(10), { min: 1, dist: "50 m" });
   assert.deepEqual(formatRemaining(1234), { min: 15, dist: "1.2 km" });
+});
+
+test("the next instruction follows the walker along the real shared leg", () => {
+  const f = new WalkFollower(legs());
+  f.nextLeg();
+  const shown = [];
+  for (const p of along(fx.shared_leg, 0, lengthOf(fx.shared_leg), 10)) {
+    const ev = f.update({ lat: p[0], lon: p[1], accuracy: 10, t: shown.length * 3 });
+    const text = ev.type === "arrived" ? null : formatStep(ev.step);
+    if (text && text !== shown[shown.length - 1]) shown.push(text);
+  }
+  const turns = fx.shared_steps.slice(1).map((s) => s.text);
+  // Every turn is announced ahead ("In ... m: ...") and then at the corner ("Now: ..."), in order.
+  for (const t of turns) {
+    const ahead = shown.findIndex((x) => x.endsWith(`: ${t}`) && !x.startsWith("Now"));
+    const now = shown.indexOf(`Now: ${t}`);
+    assert.ok(ahead >= 0 && now > ahead, `announced ${t}: ${JSON.stringify(shown)}`);
+  }
+  assert.ok(shown[0].startsWith(fx.shared_steps[0].text), "starts with the departure step");
+});
+
+test("step distances are rounded, never more precise than the map", () => {
+  const info = stepInfo(fx.shared_steps, 50, "x");
+  assert.equal(info.index, 0);
+  assert.match(formatStep(info), /then in 150 m: /);
+  assert.equal(stepInfo([], 0, "x"), null);
 });

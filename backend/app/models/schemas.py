@@ -25,6 +25,7 @@ class RouteLeg(BaseModel):
     geometry: list[tuple[float, float]]  # (lat, lon) points, Leaflet order
     distance_m: float
     duration_min: float
+    steps: list[dict] = []  # turn instructions (local graph only), see services/directions.py
 
 
 class MeetupCandidate(BaseModel):

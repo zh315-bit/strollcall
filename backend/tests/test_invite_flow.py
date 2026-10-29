@@ -99,6 +99,8 @@ def test_full_flow_create_accept_poll_confirm(town):
     assert len(c_a["a_leg"]["geometry"]) > len(c_b["a_leg"]["geometry"])
     assert len(c_b["b_leg"]["geometry"]) > len(c_a["b_leg"]["geometry"])
     assert c_a["a_leg"]["duration_min"] == c_b["a_leg"]["duration_min"]
+    # Turn steps only for your own leg: the other's first step would sit at their start.
+    assert c_a["a_leg"]["steps"] and not c_b["a_leg"]["steps"] and not c_a["b_leg"]["steps"]
 
     assert client.post(f"/api/invites/{token}/confirm", json={"key": "wrong"}).status_code == 403
     done = client.post(f"/api/invites/{token}/confirm", json={"key": b_key})

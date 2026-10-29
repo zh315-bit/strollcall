@@ -10,6 +10,7 @@ const WALK = {
   ARRIVE_M: 40,         // this close to the meetup point or destination -> arrived
   WEAK_ACCURACY_M: 100, // fixes worse than this are shown but not used to judge route or arrival
   REPLAN_RETRY_S: 30,
+  STEP_NOW_M: 20,       // "Now: turn left ..." this close to a turn
   M_PER_MIN: 80,        // the planner's walking speed
 };
 
@@ -42,7 +43,31 @@ function projectOnRoute(route, pos) {
   return { ...best, total: walked };
 }
 
-// legs: [{ name, kind: "meetup" | "destination", target: [lat, lon], geometry: [[lat, lon], ...] }]
+// Turn instructions (from the server's route) relative to how far along the route we are:
+// the step we are on and the next one, with the distance to it.
+function stepInfo(steps, along, targetName) {
+  if (!steps || !steps.length) return null;
+  let i = 0;
+  while (i + 1 < steps.length && steps[i + 1].along_m <= along + WALK.STEP_NOW_M) i++;
+  const next = steps[i + 1];
+  return { current: steps[i], index: i, next: next || null, toNextM: next ? Math.max(0, next.along_m - along) : null,
+           finalText: `Arrive at ${targetName}` };
+}
+
+function formatStep(info) {
+  if (!info) return null;
+  if (info.next && info.toNextM <= WALK.STEP_NOW_M * 2) return `Now: ${info.next.text}`;
+  if (info.index === 0 && info.current.kind === "depart" && (!info.next || info.toNextM > 60)) {
+    return info.next ? `${info.current.text}, then in ${roundDist(info.toNextM)}: ${info.next.text}` : info.current.text;
+  }
+  return info.next ? `In ${roundDist(info.toNextM)}: ${info.next.text}` : info.finalText;
+}
+
+function roundDist(m) {
+  return m < 100 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : m < 1000 ? `${Math.round(m / 50) * 50} m` : `${(m / 1000).toFixed(1)} km`;
+}
+
+// legs: [{ name, kind: "meetup" | "destination", target: [lat, lon], geometry: [[lat, lon], ...], steps? }]
 class WalkFollower {
   constructor(legs, opts = {}) {
     this.legs = legs.map((l) => ({ ...l }));
@@ -64,8 +89,9 @@ class WalkFollower {
     const p = projectOnRoute(leg.geometry, pos);
     const toTarget = distanceM(pos, leg.target);
     const remainingM = Math.max(p.total - p.along, 0) + (p.dist > o.OFF_ROUTE_M ? p.dist : 0);
-    const base = { leg: this.leg, distToRoute: p.dist, toTarget, remainingM,
-                   remainingMin: remainingM / o.M_PER_MIN, accuracy: fix.accuracy };
+    const base = { leg: this.leg, distToRoute: p.dist, toTarget, remainingM, along: p.along,
+                   remainingMin: remainingM / o.M_PER_MIN, accuracy: fix.accuracy,
+                   step: stepInfo(leg.steps, p.along, leg.name) };
     this.last = base;
     if (this.arrived) return { type: "arrived", ...base };
     if (!(fix.accuracy <= o.WEAK_ACCURACY_M)) return { type: "weak_signal", ...base };
@@ -91,10 +117,11 @@ class WalkFollower {
   }
 
   // A new route for the current leg (after a re-plan), or null when re-planning failed.
-  setRoute(geometry) {
+  setRoute(geometry, steps) {
     this.replanning = false;
     if (geometry && geometry.length) {
       this.current.geometry = geometry;
+      this.current.steps = steps || [];
       this.offSince = null;
     }
   }
@@ -117,7 +144,7 @@ function formatRemaining(m) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { WALK, WalkFollower, projectOnRoute, distanceM, formatRemaining };
+  module.exports = { WALK, WalkFollower, projectOnRoute, distanceM, formatRemaining, stepInfo, formatStep };
 }
 
 // ---- The walking view (browser only) ----
@@ -154,7 +181,8 @@ function startWalk(legs, opts = {}) {
     if (targetMarker) targetMarker.remove();
     routeLine = L.polyline(leg.geometry, { color: color(leg.kind === "meetup" ? "--a" : "--shared") || "#ff5c8a", weight: 6, opacity: .85 }).addTo(map);
     targetMarker = L.marker(leg.target).addTo(map).bindPopup(leg.name);
-    stepEl.textContent = `${leg.kind === "meetup" ? "Walk to the meeting point" : "Walk to"}: ${leg.name}`;
+    stepEl.replaceChildren(el("span", { class: "walk-to" }, `${leg.kind === "meetup" ? "To the meeting point" : "To"}: ${leg.name}`),
+      el("b", { class: "walk-next" }, formatStep(stepInfo(leg.steps, 0, leg.name)) || ""));
     fallback.href = mapsLink(leg.target[0], leg.target[1]);
     map.invalidateSize();
     map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
@@ -176,7 +204,7 @@ function startWalk(legs, opts = {}) {
     try {
       const leg = await api("/api/walk/route", { method: "POST", body: {
         origin: { lat: ev.from[0], lon: ev.from[1] }, target: { lat: ev.target[0], lon: ev.target[1] } } });
-      follower.setRoute(leg.geometry);
+      follower.setRoute(leg.geometry, leg.steps);
       showLeg();
       notice("New route from where you are.", "ok");
       if (opts.onReplan) opts.onReplan(leg);
@@ -208,6 +236,9 @@ function startWalk(legs, opts = {}) {
     } else { me.setLatLng(ll); meCircle.setLatLng(ll).setRadius(fix.accuracy); }
     if (follow) map.panTo(ll);
     const ev = follower.update(fix);
+    const nextText = ev.type === "arrived" ? "" : formatStep(ev.step);
+    const nextEl = stepEl.querySelector(".walk-next");
+    if (nextEl && nextText !== null && nextEl.textContent !== nextText) nextEl.textContent = nextText;
     if (ev.type === "arrived") statsEl.replaceChildren(el("div", {}, el("b", {}, "✓"), "arrived"), el("div", {}, el("b", {}, `~${WALK.ARRIVE_M} m`), "or closer"));
     else stats(ev.remainingM);
     if (ev.type === "weak_signal") notice(`Weak GPS signal (about ${Math.round(fix.accuracy)} m). Times are rough until it improves.`, "warn");

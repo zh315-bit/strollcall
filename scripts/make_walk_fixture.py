@@ -53,8 +53,9 @@ def main() -> None:
         "meetup": {"name": meet.name, "lat": meet.lat, "lon": meet.lon},
         "destination": {"name": dest.name, "lat": dest.lat, "lon": dest.lon},
         "a_leg": a_leg, "shared_leg": c.shared_leg.geometry,
+        "a_steps": c.a_leg.steps, "shared_steps": c.shared_leg.steps,
         "detour_point": list(detour), "detour_distance_from_route_m": round(d_route, 1),
-        "replan_leg": replan.geometry,
+        "replan_leg": replan.geometry, "replan_steps": replan.steps,
     }
     path = ROOT / "fixtures" / "walk_track_p1.json"
     path.write_text(json.dumps(out) + "\n")

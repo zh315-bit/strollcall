@@ -89,7 +89,8 @@ def build_graph(bbox, out_path) -> None:
 
     osmid = np.array(node_ids, dtype=np.int64)
     degree = np.diff(indptr)
-    labels = intersection_labels(bbox, lat, lon, degree)
+    found = street_names_near(bbox, lat, lon, np.arange(len(node_ids)))  # for turn instructions too
+    labels = intersection_labels(bbox, lat, lon, degree, found)
     label_table = sorted(set(labels.values()))
     label_index = {n: k for k, n in enumerate(label_table)}
     node_label = np.full(len(node_ids), -1, dtype=np.int32)
@@ -102,7 +103,7 @@ def build_graph(bbox, out_path) -> None:
         node_label=node_label, labels=np.array("\n".join(label_table)),
         geom_ptr=geom_ptr, geom_lat=geom_lat, geom_lon=geom_lon,
         bbox=np.array(bbox), built_at=np.array(datetime.now(timezone.utc).isoformat()),
-        walk_m_per_min=np.array(WALK_M_PER_MIN),
+        walk_m_per_min=np.array(WALK_M_PER_MIN), **node_name_arrays(found, len(node_ids)),
     )
     print(f"wrote {out_path.relative_to(ROOT)}: {len(node_ids)} nodes, {len(keys)} edges, "
           f"{len(flat)} geometry points, {out_path.stat().st_size / 1e6:.1f} MB")
@@ -125,8 +126,8 @@ def short_street(name: str) -> str:
     return name
 
 
-def intersection_labels(bbox, lat, lon, degree) -> dict[int, str]:
-    """'E 86th St & York Ave' for walk nodes (degree >= 3) near two or more named streets.
+def street_names_near(bbox, lat, lon, idx) -> dict[int, set[str]]:
+    """Names of the drive streets within STREET_NAME_RADIUS_M of walk nodes `idx`.
 
     NYC sidewalks are mapped as separate unnamed footways, so names come from the drive
     network: every named street within STREET_NAME_RADIUS_M of the node.
@@ -143,9 +144,8 @@ def intersection_labels(bbox, lat, lon, degree) -> dict[int, str]:
     edges = edges.to_crs(utm)
     tree = STRtree(edges.geometry.values)
     names = edges["name"].values
-    print(f"downloaded drive network for street names: {len(edges)} named edges ({time.monotonic() - t:.0f} s)")
+    print(f"drive network for street names: {len(edges)} named edges ({time.monotonic() - t:.0f} s)")
 
-    idx = np.nonzero(degree >= 3)[0]
     pts = gpd.GeoSeries(points(lon[idx], lat[idx]), crs="EPSG:4326").to_crs(utm).values
     node_pos, edge_pos = tree.query(pts, predicate="dwithin", distance=STREET_NAME_RADIUS_M)
     found: dict[int, set] = {}
@@ -153,9 +153,29 @@ def intersection_labels(bbox, lat, lon, degree) -> dict[int, str]:
         n = names[e]
         for name in (n if isinstance(n, list) else [n]):
             found.setdefault(int(idx[p]), set()).add(short_street(str(name)))
-    labels = {i: " & ".join(sorted(s)[:2]) for i, s in found.items() if len(s) >= 2}
+    return found
+
+
+def intersection_labels(bbox, lat, lon, degree, found: dict[int, set] | None = None) -> dict[int, str]:
+    """'E 86th St & York Ave' for walk nodes (degree >= 3) near two or more named streets."""
+    idx = np.nonzero(degree >= 3)[0]
+    if found is None:
+        found = street_names_near(bbox, lat, lon, idx)
+    labels = {int(i): " & ".join(sorted(found[i])[:2]) for i in idx if len(found.get(int(i), ())) >= 2}
     print(f"named {len(labels)} of {len(idx)} intersection nodes")
     return labels
+
+
+def node_name_arrays(found: dict[int, set], n: int) -> dict[str, np.ndarray]:
+    """Every node's nearby street names as CSR: node_names_ptr, node_names (into street_names)."""
+    table = sorted({name for s in found.values() for name in s})
+    index = {name: k for k, name in enumerate(table)}
+    ptr, flat = np.zeros(n + 1, dtype=np.int64), []
+    for i in range(n):
+        flat.extend(sorted(index[x] for x in found.get(i, ())))
+        ptr[i + 1] = len(flat)
+    return {"node_names_ptr": ptr, "node_names": np.array(flat, dtype=np.int32),
+            "street_names": np.array("\n".join(table))}
 
 
 def _tags(row) -> dict:

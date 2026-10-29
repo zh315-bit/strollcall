@@ -51,6 +51,10 @@ class WalkGraph:
         self.node_label = data["node_label"] if "node_label" in data else np.full(len(self.lat), -1)
         self.labels = str(data["labels"]).split("\n") if "labels" in data else []
         self.degree = np.diff(self.indptr)
+        # Nearby street names per node (scripts/add_street_names.py), for turn instructions.
+        self.names_ptr = data["node_names_ptr"] if "node_names_ptr" in data else None
+        self.names_idx = data["node_names"] if "node_names" in data else None
+        self.street_names = str(data["street_names"]).split("\n") if "street_names" in data else []
         self.bbox = tuple(float(x) for x in data["bbox"])
         n = len(self.lat)
         self.csr = csr_matrix((self.minutes, self.indices, self.indptr), shape=(n, n))
@@ -82,6 +86,11 @@ class WalkGraph:
         grid[r, c] = True
         return {"bbox": [s, w, n, e], "cell_deg": [dlat, dlon], "rows": rows, "cols": cols,
                 "covered": "".join("1" if x else "0" for x in grid.ravel())}
+
+    def names_of(self, u: int) -> set[str]:
+        if self.names_ptr is None:
+            return set()
+        return {self.street_names[k] for k in self.names_idx[self.names_ptr[u]:self.names_ptr[u + 1]]}
 
     def intersection_name(self, u: int) -> str | None:
         """'E 86th St & York Ave' for an intersection node, from the build step; else None."""
@@ -229,14 +238,20 @@ class LocalRouting:
         nodes.reverse()
         g = self.graph
         geometry: list[Point] = [start]
+        node_at: list[int] = []  # where each path node sits in the geometry
         for u, v in zip(nodes, nodes[1:]):
+            node_at.append(len(geometry))
             geometry.append((float(g.lat[u]), float(g.lon[u])))
             geometry.extend(g.edge_geometry(u, v))
+        node_at.append(len(geometry))
         geometry += [(float(g.lat[e_node]), float(g.lon[e_node])), end]
 
+        from app.services.directions import turn_steps
+
+        steps = turn_steps(geometry, node_at, [g.names_of(u) for u in nodes]) if g.names_ptr is not None else []
         minutes = float(dist[e_node]) + (s_snap + e_snap) / g.m_per_min
         leg = RouteLeg(geometry=geometry, distance_m=round(minutes * g.m_per_min, 1),
-                       duration_min=round(minutes, 2))
+                       duration_min=round(minutes, 2), steps=steps)
         if len(self.legs) > CACHE_MAX:
             self.legs.clear()
         self.legs[key] = leg
