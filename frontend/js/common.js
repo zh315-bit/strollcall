@@ -189,28 +189,36 @@ function decorate() {
     el("div", { class: "cloud c1" }), el("div", { class: "cloud c2" }), el("div", { class: "cloud c3" }));
   document.body.prepend(sky);
 
-  // Wrap the page's <h1> (and .tagline, if any) into the mascot header with a speech bubble.
+  // The page's <h1> and .tagline become a plain page header; the mascots and name live in the top bar.
+  // Where the h1 only says "StrollCall" (home, invite), the bar already shows it: the h1 stays for
+  // screen readers and the tagline is shown as the page title.
   const h1 = document.querySelector("main > h1");
   if (!h1) return;
-  const tagline = document.querySelector("main > .tagline");
-  const mascots = el("div", { class: "mascots" });
-  mascots.innerHTML = MASCOTS_SVG;
-  h1.append(" ", el("span", { class: "sparkle", "aria-hidden": "true" }, "✦"));
-  const text = el("div", {}, h1, el("div", { class: "bubble" }, tagline || el("p", { class: "tagline" }, "Less planning. More meeting.")));
-  document.querySelector("main").prepend(el("header", { class: "hero" }, mascots, text));
+  const head = el("header", { class: "page-head" }, h1, document.querySelector("main > .tagline"));
+  if (h1.textContent.trim() === "StrollCall") { h1.classList.add("sr-only"); head.classList.add("lead-only"); }
+  document.querySelector("main").prepend(head);
 }
 
 // ---- Site navigation (top) and the privacy link (footer), on every page ----
 
 const NAV = [["/", "New walk"], ["/walks", "My walks"], ["/how", "How it works"]];
 
+const navIndex = (path) => NAV.findIndex(([href]) => href === "/" ? path === "/" : path.startsWith(href));
+
+// Top bar: the logo (mascots + name) top-left, the nav on the right. The pale-yellow pill sits under the
+// current page's link; page switches animate it (see "Page switches" below and style.css).
 function siteChrome() {
-  const here = location.pathname;
-  const current = (href) => href === "/" ? here === "/" : here.startsWith(href);
-  const nav = el("nav", { class: "topnav", "aria-label": "StrollCall" },
-    NAV.map(([href, label]) => el("a", { href, "aria-current": current(href) ? "page" : null }, label)));
+  const at = navIndex(location.pathname);
+  const pill = el("span", { class: "nav-pill", "aria-hidden": "true" });
+  const track = el("div", { class: "nav-track" }, pill,
+    NAV.map(([href, label], i) => el("a", { href, "aria-current": i === at ? "page" : null }, label)));
+  const nav = el("nav", { class: "topnav", "aria-label": "StrollCall" }, track);
+  const mascots = el("span", { class: "brand-mascots", "aria-hidden": "true" });
+  mascots.innerHTML = MASCOTS_SVG;
+  const brand = el("a", { class: "brand", href: "/" }, mascots, el("span", { class: "brand-name" }, "StrollCall"));
   const main = document.querySelector("main");
-  if (main) main.before(nav);
+  if (main) main.before(el("header", { class: "site-bar" }, brand, nav));
+  placePill(track, pill);
   const footer = document.querySelector("footer");
   if (footer && !footer.querySelector('a[href="/privacy"]')) {
     footer.append(el("span", { class: "footer-links" }, el("a", { href: "/privacy" }, "Privacy"), " · ",
@@ -218,6 +226,39 @@ function siteChrome() {
       el("a", { href: "https://github.com/zh315-bit/strollcall", target: "_blank", rel: "noopener" }, "GitHub")));
   }
 }
+
+function placePill(track, pill) {
+  const link = track.querySelector('a[aria-current="page"]');
+  if (!link) { pill.remove(); return; } // pages outside the nav (privacy, recap, invite): no pill
+  const put = () => { pill.style.width = `${link.offsetWidth}px`; pill.style.transform = `translateX(${link.offsetLeft}px)`; };
+  put();
+  new ResizeObserver(put).observe(track);
+  document.fonts?.ready.then(put);
+}
+
+// ---- Page switches: cross-document view transitions (style.css) ----
+// The old page records where it was; the new page picks the direction from the nav order:
+// New walk -> My walks -> How it works is "forward" (content moves left), the reverse is "back",
+// anything else (privacy, recaps, invites) a plain crossfade. Browsers without view transitions
+// just navigate.
+
+const ARRIVED_IN_SITE = (() => { // also lets bits.js skip its entrance effects after a page switch
+  try { const from = JSON.parse(sessionStorage.getItem("strollcall:from")); return from && Date.now() - from.at < 5000 ? from : null; }
+  catch (err) { return null; }
+})();
+addEventListener("pageswap", (ev) => {
+  quietSkip(ev.viewTransition);
+  try { sessionStorage.setItem("strollcall:from", JSON.stringify({ path: location.pathname, at: Date.now() })); } catch (err) { /* fine */ }
+});
+// A transition the browser skips (tab hidden, a quick second click) rejects its `ready` promise: the page
+// just shows, so the rejection is expected and handled here instead of surfacing as an error.
+const quietSkip = (vt) => vt?.ready.catch(() => {});
+addEventListener("pagereveal", (ev) => {
+  if (!ev.viewTransition) return;
+  quietSkip(ev.viewTransition);
+  const a = ARRIVED_IN_SITE ? navIndex(ARRIVED_IN_SITE.path) : -1, b = navIndex(location.pathname);
+  ev.viewTransition.types.add(a < 0 || b < 0 || a === b ? "fade" : b > a ? "forward" : "back");
+});
 
 // ---- This device's walks: invite tokens and what happened, in browser storage only ----
 // Every access is wrapped: storage can be missing or blocked (private mode, settings).

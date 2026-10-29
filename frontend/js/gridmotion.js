@@ -2,7 +2,8 @@
 // JS + CSS variant to plain DOM. Same props (as an options object) and the same layout, drift, parallax,
 // spotlight and edge-fade math. Image tiles only (plus text), since there is no JSX here.
 // Usage: gridMotion(container, { items: ["/a.jpg", { src: "/b.jpg", alt: "…" }, "text"], rows: 2, … })
-// Returns a destroy() function.
+// Returns a destroy() function; destroy.state() gives { offsets, at } to pass back as `resume` on the
+// next page, so the wall carries on from where it was (offsets advance by the time in between).
 
 (() => {
   const THEMES = {
@@ -62,7 +63,7 @@
   function gridMotion(root, {
     items = [], rows = 4, aspectRatio = 1.33, gap = 16, radius = 14, angle = -12, tilt = 0, speed = 24,
     direction = "alternate", parallax = 0.5, spotlight = 0.6, dim = 0.35, grayscale = false, fade = 0.5,
-    tileColor, textColor, theme = "dark",
+    tileColor, textColor, theme = "dark", resume = null,
   } = {}) {
     const palette = THEMES[theme] ?? THEMES.dark;
     const s = {
@@ -72,7 +73,8 @@
     };
     const tiles = items.map(toTile);
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
-    const motion = { offsets: [], shifts: [], intro: 0, pointer: { x: 0, y: 0, active: false } };
+    const motion = { offsets: [], shifts: [], intro: resume ? 1 : 0, pointer: { x: 0, y: 0, active: false } };
+    const resumeGap = resume ? Math.min(5, Math.max(0, (Date.now() - resume.at) / 1000)) : 0;
 
     root.classList.add("grid-motion");
     if (grayscale) root.classList.add("grid-motion--gray");
@@ -178,7 +180,13 @@
 
       rowEls.forEach((row, r) => {
         const drift = s.direction === "left" ? -1 : s.direction === "right" ? 1 : r % 2 ? 1 : -1;
-        if (motion.offsets[r] === undefined) { motion.offsets[r] = r * layout.step * 0.37; motion.shifts[r] = 0; }
+        if (motion.offsets[r] === undefined) {
+          const saved = resume?.offsets?.[r];
+          motion.offsets[r] = typeof saved === "number"
+            ? saved + (reduce ? 0 : s.speed * drift * PACE[r % PACE.length] * resumeGap)
+            : r * layout.step * 0.37;
+          motion.shifts[r] = 0;
+        }
         if (!reduce) motion.offsets[r] += s.speed * drift * PACE[r % PACE.length] * dt;
         const target = reduce ? 0 : s.parallax * layout.tileWidth * 1.2 * nudge * (r % 2 ? -1 : 1);
         motion.shifts[r] += (target - motion.shifts[r]) * (1 - Math.exp(-dt / INERTIA[r % INERTIA.length]));
@@ -228,7 +236,7 @@
     const seen = new IntersectionObserver((entries) => { visible = entries.some((e) => e.isIntersecting); schedule(); });
     seen.observe(root);
 
-    return () => {
+    const destroy = () => {
       alive = false;
       cancelAnimationFrame(raf);
       resize.disconnect(); seen.disconnect();
@@ -237,6 +245,8 @@
       document.documentElement.removeEventListener("pointerleave", onLeave);
       plane?.remove();
     };
+    destroy.state = () => ({ offsets: motion.offsets.slice(), at: Date.now() });
+    return destroy;
   }
 
   window.gridMotion = gridMotion;

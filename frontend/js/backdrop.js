@@ -255,6 +255,15 @@ void main() {
   // ---- Photo wall: the Muse Image illustrations drifting across the whole page ----
   // thumbs/ holds 360 px copies of illustrations/ (sips -Z 360, JPEG quality 72): the tiles never need more.
 
+  // The wall's order and row offsets, saved when leaving a page so the next page continues the same wall.
+  const WALL_KEY = "strollcall:wall";
+  function readWall() {
+    try {
+      const w = JSON.parse(sessionStorage.getItem(WALL_KEY));
+      return w && Array.isArray(w.order) && Array.isArray(w.offsets) && Date.now() - w.at < 60000 ? w : null;
+    } catch (err) { return null; }
+  }
+
   function photoWall(sky) {
     if (!window.gridMotion) return;
     const wall = document.createElement("div");
@@ -263,14 +272,22 @@ void main() {
     wash.className = "photo-wash";
     sky.prepend(wall, wash); // under the rays and motes
     fetch("/static/illustrations/manifest.json").then((r) => r.json()).then(({ pictures }) => {
-      const items = Object.keys(pictures)
-        .map((file) => ({ src: `/static/illustrations/thumbs/${file}`, alt: "", k: Math.random() }))
-        .sort((a, b) => a.k - b.k); // a different mix on every visit
+      // A new visit gets a fresh mix; moving between pages keeps the order and the drift (see WALL_KEY).
+      const files = Object.keys(pictures);
+      const saved = readWall();
+      const order = saved && saved.order.length === files.length && saved.order.every((f) => f in pictures)
+        ? saved.order : files.map((f) => [f, Math.random()]).sort((a, b) => a[1] - b[1]).map(([f]) => f);
+      const items = order.map((file) => ({ src: `/static/illustrations/thumbs/${file}`, alt: "" }));
       sky.classList.add("has-wall");
-      gridMotion(wall, { items, rows: innerHeight > innerWidth ? 5 : 4, aspectRatio: 1.5, gap: 18, radius: 22,
+      const wallMotion = gridMotion(wall, { items, rows: innerHeight > innerWidth ? 5 : 4, aspectRatio: 1.5, gap: 18, radius: 22,
         angle: -12, speed: 28, parallax: 0, spotlight: 0, dim: 0.25, // drifts on its own, ignores the pointer
         fade: 0.06, theme: "light",
-        tileColor: "var(--soft-line)" });
+        tileColor: "var(--soft-line)", resume: saved });
+      const save = () => {
+        try { sessionStorage.setItem(WALL_KEY, JSON.stringify({ order, ...wallMotion.state() })); } catch (err) { /* fine */ }
+      };
+      addEventListener("pageswap", save);
+      addEventListener("pagehide", save);
     }).catch(() => { wall.remove(); wash.remove(); }); // no pictures: the plain sky stays
   }
 
@@ -281,7 +298,7 @@ void main() {
     if (!sky) return;
     const layers = [lightRays(sky), motes(sky)].filter(Boolean);
     photoWall(sky); // GridMotion runs its own frame loop
-    const frame = (now) => layers.forEach((draw) => draw(now / 1000));
+    const frame = () => { const t = (Date.now() % 1e7) / 1000; layers.forEach((draw) => draw(t)); }; // wall-clock: same phase across pages
     if (reduced) { frame(4000); return; } // one still frame
     let raf = 0;
     const loop = (now) => { frame(now); raf = requestAnimationFrame(loop); };

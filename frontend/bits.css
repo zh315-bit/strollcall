@@ -7,6 +7,7 @@
 .tt { position: relative; }
 .tt .tt-source { color: transparent; }
 .tt-typed { position: absolute; inset: 0; color: var(--muted); }
+.lead-only .tt-typed { color: var(--ink); }
 .tt-typed::after { content: ""; display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -2px;
   background: var(--accent); animation: tt-blink 1s steps(1) infinite; }
 @keyframes tt-blink { 50% { opacity: 0; } }

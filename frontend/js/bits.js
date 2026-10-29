@@ -7,6 +7,9 @@
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
   const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  // After a page switch inside the site the view transition already moves the page in (common.js):
+  // the first typing and card pop-ins are skipped then, and only play when someone lands here.
+  let quietStart = typeof ARRIVED_IN_SITE !== "undefined" && !!ARRIVED_IN_SITE;
 
   // ---- Click Spark: four-point star sparks burst from every click ----
 
@@ -68,12 +71,12 @@
     }, { passive: true });
   }
 
-  // ---- Text Type: the hero speech bubble types itself out, with a blinking cursor ----
+  // ---- Text Type: the page header's tagline types itself out, with a blinking cursor ----
   // The real tagline stays in place (transparent) so its size is reserved and screen readers read it whole;
   // an aria-hidden copy on top does the typing, and retypes whenever the page changes the tagline.
 
   function textType() {
-    const tagline = document.querySelector(".bubble .tagline");
+    const tagline = document.querySelector(".page-head .tagline");
     if (!tagline) return;
     const wrap = document.createElement("div");
     wrap.className = "tt";
@@ -97,7 +100,7 @@
       };
       step();
     };
-    type();
+    if (quietStart) { typed.textContent = tagline.textContent; typed.classList.add("tt-done"); } else type();
     new MutationObserver(type).observe(tagline, { childList: true, characterData: true, subtree: true });
   }
 
@@ -149,6 +152,7 @@
     const sig = `${card.className}|${(head ? head.textContent : card.textContent).trim().slice(0, 40)}`;
     if (seenCards.has(sig)) return;
     seenCards.add(sig);
+    if (quietStart) return;
     card.classList.add("pop-in");
     card.style.animationDelay = `${Math.min(seenCards.size, 4) * 60}ms`;
     card.addEventListener("animationend", () => { card.classList.remove("pop-in"); card.style.animationDelay = ""; }, { once: true });
@@ -169,10 +173,11 @@
     clickSpark();
     textType();
     scan(document.body);
+    quietStart = false; // cards added later (plans, polling) still pop in
     new MutationObserver((records) => records.forEach((r) => r.addedNodes.forEach(scan)))
       .observe(document.querySelector("main"), { childList: true, subtree: true });
   }
 
-  // common.js builds the hero on DOMContentLoaded; this listener is added later, so it runs after.
+  // common.js builds the page header on DOMContentLoaded; this listener is added later, so it runs after.
   document.addEventListener("DOMContentLoaded", init);
 })();
