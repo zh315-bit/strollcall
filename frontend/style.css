@@ -197,7 +197,8 @@ footer { color: var(--muted); font-size: .78rem; margin: 24px 0; text-align: cen
 @media (max-width: 899px) { /* one column: the create button comes after the map step */
   .layout { display: flex; flex-direction: column; }
   .pane-left, .pane-right { display: contents; }
-  .pane-left > #create, .pane-left > #create-error { order: 1; }  /* the result slot stays under step 1 */
+  .pane-left > #create, .pane-left > #create-error { order: 1; }
+  .pane-left > #solo-result { order: 2; }  /* Near you (or the found walk) at the bottom on phones */
 }
 @media (min-width: 900px) {
   main { max-width: 1180px; padding: 20px 24px 8px; }
