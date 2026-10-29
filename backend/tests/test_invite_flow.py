@@ -192,3 +192,63 @@ def test_user_test_report_has_funnel_survey_and_predicted_vs_actual(town):
     text = mod.report("2000-01-01", None)
     assert "| confirmed | 1 |" in text and "| Would you use it again? | 1 | 0 | 0 |" in text
     assert "median absolute difference" in text and "lat" not in text
+
+
+def _expire(token):
+    invite = load_invite(token)
+    invite.expires_at = datetime.now(timezone.utc) - timedelta(minutes=1)
+    save_invite(invite)
+
+
+def test_expiry_deletes_routes_from_start_points_even_if_nobody_opens_the_invite(town):
+    from app.services.invites import sweep_expired
+
+    body = create(town)
+    token = body["token"]
+    b_key = client.post(f"/api/invites/{token}/accept", json={"b_origin": town["b"]}).json()["b_key"]
+    client.post(f"/api/invites/{token}/confirm", json={"key": b_key})
+    _expire(token)
+    assert sweep_expired() == 1  # nobody opened it again
+    stored = load_invite(token)
+    assert stored.status == "expired" and load_invite_extra(token)[1] is None
+    for c in stored.candidates:
+        assert c.a_leg.geometry == [] and c.b_leg.geometry == [] and c.a_leg.steps == [] and c.b_leg.pois == []
+        assert c.a_leg.duration_min > 0 and c.shared_leg.geometry  # times and the shared leg remain
+    assert sweep_expired() == 0
+
+
+class NearAndFar:
+    """Fake route POIs: one 50 m after each leg's start (named after the start), one 300 m in."""
+
+    def along(self, geometry):
+        start = f"near-{geometry[0][0]:.5f},{geometry[0][1]:.5f}"
+        return [{"id": start, "name": "Corner statue", "category": "artwork", "lat": 0, "lon": 0, "along_m": 50},
+                {"id": "far", "name": "Big Park", "category": "park", "lat": 0, "lon": 0, "along_m": 300}]
+
+
+def test_recap_has_no_start_points_and_expires_after_30_days(town, monkeypatch):
+    from app.providers import get_routing
+    from app.services import invites as inv
+
+    get_routing().pois = NearAndFar()
+    body = create(town)
+    token, a_key = body["token"], body["a_key"]
+    b_key = client.post(f"/api/invites/{token}/accept", json={"b_origin": town["b"]}).json()["b_key"]
+    req = {"key": b_key, "minutes_walked": 23, "place_ids": [f"near-{town['b']['lat']:.5f},{town['b']['lon']:.5f}", "far", "made-up"]}
+    assert client.post(f"/api/invites/{token}/recap", json=req).status_code == 409  # not confirmed yet
+    client.post(f"/api/invites/{token}/confirm", json={"key": a_key})
+    assert client.post(f"/api/invites/{token}/recap", json={**req, "key": "nope"}).status_code == 403
+    r = client.post(f"/api/invites/{token}/recap", json=req)
+    assert r.status_code == 201
+    recap = client.get("/api/recaps/" + r.json()["recap_path"].split("/")[-1]).json()
+    assert recap["minutes_walked"] == 23 and recap["image_url"] == "/static/illustrations/lively-cafe.jpg"
+    assert [p["id"] for p in recap["places"]] == ["far"]  # the place near B's start is left out
+    points = [tuple(p) for p in recap["shared_geometry"]] + [
+        (recap["meetup"]["lat"], recap["meetup"]["lon"]), (recap["destination"]["lat"], recap["destination"]["lon"])]
+    for origin in (town["a"], town["b"]):
+        assert all(abs(p[0] - origin["lat"]) + abs(p[1] - origin["lon"]) > 1e-4 for p in points)
+    assert recap["shared_geometry"] and "a_leg" not in str(recap) and "b_leg" not in str(recap)
+    assert client.get("/r/" + r.json()["recap_path"].split("/")[-1]).status_code == 200
+
+    monkeypatch.setattr(inv, "_now", lambda: datetime.now(timezone.utc) + timedelta(days=31))
+    assert client.get("/api/recaps/" + r.json()["recap_path"].split("/")[-1]).status_code == 404

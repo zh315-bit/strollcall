@@ -46,6 +46,7 @@ let map = null, layers = [], pollTimer = null, chosen = 0, bOrigin = null, bMark
 async function load() {
   try {
     const v = await api(`/api/invites/${token}`, key ? { headers: { "X-Invite-Key": key } } : {});
+    if (v.role === "a" || v.role === "b") rememberWalk(token, v.role);  // for My walks, on this device only
     render(v);
     clearTimeout(pollTimer);
     if (v.status === "planning") {
@@ -78,7 +79,11 @@ function render(v) {
   else if (v.status === "error") parts.push(problem(v));
   else parts.push(...plan(v));
   app.replaceChildren(...parts);
-  document.getElementById("after").replaceChildren(v.status === "confirmed" && v.role !== "guest" ? survey(v) : "");
+  const walked = v.role !== "guest" && finishedWalk(token);
+  document.getElementById("after").replaceChildren(
+    walked ? el("section", { class: "card" }, el("p", {}, `Walk finished: about ${walked.minutes} min. `,
+      el("a", { href: "/walks" }, "See your recap in My walks"))) : "",
+    v.status === "confirmed" && v.role !== "guest" ? survey(v) : "");
   if (["proposed", "confirmed"].includes(v.status)) drawPlan(v);
 }
 
@@ -243,7 +248,7 @@ function walkThePlan(v, c) {
       steps: mine.steps, pois: mine.pois },
     { id: dest.id, name: dest.name, kind: "destination", target: [dest.lat, dest.lon], geometry: c.shared_leg.geometry,
       steps: c.shared_leg.steps, pois: c.shared_leg.pois },
-  ], { onFinish: () => load() });
+  ], { onFinish: (done, summary) => { if (done) rememberFinishedWalk(token, { ...summary, role: v.role }); load(); } });
 }
 
 function drawPlan(v) {

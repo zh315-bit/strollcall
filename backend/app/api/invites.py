@@ -97,3 +97,27 @@ def give_feedback(token: str, req: FeedbackRequest) -> Response:
     except invites.InviteError as e:
         _raise(e)
     return Response(status_code=204)
+
+
+class RecapResponse(BaseModel):
+    recap_path: str
+
+
+@router.post("/{token}/recap", status_code=201)
+def share_recap(token: str, req: invites.RecapRequest) -> RecapResponse:
+    try:
+        recap_id = invites.make_recap(token, req)
+    except invites.InviteError as e:
+        _raise(e)
+    return RecapResponse(recap_path=f"/r/{recap_id}")
+
+
+recaps = APIRouter(prefix="/api/recaps", tags=["recaps"])
+
+
+@recaps.get("/{recap_id}")
+def get_recap(recap_id: str) -> dict:
+    data = invites.get_recap(recap_id)
+    if data is None:
+        raise HTTPException(status_code=404, detail="this recap does not exist or has expired")
+    return data

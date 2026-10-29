@@ -71,6 +71,14 @@ CREATE TABLE IF NOT EXISTS feedback (
     PRIMARY KEY (token, role)
 );
 
+-- A walk recap someone chose to share: meeting point, destination, the shared route, minutes
+-- walked and places passed; never a start point. Deleted RECAP_DAYS after it was made.
+CREATE TABLE IF NOT EXISTS recaps (
+    id TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    data TEXT NOT NULL              -- JSON
+);
+
 CREATE TABLE IF NOT EXISTS invites (
     token TEXT PRIMARY KEY,
     status TEXT NOT NULL,
@@ -271,3 +279,28 @@ def user_test_rows(since: str, path: Path | None = None) -> tuple[list[dict], li
     for r in feedback:
         r["data"] = json.loads(r["data"])
     return invites, feedback
+
+
+def save_recap(recap_id: str, data: dict, path: Path | None = None) -> None:
+    import json
+    from datetime import datetime, timezone
+
+    db(path).run("INSERT INTO recaps (id, created_at, data) VALUES (?, ?, ?)",
+                 (recap_id, datetime.now(timezone.utc).isoformat(), json.dumps(data)))
+
+
+def load_recap(recap_id: str, path: Path | None = None) -> tuple[dict, str] | None:
+    import json
+
+    rows = db(path).query("SELECT data, created_at FROM recaps WHERE id = ?", (recap_id,))
+    return (json.loads(rows[0]["data"]), rows[0]["created_at"]) if rows else None
+
+
+def delete_recaps_before(cutoff_iso: str, path: Path | None = None) -> None:
+    db(path).run("DELETE FROM recaps WHERE created_at < ?", (cutoff_iso,))
+
+
+def invites_expired_before(now_iso: str, path: Path | None = None) -> list[str]:
+    """Tokens of invites past their expiry that may still hold routes (status not yet 'expired',
+    or expired before routes were stripped)."""
+    return [r["token"] for r in db(path).query("SELECT token FROM invites WHERE expires_at < ?", (now_iso,))]

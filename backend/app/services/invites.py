@@ -24,6 +24,7 @@ from app.models.schemas import Invite, MeetupCandidate, Place, RouteLeg, WalkInt
 log = logging.getLogger(__name__)
 
 INVITE_TTL = timedelta(hours=24)
+RECAP_TTL = timedelta(days=30)
 TRIM_M = 200.0
 NYC = ZoneInfo("America/New_York")
 
@@ -70,6 +71,7 @@ def _event(public: dict, name: str) -> bool:
 def create(a_intent: WalkIntent, a_origin: tuple[float, float], a_text: str = "") -> tuple[Invite, str]:
     from app.services.invite_card import invite_text, pick_illustration
 
+    sweep_expired()
     text, text_source = invite_text(a_intent, a_text)
     image_url, image_source = pick_illustration(a_intent)
     invite = Invite(token=secrets.token_urlsafe(16), status="pending", expires_at=_now() + INVITE_TTL,
@@ -85,13 +87,47 @@ def create(a_intent: WalkIntent, a_origin: tuple[float, float], a_text: str = ""
     return invite, a_key
 
 
+def _strip_routes(invite: Invite) -> bool:
+    """Remove each person's route from their start (and its steps and places); keep only times
+    and the shared leg. True if anything was removed."""
+    changed = False
+    empty = RouteLeg(geometry=[], distance_m=0, duration_min=0)
+    for c in invite.candidates:
+        for name in ("a_leg", "b_leg"):
+            leg = getattr(c, name)
+            if leg.geometry or leg.steps or leg.pois:
+                setattr(c, name, empty.model_copy(update={"distance_m": leg.distance_m, "duration_min": leg.duration_min}))
+                changed = True
+    return changed
+
+
 def _expire_if_due(invite: Invite) -> Invite:
-    if invite.status != "expired" and _now() >= invite.expires_at:
+    """At expiry: origins, keys and texts (the private row) are deleted, and so are the routes
+    from each start point. The meeting point, destination, shared leg and times remain."""
+    if _now() >= invite.expires_at and (invite.status != "expired" or _strip_routes(invite.model_copy(deep=True))):
         invite.status = "expired"
+        _strip_routes(invite)
         save_invite(invite)
         public, _ = load_invite_extra(invite.token)
-        save_invite_extra(invite.token, public, None)  # origins, keys and texts deleted
+        save_invite_extra(invite.token, public, None)
     return invite
+
+
+def sweep_expired() -> int:
+    """Expire every invite past its time, even one nobody opens again; delete old recaps.
+    Run at startup and on each new invite. Returns how many invites were expired or stripped."""
+    from app.models.db import delete_recaps_before, invites_expired_before
+
+    n = 0
+    for token in invites_expired_before(_now().isoformat()):
+        invite = load_invite(token)
+        if invite is not None and (invite.status != "expired" or _strip_routes(invite.model_copy(deep=True))):
+            _expire_if_due(invite)
+            n += 1
+    delete_recaps_before((_now() - RECAP_TTL).isoformat())
+    if n:
+        log.info("expiry sweep: %d invite(s) expired, start routes deleted", n)
+    return n
 
 
 def role_of(token: str, key: str | None) -> str:
@@ -361,3 +397,60 @@ def give_feedback(token: str, key: str | None, consent: bool, answers: Feedback)
         "predicted_walk_min": round(own.duration_min + c.shared_leg.duration_min, 1),
         "predicted_gap_min": round(c.arrival_gap_min, 1),
     })
+
+
+class RecapRequest(BaseModel):
+    key: str
+    minutes_walked: int  # measured by the walker's phone from Start walking to Finish
+    place_ids: list[str] = []  # places whose card was shown during the walk
+
+
+def make_recap(token: str, req: RecapRequest) -> str:
+    """A shareable recap of a finished walk: meeting point, destination, the shared leg, minutes
+    walked and places passed. Never a start point: the route from each start is left out, and
+    so are places within TRIM_M of a start. Returns the recap id."""
+    from app.models.db import save_recap
+
+    invite = load_invite(token)
+    if invite is None:
+        raise InviteError(404, "invite not found")
+    role = role_of(token, req.key)
+    if role not in ("a", "b"):
+        raise InviteError(403, "only A or B can share a recap")
+    if invite.status != "confirmed" or not invite.selected_id:
+        raise InviteError(409, "a recap needs a confirmed walk")
+    if not 1 <= req.minutes_walked <= 300:
+        raise InviteError(400, "minutes walked must be 1-300")
+    c = next(c for c in invite.candidates if c.id == invite.selected_id)
+    public, _ = load_invite_extra(token)
+    places = public.get("places", {})
+    meet, dest = places.get(c.meeting_place_id, {}), places.get(c.endpoint_place_id, {})
+    own = c.a_leg if role == "a" else c.b_leg
+    passable = {p["id"]: p for p in own.pois if p.get("along_m", 0) >= TRIM_M}
+    passable.update({p["id"]: p for p in c.shared_leg.pois})
+    passed = [passable[i] for i in dict.fromkeys(req.place_ids) if i in passable][:30]
+    recap_id = secrets.token_urlsafe(9)
+    save_recap(recap_id, {
+        "date": _now().astimezone(NYC).date().isoformat(),
+        "meetup": {"name": meet.get("name"), "lat": meet.get("lat"), "lon": meet.get("lon")},
+        "destination": {"name": dest.get("name"), "lat": dest.get("lat"), "lon": dest.get("lon"),
+                        "category": dest.get("category")},
+        "shared_geometry": c.shared_leg.geometry,
+        "shared_min": round(c.shared_leg.duration_min, 1),
+        "minutes_walked": req.minutes_walked,
+        "places": [{"id": p["id"], "name": p["name"], "category": p["category"]} for p in passed],
+        "image_url": public.get("image_url"),
+    })
+    return recap_id
+
+
+def get_recap(recap_id: str) -> dict | None:
+    from app.models.db import load_recap
+
+    found = load_recap(recap_id)
+    if found is None:
+        return None
+    data, created_at = found
+    if datetime.fromisoformat(created_at) < _now() - RECAP_TTL:
+        return None
+    return {**data, "expires_at": (datetime.fromisoformat(created_at) + RECAP_TTL).isoformat()}

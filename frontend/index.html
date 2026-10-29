@@ -236,6 +236,7 @@ $("create").addEventListener("click", async () => {
   try {
     const r = await api("/api/invites", { method: "POST", body: { a_intent: state.intent, a_origin: state.origin, a_text: state.text } });
     try { localStorage.setItem(`strollcall:${r.token}`, r.a_key); } catch (e) { /* private mode: key stays in the URL */ }
+    rememberWalk(r.token, "a");
     location.href = `${r.invite_path}#key=${encodeURIComponent(r.a_key)}`;
   } catch (e) { $("create-error").textContent = e.message; $("create").disabled = false; }
 });

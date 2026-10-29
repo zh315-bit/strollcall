@@ -238,6 +238,8 @@ function startWalk(legs, opts = {}) {
   const noticeEl = el("div", { class: "walk-notice", role: "status", "aria-live": "polite" });
   const poiEl = el("div", { class: "walk-poi" });
   let poiShown = null, poiLayers = [];
+  // For the recap: when the walk started and which places' cards came up. No positions are kept.
+  const startedAt = Date.now(), passed = [];
   const mapEl = el("div", { class: "walk-map" });
   const screenNote = el("p", { class: "muted small walk-note" });
   const fallback = el("a", { target: "_blank", rel: "noopener" }, "Open in a map app instead");
@@ -351,6 +353,7 @@ function startWalk(legs, opts = {}) {
     else stats(ev.remainingM);
     if (ev.poi) {
       poiShown = ev.poi;
+      passed.push({ id: ev.poi.id, name: ev.poi.name, category: ev.poi.category });
       poiEl.replaceChildren(poiCard(ev.poi, () => { poiEl.replaceChildren(); poiShown = null; }));
     } else if (poiShown && distanceM(ll, [poiShown.lat, poiShown.lon]) > 2 * WALK.POI_NEAR_M + WALK.POI_SLACK_M) {
       poiEl.replaceChildren(); poiShown = null;  // walked on
@@ -389,7 +392,9 @@ function startWalk(legs, opts = {}) {
     map.remove();
     screen.remove();
     document.body.classList.remove("walking");
-    if (opts.onFinish) opts.onFinish(!!done);
+    if (opts.onFinish) opts.onFinish(!!done, {
+      minutes: Math.max(1, Math.round((Date.now() - startedAt) / 60000)), places: passed,
+      finished_at: new Date().toISOString() });
   }
 
   loadPoiIntros();

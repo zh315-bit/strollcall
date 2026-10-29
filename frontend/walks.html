@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My walks · StrollCall</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Mochiy+Pop+One&display=swap">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/bits.css">
+</head>
+<body>
+<main>
+  <h1>My walks</h1>
+  <p class="tagline">Walks you started or joined on this phone.</p>
+  <div id="list"><p class="muted"><span class="spinner"></span>Loading…</p></div>
+  <p class="muted small">This list lives only in this browser; there are no accounts. <a href="/privacy">Privacy and "forget this device"</a>.</p>
+  <footer>Map data © OpenStreetMap contributors (ODbL). Language features by Meta Muse models.</footer>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="/static/js/common.js"></script>
+<script src="/static/js/bits.js"></script>
+<script src="/static/js/specular.js"></script>
+<script src="/static/js/backdrop.js"></script>
+<script src="/static/js/gridmotion.js"></script>
+<script>
+const STATUS = { pending: "Waiting for your friend", planning: "Planning…", proposed: "Plan ready: confirm it",
+                 confirmed: "Confirmed", expired: "Expired", error: "No plan found" };
+
+function recapCard(w, v, done) {
+  const c = v.candidates.find((x) => x.id === v.selected_id) || v.candidates[0];
+  const meet = c && v.places[c.meeting_place_id], dest = c && v.places[c.endpoint_place_id];
+  const mapEl = el("div", { class: "recap-map" });
+  const shareOut = el("p", { class: "muted small" });
+  const share = el("button", { type: "button", onclick: async (e) => {
+    const btn = e.currentTarget;
+    btn.setAttribute("disabled", "");
+    try {
+      const r = await api(`/api/invites/${w.token}/recap`, { method: "POST", body: {
+        key: w.key, minutes_walked: done.minutes, place_ids: (done.places || []).map((p) => p.id) } });
+      const url = `${location.origin}${r.recap_path}`;
+      shareOut.replaceChildren("Recap link (no start points, deleted after 30 days): ", el("a", { href: url }, url));
+      if (navigator.share) navigator.share({ url, text: "Our walk" }).catch(() => {});
+      else if (navigator.clipboard) navigator.clipboard.writeText(url).catch(() => {});
+    } catch (err) { shareOut.textContent = err.message; }
+    btn.removeAttribute("disabled");
+  } }, "Share recap");
+  const card = el("section", { class: "card recap" },
+    el("h2", {}, "Your walk"),
+    v.image_url ? el("img", { class: "recap-image", src: v.image_url, alt: "Illustration of two friends walking together" }) : null,
+    el("div", { class: "recap-stats" },
+      el("div", {}, el("b", {}, done.minutes), "min walked"),
+      el("div", {}, el("b", {}, (done.places || []).length), "places passed")),
+    meet && dest ? el("p", {}, `Met at ${meet.name}, walked on to ${dest.name}.`) : null,
+    (done.places || []).length ? el("p", { class: "muted" }, "Passed: ", done.places.map((p) => p.name).join(", ")) : null,
+    mapEl,
+    v.status === "confirmed" ? share : el("p", { class: "muted small" }, "Share links can be made while the invite is open (24 hours)."),
+    shareOut);
+  setTimeout(() => {
+    if (!c) return;
+    const map = L.map(mapEl, { zoomControl: false, attributionControl: true, dragging: false, scrollWheelZoom: false });
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: OSM_ATTRIBUTION }).addTo(map);
+    const css = getComputedStyle(document.documentElement);
+    const own = w.role === "b" ? c.b_leg : c.a_leg;  // your own leg, on your own phone only
+    const lines = [own, c.shared_leg].filter((l) => l && l.geometry.length > 1)
+      .map((l, i) => L.polyline(l.geometry, { color: css.getPropertyValue(i === 0 && l === own ? (w.role === "b" ? "--b" : "--a") : "--shared").trim(), weight: 5 }).addTo(map));
+    if (meet) lines.push(L.marker([meet.lat, meet.lon]).addTo(map));
+    if (dest) lines.push(L.marker([dest.lat, dest.lon]).addTo(map));
+    if (lines.length) map.fitBounds(L.featureGroup(lines).getBounds(), { padding: [16, 16] });
+  }, 0);
+  return card;
+}
+
+async function render() {
+  const walks = myWalks();
+  const list = document.getElementById("list");
+  if (!walks.length) {
+    list.replaceChildren(el("section", { class: "card" }, el("p", {}, "No walks on this phone yet. "),
+      el("a", { href: "/" }, "Plan a walk")));
+    return;
+  }
+  const cards = [];
+  for (const w of walks) {
+    w.key = deviceStore.get(`strollcall:${w.token}`);
+    let v = null;
+    try { v = await api(`/api/invites/${w.token}`, w.key ? { headers: { "X-Invite-Key": w.key } } : {}); } catch (e) { /* gone */ }
+    const when = new Date(w.saved_at).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    if (!v) {
+      cards.push(el("section", { class: "card walk-item" }, el("span", { class: "status" }, when), el("p", {}, "This invite is no longer available.")));
+      continue;
+    }
+    const c = v.candidates.find((x) => x.id === v.selected_id) || v.candidates[0];
+    const dest = c && v.places[c.endpoint_place_id];
+    cards.push(el("section", { class: "card walk-item" },
+      el("span", { class: "status" }, `${when} · ${w.role === "b" ? "You joined" : "You invited"} · ${STATUS[v.status] || v.status}`),
+      el("p", {}, dest ? `${Math.round(c.total_elapsed_min)} min, ending at ${dest.name}` : v.invite_text),
+      el("a", { href: `/i/${w.token}` }, "Open")));
+    const done = finishedWalk(w.token);
+    if (done && c) cards.push(recapCard(w, v, done));
+  }
+  list.replaceChildren(...cards);
+}
+render();
+</script>
+</body>
+</html>

@@ -26,6 +26,7 @@ async def revalidate_pages_and_code(request, call_next):
 app.include_router(coverage.router)
 app.include_router(intents.router)
 app.include_router(invites.router)
+app.include_router(invites.recaps)
 app.include_router(solo.router)
 app.include_router(voice.router)
 app.include_router(walk.router)
@@ -40,6 +41,12 @@ def preload_map_data() -> None:
     def load():
         from app.providers import get_places, get_routing
 
+        from app.services.invites import sweep_expired
+
+        try:
+            sweep_expired()  # invites that expired while the service slept
+        except Exception as e:
+            logging.getLogger(__name__).warning("expiry sweep skipped: %s", type(e).__name__)
         try:
             get_routing(), get_places()
         except Exception as e:  # the planner reports a missing graph itself
@@ -61,6 +68,16 @@ def index_page() -> FileResponse:
 @app.get("/how", include_in_schema=False)
 def how_page() -> FileResponse:
     return FileResponse(FRONTEND / "how.html")
+
+
+@app.get("/walks", include_in_schema=False)
+def walks_page() -> FileResponse:
+    return FileResponse(FRONTEND / "walks.html")
+
+
+@app.get("/r/{recap_id}", include_in_schema=False)
+def recap_page(recap_id: str) -> FileResponse:
+    return FileResponse(FRONTEND / "recap.html")
 
 
 @app.get("/i/{token}", include_in_schema=False)
