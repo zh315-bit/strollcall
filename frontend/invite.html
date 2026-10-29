@@ -72,6 +72,7 @@ function render(v) {
   else if (v.status === "planning") parts.push(progressSteps(v.progress));
   else if (v.status === "error") parts.push(problem(v));
   else parts.push(...plan(v));
+  if (v.status === "confirmed" && v.role !== "guest") parts.push(survey(v));
   app.replaceChildren(...parts);
   if (["proposed", "confirmed"].includes(v.status)) drawPlan(v);
 }
@@ -174,6 +175,48 @@ function plan(v) {
       el("p", { class: "legend muted" }, el("span", { style: "background:var(--a)" }), "A", el("span", { style: "background:var(--b)" }), "B",
         el("span", { style: "background:var(--shared)" }), "together")),
   ];
+}
+
+// ---- After the walk: three questions, stored only with consent (user test, DEV_DOC section 9) ----
+
+const QUESTIONS = [["would_have_gone_out", "Would you have gone out today without this invite?"],
+                   ["fair", "Did the meeting point feel fair to both of you?"],
+                   ["use_again", "Would you use StrollCall again?"]];
+const answers = {};
+let surveySent = false;
+
+function survey(v) {
+  if (v.feedback_given || surveySent) {
+    return el("section", { class: "card survey" }, el("p", {}, "🙏 Thanks for telling us how it went!"));
+  }
+  const send = el("button", { class: "primary", disabled: "" }, "Send");
+  const consent = el("input", { type: "checkbox", id: "consent" });
+  const minutes = el("input", { type: "number", inputmode: "numeric", min: "1", max: "240", id: "actual-min",
+                                placeholder: "e.g. 24", class: "minutes" });
+  const status = el("p", { class: "error" });
+  const ready = () => QUESTIONS.every(([k]) => answers[k]) && consent.checked;
+  const update = () => ready() ? send.removeAttribute("disabled") : send.setAttribute("disabled", "");
+  consent.addEventListener("change", update);
+  const choice = (k, value, label) => el("button", { type: "button", role: "radio", "aria-checked": String(answers[k] === value),
+    onclick: (e) => { answers[k] = value; e.target.parentNode.querySelectorAll("button").forEach((b) => b.setAttribute("aria-checked", String(b === e.target))); update(); } }, label);
+  send.addEventListener("click", async () => {
+    send.setAttribute("disabled", "");
+    const n = parseInt(minutes.value, 10);
+    try {
+      await api(`/api/invites/${token}/feedback`, { method: "POST", body: { key, consent: true, ...answers,
+        actual_walk_min: Number.isFinite(n) ? n : null } });
+      surveySent = true; load();
+    } catch (e) { status.textContent = e.message; send.removeAttribute("disabled"); }
+  });
+  return el("section", { class: "card survey" },
+    el("h2", {}, "After your walk"),
+    el("p", { class: "muted" }, "Three quick questions. We're testing StrollCall with a few friends this week."),
+    ...QUESTIONS.map(([k, q]) => el("fieldset", {}, el("legend", {}, q),
+      el("div", { class: "choices", role: "radiogroup" }, choice(k, "yes", "Yes"), choice(k, "no", "No"), choice(k, "not_sure", "Not sure")))),
+    el("label", { class: "block", for: "actual-min" }, "Optional: how many minutes did your walk take, from your door to the end?"),
+    minutes,
+    el("label", { class: "consent" }, consent, " I agree that these answers (no names, no locations) may be used in StrollCall's hackathon report."),
+    status, el("div", { class: "row" }, send));
 }
 
 function drawPlan(v) {

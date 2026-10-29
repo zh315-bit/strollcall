@@ -16,7 +16,9 @@ from pydantic import BaseModel
 
 from app.core.errors import ProviderError
 from app.core.geo import haversine_m
-from app.models.db import load_invite, load_invite_extra, save_invite, save_invite_extra
+from app.models.db import (
+    feedback_roles, load_invite, load_invite_extra, save_feedback, save_invite, save_invite_extra,
+)
 from app.models.schemas import Invite, MeetupCandidate, Place, RouteLeg, WalkIntent
 
 log = logging.getLogger(__name__)
@@ -46,12 +48,23 @@ class InviteView(BaseModel):
     notes: list[str] = []  # honest limits, e.g. "We can't check crowd levels; ..."
     progress: dict | None = None  # {"step": ..., "seconds": {step: s since B accepted}}
     image_url: str | None = None
+    feedback_given: bool = False  # this person already answered the after-walk survey
     sources: dict[str, str] = {}  # what produced each part: meta / mock / default / local / snapshot ...
     demo_data: bool = False  # true if any visible part is mock or template data
 
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def _event(public: dict, name: str) -> bool:
+    """Timestamp a step of the invite's life once (user-test instrumentation, no data).
+    Returns True if it was new, so the caller knows to save."""
+    events = public.setdefault("events", {})
+    if name in events:
+        return False
+    events[name] = _now().isoformat()
+    return True
 
 
 def create(a_intent: WalkIntent, a_origin: tuple[float, float], a_text: str = "") -> tuple[Invite, str]:
@@ -64,7 +77,7 @@ def create(a_intent: WalkIntent, a_origin: tuple[float, float], a_text: str = ""
     save_invite(invite)
     save_invite_extra(
         invite.token,
-        {"sources": {"invite_text": text_source, "image": "pending"}},
+        {"sources": {"invite_text": text_source, "image": "pending"}, "events": {"created": _now().isoformat()}},
         {"a_origin": list(a_origin), "a_key": a_key, "a_text": a_text[:500]},
     )
     return invite, a_key
@@ -119,7 +132,9 @@ def view(token: str, key: str | None = None) -> InviteView | None:
         return None
     invite = _expire_if_due(invite)
     role = role_of(token, key)
-    public, _ = load_invite_extra(token)
+    public, private = load_invite_extra(token)
+    if role == "guest" and invite.status == "pending" and _event(public, "opened"):
+        save_invite_extra(token, public, private)  # first time someone opened the link
     candidates = []
     for c in invite.candidates:
         update = {}
@@ -138,6 +153,7 @@ def view(token: str, key: str | None = None) -> InviteView | None:
         failure=public.get("failure"), notes=public.get("notes", []),
         progress=_live.get(token) or public.get("progress"),
         image_url=f"/api/invites/{token}/card" if image_ready else None,
+        feedback_given=role in ("a", "b") and role in feedback_roles(token),
         sources=sources, demo_data=any(v in ("mock", "default") for v in sources.values()),
     )
 
@@ -160,6 +176,7 @@ def accept(token: str, b_origin: tuple[float, float], b_text: str = "") -> str:
     public, private = load_invite_extra(token)
     b_key = secrets.token_urlsafe(16)
     private.update({"b_origin": list(b_origin), "b_key": b_key, "b_text": b_text[:500]})
+    _event(public, "accepted")
     invite.status = "planning"
     save_invite(invite)
     save_invite_extra(token, public, private)
@@ -293,6 +310,7 @@ def run_planning(token: str) -> None:
 def _finish(token: str, invite: Invite, public: dict, private: dict, started: float, timings: dict) -> None:
     """Save the result and the final progress together, then drop the in-memory copy."""
     public["progress"] = _progress(token, "done", started, timings)
+    _event(public, "planned")
     save_invite(invite)
     save_invite_extra(token, public, private)
     with _live_lock:
@@ -315,3 +333,42 @@ def confirm(token: str, key: str | None, candidate_id: str | None) -> None:
         raise InviteError(400, "unknown candidate")
     invite.selected_id, invite.status = chosen, "confirmed"
     save_invite(invite)
+    public, private = load_invite_extra(token)
+    if _event(public, "confirmed"):
+        save_invite_extra(token, public, private)
+
+
+ANSWERS = ("yes", "no", "not_sure")
+
+
+class Feedback(BaseModel):
+    """The after-walk survey (DEV_DOC section 9). Stored only with consent; no location."""
+
+    would_have_gone_out: str  # Would you have gone out without the invite?
+    fair: str  # Did the meetup point feel fair?
+    use_again: str  # Would you use it again?
+    actual_walk_min: int | None = None  # optional: how long the walk really took, door to destination
+
+
+def give_feedback(token: str, key: str | None, consent: bool, answers: Feedback) -> None:
+    invite = load_invite(token)
+    if invite is None:
+        raise InviteError(404, "invite not found")
+    role = role_of(token, key)
+    if role not in ("a", "b"):
+        raise InviteError(403, "only A or B can answer")
+    if not consent:
+        raise InviteError(400, "answers are stored only with your consent")
+    if invite.status != "confirmed":
+        raise InviteError(409, "the survey opens once a plan is confirmed")
+    if any(v not in ANSWERS for v in (answers.would_have_gone_out, answers.fair, answers.use_again)):
+        raise InviteError(400, f"answers must be one of {', '.join(ANSWERS)}")
+    if answers.actual_walk_min is not None and not 1 <= answers.actual_walk_min <= 240:
+        raise InviteError(400, "actual walk time must be 1-240 minutes")
+    c = next(c for c in invite.candidates if c.id == invite.selected_id)
+    own = c.a_leg if role == "a" else c.b_leg
+    save_feedback(token, role, {
+        **answers.model_dump(), "consent": True,
+        "predicted_walk_min": round(own.duration_min + c.shared_leg.duration_min, 1),
+        "predicted_gap_min": round(c.arrival_gap_min, 1),
+    })

@@ -199,3 +199,14 @@ footer { color: var(--muted); font-size: .78rem; margin: 24px 0; text-align: cen
 .mode-switch button + button { border-left: 2.5px solid var(--line); }
 .mode-switch button[aria-checked="true"] { background: var(--sun); }
 .mode-switch button:hover:not(:disabled) { transform: none; box-shadow: none; }
+
+/* After-walk survey */
+.survey fieldset { border: 0; margin: 0 0 12px; padding: 0; }
+.survey legend { font-weight: 700; margin-bottom: 6px; }
+.survey .choices { display: flex; flex-wrap: wrap; gap: 8px; }
+.survey .choices button { min-height: 44px; padding: 8px 16px; }
+.survey .choices button[aria-checked="true"] { background: var(--sun); }
+.survey label.block { display: block; margin: 8px 0 6px; }
+.survey input.minutes { width: 7em; min-height: 44px; font-size: 16px; }
+.survey label.consent { display: flex; gap: 8px; align-items: flex-start; margin: 14px 0 6px; }
+.survey label.consent input { width: 22px; height: 22px; flex: none; margin-top: 2px; }

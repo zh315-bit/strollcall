@@ -86,6 +86,21 @@ def confirm_invite(token: str, req: ConfirmRequest) -> invites.InviteView:
     return invites.view(token, req.key)
 
 
+class FeedbackRequest(invites.Feedback):
+    key: str
+    consent: bool = False
+
+
+@router.post("/{token}/feedback", status_code=204)
+def give_feedback(token: str, req: FeedbackRequest) -> Response:
+    try:
+        invites.give_feedback(token, req.key, req.consent,
+                              invites.Feedback(**req.model_dump(exclude={"key", "consent"})))
+    except invites.InviteError as e:
+        _raise(e)
+    return Response(status_code=204)
+
+
 @router.get("/{token}/card")
 def invite_card(token: str) -> Response:
     path = card_path(token)

@@ -130,3 +130,47 @@ def test_key_in_the_url_is_ignored(town):
     body = create(town)
     view = client.get(f"/api/invites/{body['token']}", params={"key": body["a_key"]}).json()
     assert view["role"] == "guest"  # keys only count in the X-Invite-Key header (URLs are logged)
+
+
+def test_events_and_after_walk_survey(town):
+    from app.models.db import user_test_rows
+
+    body = create(town)
+    token, a_key = body["token"], body["a_key"]
+    client.get(f"/api/invites/{token}")  # B opens the link
+    b_key = client.post(f"/api/invites/{token}/accept", json={"b_origin": town["b"]}).json()["b_key"]
+    answers = {"key": b_key, "would_have_gone_out": "no", "fair": "yes", "use_again": "yes", "actual_walk_min": 17}
+    assert client.post(f"/api/invites/{token}/feedback", json={**answers, "consent": True}).status_code == 409
+    client.post(f"/api/invites/{token}/confirm", json={"key": a_key})
+
+    assert client.post(f"/api/invites/{token}/feedback", json=answers).status_code == 400  # no consent
+    assert client.post(f"/api/invites/{token}/feedback",
+                       json={**answers, "key": "nope", "consent": True}).status_code == 403
+    assert client.post(f"/api/invites/{token}/feedback",
+                       json={**answers, "fair": "maybe", "consent": True}).status_code == 400
+    assert client.post(f"/api/invites/{token}/feedback", json={**answers, "consent": True}).status_code == 204
+    assert client.get(f"/api/invites/{token}", headers={"X-Invite-Key": b_key}).json()["feedback_given"]
+    assert not client.get(f"/api/invites/{token}", headers={"X-Invite-Key": a_key}).json()["feedback_given"]
+
+    invites, feedback = user_test_rows("2000-01-01")
+    row = next(r for r in invites if r["token"] == token)
+    assert list(row["public"]["events"]) == ["created", "opened", "accepted", "planned", "confirmed"]
+    fb = next(f for f in feedback if f["token"] == token)
+    assert fb["role"] == "b" and fb["data"]["actual_walk_min"] == 17 and fb["data"]["predicted_walk_min"] > 0
+    assert "lat" not in str(fb) and "origin" not in str(fb)
+
+
+def test_user_test_report_has_funnel_survey_and_predicted_vs_actual(town):
+    import importlib.util
+    from pathlib import Path
+
+    test_events_and_after_walk_survey(town)
+    path = Path(__file__).resolve().parents[2] / "scripts" / "user_test_report.py"
+    import sys
+    sys.path.insert(0, str(path.parent))
+    spec = importlib.util.spec_from_file_location("user_test_report", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    text = mod.report("2000-01-01", None)
+    assert "| confirmed | 1 |" in text and "| Would you use it again? | 1 | 0 | 0 |" in text
+    assert "median absolute difference" in text and "lat" not in text

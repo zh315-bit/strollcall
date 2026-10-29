@@ -61,6 +61,16 @@ CREATE TABLE IF NOT EXISTS invite_extra (
     private TEXT
 );
 
+-- After-walk survey, one row per invite and role (a / b). Answers only, given with consent;
+-- no location. predicted_* come from the confirmed plan, for predicted-vs-actual.
+CREATE TABLE IF NOT EXISTS feedback (
+    token TEXT NOT NULL,
+    role TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    data TEXT NOT NULL,             -- JSON
+    PRIMARY KEY (token, role)
+);
+
 CREATE TABLE IF NOT EXISTS invites (
     token TEXT PRIMARY KEY,
     status TEXT NOT NULL,
@@ -229,3 +239,35 @@ def load_invite_extra(token: str, path: Path | None = None) -> tuple[dict, dict 
     if not rows:
         return {}, None
     return json.loads(rows[0]["public"]), (json.loads(rows[0]["private"]) if rows[0]["private"] else None)
+
+
+def save_feedback(token: str, role: str, data: dict, path: Path | None = None) -> None:
+    import json
+    from datetime import datetime, timezone
+
+    db(path).run(
+        "INSERT INTO feedback (token, role, created_at, data) VALUES (?, ?, ?, ?) "
+        "ON CONFLICT (token, role) DO UPDATE SET created_at = excluded.created_at, data = excluded.data",
+        (token, role, datetime.now(timezone.utc).isoformat(), json.dumps(data)),
+    )
+
+
+def feedback_roles(token: str, path: Path | None = None) -> set[str]:
+    return {r["role"] for r in db(path).query("SELECT role FROM feedback WHERE token = ?", (token,))}
+
+
+def user_test_rows(since: str, path: Path | None = None) -> tuple[list[dict], list[dict]]:
+    """Invites created since `since` (ISO time) with their public extras, and their feedback rows."""
+    import json
+
+    invites = db(path).query(
+        "SELECT i.token, i.status, i.created_at, i.data, e.public FROM invites i "
+        "LEFT JOIN invite_extra e ON e.token = i.token WHERE i.created_at >= ? ORDER BY i.created_at", (since,))
+    for r in invites:
+        r["data"], r["public"] = json.loads(r["data"]), json.loads(r["public"] or "{}")
+    feedback = db(path).query(
+        "SELECT f.token, f.role, f.created_at, f.data FROM feedback f JOIN invites i ON i.token = f.token "
+        "WHERE i.created_at >= ? ORDER BY f.created_at", (since,))
+    for r in feedback:
+        r["data"] = json.loads(r["data"])
+    return invites, feedback
