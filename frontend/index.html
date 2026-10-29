@@ -248,8 +248,9 @@ setMode(["pair", "solo"].includes(askedMode) ? askedMode : savedMode === "solo" 
 <script src="/static/js/jellyradio.js"></script>
 <script>
 // The friend / solo switch as a React Bits JellyRadio row; setMode() above still owns the state.
+const narrow = window.matchMedia("(max-width: 360px)").matches;  // both chips must fit a 320 px phone
 jellyRadio(document.querySelector(".mode-switch"), {
-  size: "lg", gap: 8, radius: 22, chipColor: "color-mix(in srgb, var(--card) 88%, transparent)",
+  size: narrow ? "md" : "lg", gap: narrow ? 6 : 8, radius: 22, chipColor: "color-mix(in srgb, var(--card) 88%, transparent)",
   activeColor: "var(--accent)", textColor: "var(--muted)", activeTextColor: "var(--accent-ink)",
 });
 </script>
