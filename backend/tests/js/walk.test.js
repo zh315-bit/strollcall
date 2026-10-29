@@ -5,7 +5,7 @@ const assert = require("node:assert");
 const path = require("node:path");
 const fs = require("node:fs");
 
-const { WALK, WalkFollower, projectOnRoute, distanceM, formatRemaining, stepInfo, formatStep, promptFor, spokenText } =
+const { WALK, WalkFollower, projectOnRoute, distanceM, formatRemaining, stepInfo, formatStep, promptFor, spokenText, settle } =
   require(path.join(__dirname, "../../../frontend/js/walk.js"));
 const fx = JSON.parse(fs.readFileSync(path.join(__dirname, "../../../fixtures/walk_track_p1.json"), "utf8"));
 
@@ -190,4 +190,16 @@ test("a re-plan is announced once", () => {
   const ev = { type: "replan", leg: 0, from: [40.73, -74.0] };
   assert.match(promptFor(ev, said), /off the route/);
   assert.equal(promptFor(ev, said), null);
+});
+
+test("the open/close transition settles even if the animation clock stops (hidden tab)", async () => {
+  let finished = false;
+  const frozen = { finished: new Promise(() => {}), finish() { finished = true; } };
+  const t0 = Date.now();
+  await settle(frozen, 50);
+  assert.ok(finished && Date.now() - t0 >= 240, "ended by the timer, not by the animation");
+  const done = { finished: Promise.resolve(), finish() {} };
+  const t1 = Date.now();
+  await settle(done, 5000);
+  assert.ok(Date.now() - t1 < 1000, "a normal animation settles as soon as it finishes");
 });

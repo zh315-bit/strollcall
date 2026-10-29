@@ -194,10 +194,62 @@ function formatRemaining(m) {
 
 if (typeof module !== "undefined") {
   module.exports = { WALK, WalkFollower, projectOnRoute, distanceM, formatRemaining, stepInfo, formatStep,
-                     promptFor, spokenText };
+                     promptFor, spokenText, settle };
 }
 
 // ---- The walking view (browser only) ----
+
+// Where the last tap landed, so the walking screen can open from the "Start walking" button.
+let lastTap = null;
+if (typeof window !== "undefined") {
+  window.addEventListener("pointerdown", (e) => { lastTap = { x: e.clientX, y: e.clientY, t: Date.now() }; },
+    { capture: true, passive: true });
+}
+
+function tapOrigin() {
+  return lastTap && Date.now() - lastTap.t < 2000 ? lastTap : { x: innerWidth / 2, y: innerHeight - 80 };
+}
+
+// Opening: a circle grows from the tap until it covers the screen, the map settles in, then the
+// instruction bar, stats and buttons slide up. Closing plays it back toward the last tap.
+// Reduced motion: a short fade. Without the Web Animations API: no animation at all.
+const WALK_OPEN_MS = 560, WALK_CLOSE_MS = 380;
+
+function circleTo(screen, from, opening) {
+  const r = Math.hypot(Math.max(from.x, innerWidth - from.x), Math.max(from.y, innerHeight - from.y));
+  const small = `circle(22px at ${from.x}px ${from.y}px)`, big = `circle(${Math.ceil(r)}px at ${from.x}px ${from.y}px)`;
+  return screen.animate([{ clipPath: opening ? small : big }, { clipPath: opening ? big : small }],
+    { duration: opening ? WALK_OPEN_MS : WALK_CLOSE_MS, easing: opening ? "cubic-bezier(.2,.8,.2,1)" : "cubic-bezier(.4,0,.8,.4)", fill: "both" });
+}
+
+// An animation whose clock stops (tab hidden, page not painting) must not leave the screen stuck:
+// settle after its duration plus a margin either way, then end it.
+function settle(anim, ms) {
+  return Promise.race([anim.finished.catch(() => {}), new Promise((r) => setTimeout(r, ms + 200))])
+    .then(() => { try { anim.finish(); } catch (e) { /* already done or cancelled */ } return anim; });
+}
+
+function playWalkOpen(screen, parts) {
+  if (!screen.animate) return Promise.resolve();
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return settle(screen.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: "ease-out" }), 160);
+  }
+  const grow = circleTo(screen, tapOrigin(), true);
+  parts.map.animate([{ opacity: 0, transform: "scale(.96)" }, { opacity: 1, transform: "none" }],
+    { duration: 480, delay: 120, easing: "cubic-bezier(.2,.8,.2,1)", fill: "backwards" });
+  parts.slide.forEach((node, i) => node.animate(
+    [{ opacity: 0, transform: "translateY(14px)" }, { opacity: 1, transform: "none" }],
+    { duration: 360, delay: 220 + i * 60, easing: "cubic-bezier(.2,.8,.2,1)", fill: "backwards" }));
+  return settle(grow, WALK_OPEN_MS).then(() => grow.cancel());  // cancel: drop the clip once covered
+}
+
+function playWalkClose(screen) {
+  if (!screen.animate) return Promise.resolve();
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    return settle(screen.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, fill: "forwards" }), 140);
+  }
+  return settle(circleTo(screen, tapOrigin(), false), WALK_CLOSE_MS);
+}
 
 // Intros written ahead of time (scripts/make_poi_intros.py); loaded once, no model call here.
 let poiIntros = null;
@@ -270,7 +322,10 @@ function startWalk(legs, opts = {}) {
     stepEl, mapEl, poiEl, statsEl, noticeEl,
     el("div", { class: "row walk-actions" }, endBtn, voiceBtn, fallback), screenNote);
   document.body.append(screen);
-  document.body.classList.add("walking");
+  // The page (top bar, sky) stays visible under the growing circle; "walking" hides it once covered.
+  const opening = playWalkOpen(screen, { map: mapEl, slide: [stepEl, statsEl, screen.querySelector(".walk-actions")] })
+    .then(() => { if (!closing) { document.body.classList.add("walking"); map.invalidateSize(); } });
+  let closing = false;  // ended during the opening: don't hide the page again
 
   const map = L.map(mapEl, { zoomControl: true }).setView(legs[0].target, 17);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: OSM_ATTRIBUTION }).addTo(map);
@@ -389,9 +444,10 @@ function startWalk(legs, opts = {}) {
     wakeLock = null;
     document.removeEventListener("visibilitychange", onVisible);
     if (resize) resize.disconnect();
-    map.remove();
-    screen.remove();
-    document.body.classList.remove("walking");
+    closing = true;
+    document.body.classList.remove("walking");  // the page comes back under the shrinking circle
+    screen.querySelectorAll("button").forEach((b) => b.setAttribute("disabled", ""));
+    playWalkClose(screen).then(() => { map.remove(); screen.remove(); });
     if (opts.onFinish) opts.onFinish(!!done, {
       minutes: Math.max(1, Math.round((Date.now() - startedAt) / 60000)), places: passed,
       finished_at: new Date().toISOString() });
@@ -410,5 +466,5 @@ function startWalk(legs, opts = {}) {
       (e) => notice(e.code === 1 ? "Location permission was denied. Allow it in your browser settings, or use a map app." : "Location unavailable right now. Still trying…", "warn"),
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
   }
-  return { follower, finish };
+  return { follower, finish, opening };
 }
