@@ -220,31 +220,37 @@ function showOnMap(h) {
   showNear();
 }
 
+// The Muse Image illustration stays at the top of the card in every state.
+function nearImage() {
+  return el("img", { class: "near-image", src: "/static/illustrations/park-cafe.jpg",
+    alt: "Illustration of two friends walking past a park toward a cafe" });
+}
+const NEAR_CREDIT = () => el("p", { class: "muted small" }, "Illustration made with Muse Image.");
+
 function nearCard() {
   const passing = state.passBy.length ? el("p", { class: "near-passing" }, "Your wish: pass by ",
     state.passBy.map((p, i) => [i ? ", " : "", el("span", { class: "chip" }, p.name,
       el("button", { type: "button", "aria-label": `remove ${p.name}`, onclick: () => removePassBy(p.id) }, "×"))]).flat()) : null;
   if (!state.origin) {
     return el("section", { class: "card near-card" },
-      el("h2", {}, "Near you"),
-      el("img", { class: "near-image", src: "/static/illustrations/park-cafe.jpg", alt: "Illustration of two friends walking past a park toward a cafe" }),
+      el("h2", {}, "Near you"), nearImage(),
       el("p", {}, "Set a start point to see what's near you."),
       el("div", { class: "row" }, el("button", { type: "button", onclick: () => $("locate").click() }, "Use my location"),
         el("span", { class: "muted" }, "or tap the map in step 2")),
-      el("p", { class: "muted small" }, "Illustration made with Muse Image."), passing);
+      NEAR_CREDIT(), passing);
   }
   if (state.near === null) {
-    return el("section", { class: "card near-card" }, el("h2", {}, "Near you"),
-      el("p", { class: "muted" }, el("span", { class: "spinner" }), "Looking around your start point…"), passing);
+    return el("section", { class: "card near-card" }, el("h2", {}, "Near you"), nearImage(),
+      el("p", { class: "muted" }, el("span", { class: "spinner" }), "Looking around your start point…"), NEAR_CREDIT(), passing);
   }
   if (!state.near.length) {
-    return el("section", { class: "card near-card" }, el("h2", {}, "Near you"),
-      el("p", { class: "muted" }, "No parks, open cafes or landmarks within about 15 minutes' walk in our map data."), passing);
+    return el("section", { class: "card near-card" }, el("h2", {}, "Near you"), nearImage(),
+      el("p", { class: "muted" }, "No parks, open cafes or landmarks within about 15 minutes' walk in our map data."), NEAR_CREDIT(), passing);
   }
   return el("section", { class: "card near-card" },
-    el("h2", {}, "Near you"),
+    el("h2", {}, "Near you"), nearImage(),
     el("p", { class: "muted small" }, "Within about 15 minutes' walk. Tap one to see it on the map."),
-    el("ul", { class: "near-list" }, state.near.map(nearItem)), passing);
+    el("ul", { class: "near-list" }, state.near.map(nearItem)), passing, NEAR_CREDIT());
 }
 
 function showNear() {
