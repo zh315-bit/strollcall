@@ -12,7 +12,7 @@
 .tt-typed { position: absolute; inset: 0; color: var(--muted); }
 .lead-only .tt-typed { color: var(--ink); }
 .tt-typed::after { content: ""; display: inline-block; width: 2px; height: 1em; margin-left: 2px; vertical-align: -2px;
-  background: var(--accent); animation: tt-blink 1s steps(1) infinite; }
+  background: #111; animation: tt-blink 1s steps(1) infinite; }  /* black cursor */
 @keyframes tt-blink { 50% { opacity: 0; } }
 .tt-typed.tt-done::after { display: none; }
 
@@ -125,3 +125,4 @@ button.specular-button.recording { --sb-tint: var(--err); --sb-tint-opacity: 1; 
 button.specular-button:disabled { opacity: .5; }
 .pane-left > button.specular-button.primary { display: flex; width: 100%; }
 a:has(> button.specular-button) { display: inline-flex; }
+@media (prefers-color-scheme: dark) { .tt-typed::after { background: var(--ink); } }  /* a black cursor would vanish on the dark theme */
