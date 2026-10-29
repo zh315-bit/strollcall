@@ -112,8 +112,8 @@ def trim_start(leg: RouteLeg, meters: float = TRIM_M) -> RouteLeg:
     for i in range(1, len(pts)):
         walked += haversine_m(*pts[i - 1], *pts[i])
         if walked >= meters:
-            return leg.model_copy(update={"geometry": pts[i:], "steps": []})
-    return leg.model_copy(update={"geometry": pts[-1:], "steps": []})
+            return leg.model_copy(update={"geometry": pts[i:], "steps": [], "pois": []})
+    return leg.model_copy(update={"geometry": pts[-1:], "steps": [], "pois": []})
 
 
 def view(token: str, key: str | None = None) -> InviteView | None:

@@ -234,8 +234,10 @@ function walkThePlan(v, c) {
   const mine = v.role === "b" ? c.b_leg : c.a_leg;
   clearTimeout(pollTimer);
   startWalk([
-    { name: meet.name, kind: "meetup", target: [meet.lat, meet.lon], geometry: mine.geometry, steps: mine.steps },
-    { name: dest.name, kind: "destination", target: [dest.lat, dest.lon], geometry: c.shared_leg.geometry, steps: c.shared_leg.steps },
+    { id: meet.id, name: meet.name, kind: "meetup", target: [meet.lat, meet.lon], geometry: mine.geometry,
+      steps: mine.steps, pois: mine.pois },
+    { id: dest.id, name: dest.name, kind: "destination", target: [dest.lat, dest.lon], geometry: c.shared_leg.geometry,
+      steps: c.shared_leg.steps, pois: c.shared_leg.pois },
   ], { onFinish: () => load() });
 }
 

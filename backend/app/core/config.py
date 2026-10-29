@@ -47,6 +47,7 @@ class Settings(BaseSettings):
     places_provider: str = "snapshot"  # snapshot / overpass / mock
     graph_path: Path = ROOT_DIR / "data" / "nyc_graph.npz"
     places_snapshot_path: Path = ROOT_DIR / "data" / "nyc_places.json.gz"
+    route_pois_path: Path = ROOT_DIR / "deploy" / "data" / "nyc_pois.json.gz"  # build_route_pois.py
 
     ors_api_key: SecretStr = SecretStr("")
     # Own ORS budget, counted over a rolling 24 h like the ORS quota itself. Our key's real

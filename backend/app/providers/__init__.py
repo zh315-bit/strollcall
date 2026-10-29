@@ -101,7 +101,9 @@ def get_routing():
     if _routing is None:
         from app.providers.local_routing import LocalRouting, load_graph
 
-        _routing = LocalRouting(load_graph(s.graph_path), fallback=_ors_or_none)
+        from app.providers.route_pois import load_route_pois
+
+        _routing = LocalRouting(load_graph(s.graph_path), fallback=_ors_or_none, pois=load_route_pois(s.route_pois_path))
     return _routing
 
 

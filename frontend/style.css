@@ -233,3 +233,11 @@ body.walking { overflow: hidden; }
 .walk-actions button { min-height: 44px; }
 .walk-note { margin: 0; text-align: center; }
 .start-walk { width: 100%; min-height: 52px; font-size: 1.1rem; }
+
+.walk-poi:empty { display: none; }
+.poi-card { position: relative; margin: 0; padding: 10px 14px; max-height: 34vh; overflow: auto; }
+.poi-card h3 { margin: 0 28px 4px 0; font: 400 1rem/1.3 var(--display); }
+.poi-card p { margin: 4px 0; }
+.poi-close { position: absolute; top: 6px; right: 6px; min-height: 36px; min-width: 36px; padding: 0; }
+.poi-intro .small a { color: inherit; }
+.poi-pin { font-size: 18px; line-height: 24px; text-align: center; filter: drop-shadow(0 1px 1px rgba(0,0,0,.4)); }

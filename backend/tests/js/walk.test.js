@@ -30,8 +30,8 @@ function along(line, fromM, toM, step = 4) {
 }
 const lengthOf = (line) => projectOnRoute(line, line[0]).total;
 const legs = () => [
-  { name: fx.meetup.name, kind: "meetup", target: [fx.meetup.lat, fx.meetup.lon], geometry: fx.a_leg, steps: fx.a_steps },
-  { name: fx.destination.name, kind: "destination", target: [fx.destination.lat, fx.destination.lon], geometry: fx.shared_leg, steps: fx.shared_steps },
+  { name: fx.meetup.name, kind: "meetup", target: [fx.meetup.lat, fx.meetup.lon], geometry: fx.a_leg, steps: fx.a_steps, pois: fx.a_pois },
+  { name: fx.destination.name, kind: "destination", target: [fx.destination.lat, fx.destination.lon], geometry: fx.shared_leg, steps: fx.shared_steps, pois: fx.shared_pois },
 ];
 
 test("a full walk: on route, detour, re-plan, meetup, destination", () => {
@@ -112,6 +112,7 @@ test("a failed re-plan is retried after a pause", () => {
 test("remaining time is rounded honestly", () => {
   assert.deepEqual(formatRemaining(10), { min: 1, dist: "50 m" });
   assert.deepEqual(formatRemaining(1234), { min: 15, dist: "1.2 km" });
+  assert.equal(formatRemaining(990).dist, "1.0 km");
 });
 
 test("the next instruction follows the walker along the real shared leg", () => {
@@ -138,4 +139,20 @@ test("step distances are rounded, never more precise than the map", () => {
   assert.equal(info.index, 0);
   assert.match(formatStep(info), /then in 150 m: /);
   assert.equal(stepInfo([], 0, "x"), null);
+});
+
+test("points of interest along the real route get one card each, in walking order", () => {
+  const f = new WalkFollower(legs());
+  const seen = [];
+  let t = 0;
+  for (const p of along(fx.a_leg, 0, lengthOf(fx.a_leg))) {
+    const ev = f.update({ lat: p[0], lon: p[1], accuracy: 12, t: (t += 3) });
+    if (ev.poi) seen.push(ev.poi.name);
+    if (ev.type === "arrived") break;
+  }
+  const expected = fx.a_pois.map((p) => p.name);
+  assert.ok(seen.length >= expected.length - 1, `cards: ${seen} vs ${expected}`);
+  assert.deepEqual(seen, [...new Set(seen)], "each place at most once");
+  const order = seen.map((n) => expected.indexOf(n));
+  assert.deepEqual(order, [...order].sort((a, b) => a - b), "in the order they lie along the route");
 });

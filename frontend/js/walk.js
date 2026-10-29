@@ -11,6 +11,8 @@ const WALK = {
   WEAK_ACCURACY_M: 100, // fixes worse than this are shown but not used to judge route or arrival
   REPLAN_RETRY_S: 30,
   STEP_NOW_M: 20,       // "Now: turn left ..." this close to a turn
+  POI_NEAR_M: 40,       // a point of interest this close (plus a little GPS slack) gets its card
+  POI_SLACK_M: 15,
   M_PER_MIN: 80,        // the planner's walking speed
 };
 
@@ -64,7 +66,8 @@ function formatStep(info) {
 }
 
 function roundDist(m) {
-  return m < 100 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : m < 1000 ? `${Math.round(m / 50) * 50} m` : `${(m / 1000).toFixed(1)} km`;
+  const r = m < 95 ? Math.max(10, Math.round(m / 10) * 10) : Math.round(m / 50) * 50;
+  return r < 1000 ? `${r} m` : `${(m / 1000).toFixed(1)} km`;
 }
 
 // legs: [{ name, kind: "meetup" | "destination", target: [lat, lon], geometry: [[lat, lon], ...], steps? }]
@@ -78,6 +81,19 @@ class WalkFollower {
     this.lastReplanAt = -Infinity;
     this.arrived = false;
     this.last = null;
+    this.seenPois = new Set();
+  }
+
+  // The first point of interest of this leg we are near for the first time, or null.
+  _nearPoi(pos, accuracy) {
+    const reach = this.opts.POI_NEAR_M + Math.min(accuracy || 0, this.opts.POI_SLACK_M);
+    for (const p of this.current.pois || []) {
+      if (!this.seenPois.has(p.id) && distanceM(pos, [p.lat, p.lon]) <= reach) {
+        this.seenPois.add(p.id);
+        return p;
+      }
+    }
+    return null;
   }
 
   get current() { return this.legs[this.leg]; }
@@ -95,6 +111,7 @@ class WalkFollower {
     this.last = base;
     if (this.arrived) return { type: "arrived", ...base };
     if (!(fix.accuracy <= o.WEAK_ACCURACY_M)) return { type: "weak_signal", ...base };
+    base.poi = this._nearPoi(pos, fix.accuracy);
 
     if (toTarget <= o.ARRIVE_M) {
       this.arrived = true;
@@ -117,11 +134,12 @@ class WalkFollower {
   }
 
   // A new route for the current leg (after a re-plan), or null when re-planning failed.
-  setRoute(geometry, steps) {
+  setRoute(geometry, steps, pois) {
     this.replanning = false;
     if (geometry && geometry.length) {
       this.current.geometry = geometry;
       this.current.steps = steps || [];
+      this.current.pois = pois || [];
       this.offSince = null;
     }
   }
@@ -139,7 +157,8 @@ class WalkFollower {
 // Rounded the way we can stand behind: GPS and our 80 m/min are approximate.
 function formatRemaining(m) {
   const min = Math.max(1, Math.round(m / WALK.M_PER_MIN));
-  const dist = m < 1000 ? `${Math.max(50, Math.round(m / 50) * 50)} m` : `${(m / 1000).toFixed(1)} km`;
+  const r50 = Math.max(50, Math.round(m / 50) * 50);
+  const dist = r50 < 1000 ? `${r50} m` : `${(m / 1000).toFixed(1)} km`;
   return { min, dist };
 }
 
@@ -149,6 +168,35 @@ if (typeof module !== "undefined") {
 
 // ---- The walking view (browser only) ----
 
+// Intros written ahead of time (scripts/make_poi_intros.py); loaded once, no model call here.
+let poiIntros = null;
+async function loadPoiIntros() {
+  if (poiIntros === null) {
+    try { poiIntros = (await api("/static/data/poi_intros.json")).intros || {}; } catch (e) { poiIntros = {}; }
+  }
+  return poiIntros;
+}
+
+const POI_ICONS = { park: "🌳", "historic site": "🏛️", artwork: "🎨", memorial: "🕊️", landmark: "📍" };
+
+function introBlock(intro) {
+  if (!intro) return null;
+  return el("div", { class: "poi-intro" }, el("p", {}, intro.intro),
+    el("p", { class: "muted small" }, "Source: Wikipedia, ",
+      el("a", { href: intro.source_url, target: "_blank", rel: "noopener" }, `“${intro.source_title}”`),
+      " (", el("a", { href: "https://creativecommons.org/licenses/by-sa/4.0/", target: "_blank", rel: "noopener" }, "CC BY-SA 4.0"),
+      "), shortened by Muse Spark using only that text."));
+}
+
+function poiCard(p, onClose) {
+  const intro = poiIntros && poiIntros[p.id];
+  return el("div", { class: "card poi-card", role: "status" },
+    el("button", { type: "button", class: "poi-close", "aria-label": "Close", onclick: onClose }, "×"),
+    el("h3", {}, `${POI_ICONS[p.category] || "📍"} ${p.name}`),
+    el("p", { class: "muted small" }, `You're passing a ${p.category}.`),
+    introBlock(intro));
+}
+
 function startWalk(legs, opts = {}) {
   const follower = new WalkFollower(legs);
   const color = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -157,12 +205,14 @@ function startWalk(legs, opts = {}) {
   const stepEl = el("div", { class: "walk-step", role: "status", "aria-live": "polite" });
   const statsEl = el("div", { class: "walk-stats" });
   const noticeEl = el("div", { class: "walk-notice", role: "status", "aria-live": "polite" });
+  const poiEl = el("div", { class: "walk-poi" });
+  let poiShown = null, poiLayers = [];
   const mapEl = el("div", { class: "walk-map" });
   const screenNote = el("p", { class: "muted small walk-note" });
   const fallback = el("a", { target: "_blank", rel: "noopener" }, "Open in a map app instead");
   const endBtn = el("button", { type: "button", onclick: () => finish() }, "End walk");
   const screen = el("div", { class: "walk-screen", role: "dialog", "aria-label": "Walking" },
-    stepEl, mapEl, statsEl, noticeEl,
+    stepEl, mapEl, poiEl, statsEl, noticeEl,
     el("div", { class: "row walk-actions" }, endBtn, fallback), screenNote);
   document.body.append(screen);
   document.body.classList.add("walking");
@@ -181,6 +231,9 @@ function startWalk(legs, opts = {}) {
     if (targetMarker) targetMarker.remove();
     routeLine = L.polyline(leg.geometry, { color: color(leg.kind === "meetup" ? "--a" : "--shared") || "#ff5c8a", weight: 6, opacity: .85 }).addTo(map);
     targetMarker = L.marker(leg.target).addTo(map).bindPopup(leg.name);
+    poiLayers.forEach((l) => l.remove());
+    poiLayers = (leg.pois || []).map((p) => L.marker([p.lat, p.lon], { icon: L.divIcon({ className: "poi-pin",
+      html: POI_ICONS[p.category] || "📍", iconSize: [24, 24] }) }).addTo(map).bindPopup(p.name));
     stepEl.replaceChildren(el("span", { class: "walk-to" }, `${leg.kind === "meetup" ? "To the meeting point" : "To"}: ${leg.name}`),
       el("b", { class: "walk-next" }, formatStep(stepInfo(leg.steps, 0, leg.name)) || ""));
     fallback.href = mapsLink(leg.target[0], leg.target[1]);
@@ -204,7 +257,7 @@ function startWalk(legs, opts = {}) {
     try {
       const leg = await api("/api/walk/route", { method: "POST", body: {
         origin: { lat: ev.from[0], lon: ev.from[1] }, target: { lat: ev.target[0], lon: ev.target[1] } } });
-      follower.setRoute(leg.geometry, leg.steps);
+      follower.setRoute(leg.geometry, leg.steps, leg.pois);
       showLeg();
       notice("New route from where you are.", "ok");
       if (opts.onReplan) opts.onReplan(leg);
@@ -222,6 +275,7 @@ function startWalk(legs, opts = {}) {
       el("h2", {}, more ? "You're at the meeting point" : "You've arrived"),
       el("p", {}, `You're within about ${WALK.ARRIVE_M} m of ${leg.name}${acc}.`),
       more ? el("p", { class: "muted" }, "Look around for your friend.") : null,
+      leg.id && poiIntros && poiIntros[leg.id] ? introBlock(poiIntros[leg.id]) : null,
       el("div", { class: "row" }, more
         ? el("button", { class: "primary", onclick: () => { follower.nextLeg(); showLeg(); notice(""); } }, `Walk on together to ${follower.legs[follower.leg + 1].name}`)
         : el("button", { class: "primary", onclick: () => finish(true) }, "Finish walk"))));
@@ -241,6 +295,12 @@ function startWalk(legs, opts = {}) {
     if (nextEl && nextText !== null && nextEl.textContent !== nextText) nextEl.textContent = nextText;
     if (ev.type === "arrived") statsEl.replaceChildren(el("div", {}, el("b", {}, "✓"), "arrived"), el("div", {}, el("b", {}, `~${WALK.ARRIVE_M} m`), "or closer"));
     else stats(ev.remainingM);
+    if (ev.poi) {
+      poiShown = ev.poi;
+      poiEl.replaceChildren(poiCard(ev.poi, () => { poiEl.replaceChildren(); poiShown = null; }));
+    } else if (poiShown && distanceM(ll, [poiShown.lat, poiShown.lon]) > 2 * WALK.POI_NEAR_M + WALK.POI_SLACK_M) {
+      poiEl.replaceChildren(); poiShown = null;  // walked on
+    }
     if (ev.type === "weak_signal") notice(`Weak GPS signal (about ${Math.round(fix.accuracy)} m). Times are rough until it improves.`, "warn");
     else if (ev.type === "off_route") notice(ev.offFor > 5 ? "You may be off the route…" : "", ev.offFor > 5 ? "warn" : "");
     else if (ev.type === "replan") replan(ev);
@@ -277,6 +337,7 @@ function startWalk(legs, opts = {}) {
     if (opts.onFinish) opts.onFinish(!!done);
   }
 
+  loadPoiIntros();
   showLeg();
   stats(projectOnRoute(follower.current.geometry, follower.current.geometry[0]).total);
   keepAwake();

@@ -19,6 +19,7 @@ from _common import ROOT, load_cases  # noqa: E402
 from app.core.config import get_settings  # noqa: E402
 from app.core.geo import haversine_m  # noqa: E402
 from app.providers.local_routing import LocalRouting, load_graph  # noqa: E402
+from app.providers.route_pois import load_route_pois  # noqa: E402
 from app.providers.snapshot_places import SnapshotPlaces, load_snapshot  # noqa: E402
 from app.services.planner import plan_walk  # noqa: E402
 
@@ -26,7 +27,7 @@ from app.services.planner import plan_walk  # noqa: E402
 def main() -> None:
     s = get_settings()
     graph = load_graph(s.graph_path)
-    routing = LocalRouting(graph)
+    routing = LocalRouting(graph, pois=load_route_pois(s.route_pois_path))
     places = SnapshotPlaces(load_snapshot(s.places_snapshot_path), fallback=None)
     case = next(c for c in load_cases() if c["id"] == "p1")
     plan = plan_walk(case["a"], case["b"], case["intent"], places, routing, case["depart_at"])
@@ -54,8 +55,9 @@ def main() -> None:
         "destination": {"name": dest.name, "lat": dest.lat, "lon": dest.lon},
         "a_leg": a_leg, "shared_leg": c.shared_leg.geometry,
         "a_steps": c.a_leg.steps, "shared_steps": c.shared_leg.steps,
+        "a_pois": c.a_leg.pois, "shared_pois": c.shared_leg.pois,
         "detour_point": list(detour), "detour_distance_from_route_m": round(d_route, 1),
-        "replan_leg": replan.geometry, "replan_steps": replan.steps,
+        "replan_leg": replan.geometry, "replan_steps": replan.steps, "replan_pois": replan.pois,
     }
     path = ROOT / "fixtures" / "walk_track_p1.json"
     path.write_text(json.dumps(out) + "\n")

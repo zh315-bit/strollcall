@@ -114,3 +114,60 @@ def unsupported(text: str, evidence: set[str], preferences: str, speaker_is_the_
                 problems.append(f"unverifiable claim: '{m.group(0)}'")
                 break
     return problems
+
+
+# --- Place intros (scripts/make_poi_intros.py): a rewrite must not say more than its source ---
+
+INTRO_MAX_CHARS = 300
+EVALUATIVE = r"famous|iconic|beautiful|stunning|popular|beloved|must[- ]see|best|oldest|largest|tallest|first|only"
+_EVALUATIVE_RE = re.compile(rf"\b(?:{EVALUATIVE})\b", re.I)
+_NUMBER_RE = re.compile(r"\d[\d,.]*")
+_WORD_RE = re.compile(r"[A-Za-z][A-Za-z'’.-]*")
+# A sentence ends at . ! ? before a capital, but not after an initial ("J. Leonard", "U.S.") or a
+# common abbreviation ("St. Mark's").
+_SENTENCE_END = re.compile(r"(?<![A-Z])(?<!\bSt)(?<!\bMt)(?<!\bDr)(?<!\bJr)(?<!\bSr)(?<!\bMr)(?<!\bNo)(?<!\bft)"
+                           r"(?<!\bvs)(?<!\bca)[.!?]\s+(?=[A-Z\"“])")
+
+
+def sentences(text: str) -> list[str]:
+    return [x for x in _SENTENCE_END.split(text.strip()) if x.strip()]
+
+
+def _norm(text: str) -> str:
+    return re.sub(r"\s+", " ", text.replace("’", "'")).lower()
+
+
+def intro_problems(intro: str, source: str, name: str) -> list[str]:
+    """Reasons to drop a model-written intro; [] when every checkable fact is in the source.
+
+    Checks: at most 2 sentences and INTRO_MAX_CHARS; every number, every capitalised word that
+    does not start a sentence, every place feature (park, museum, river, ...), and every
+    unverifiable or evaluative word (quiet, safe, famous, oldest, ...) must appear in the source
+    text or the place's name; no claims about the route.
+    """
+    problems = []
+    src = _norm(source + " " + name)
+    if len(intro) > INTRO_MAX_CHARS:
+        problems.append(f"longer than {INTRO_MAX_CHARS} characters")
+    if len(sentences(intro)) > 2:
+        problems.append("more than 2 sentences")
+    for num in _NUMBER_RE.findall(intro):
+        if num.rstrip(".,") not in src:
+            problems.append(f"number not in source: {num}")
+    for sentence in sentences(intro):
+        for i, m in enumerate(_WORD_RE.finditer(sentence)):
+            w = re.sub(r"'s$", "", m.group(0).rstrip(".").replace("’", "'"))  # Park's -> Park
+            if i > 0 and w[0].isupper() and w.lower() not in src:
+                problems.append(f"name not in source: {w}")
+    source_features = features_in(source + " " + name)
+    for key in features_in(intro) - source_features:
+        problems.append(f"feature not in source: {key}")
+    for key, r in _UNVERIFIABLE_RE.items():
+        if r.search(intro) and not r.search(source):
+            problems.append(f"unverifiable claim: {key}")
+    for m in _EVALUATIVE_RE.finditer(intro):
+        if m.group(0).lower() not in src:
+            problems.append(f"evaluative word not in source: {m.group(0)}")
+    if (m := _ROUTE_RE.search(intro)) and m.group(0).lower() not in src:
+        problems.append(f"route claim: {m.group(0)}")
+    return problems

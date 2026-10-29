@@ -23,7 +23,8 @@ and `benchmarks/` for measured planner results.
 | Reconcile A's and B's preferences | Muse Spark | `JointPreference` + trade-off | shared vibes must come from both people; never changes time or hard constraints |
 | Rank the planner's top 3 | Muse Spark | order + reasons | only the supplied candidates; every number must be a measured fact |
 | Speech to text | Muse Voice Transcribe | transcript | WAV format check; user edits before parsing |
-| Invite card illustration | Muse Image | image | template fallback |
+| Invite card illustration | Muse Image (24 pictures made ahead of time, picked by theme) | image | model and prompt per file in `frontend/illustrations/manifest.json` |
+| Intros of places passed on a walk | Muse Spark (ahead of time, `scripts/make_poi_intros.py`) | at most 2 sentences | only from the place's Wikipedia summary; every number, name, feature and evaluative word must be in that text, else dropped |
 
 Every Meta call goes through a spend guard with a daily cap (`DAILY_BUDGET_USD`); past the cap the
 app switches to clearly labelled mock data. API responses say whether data is `meta`, `mock` or
@@ -58,6 +59,13 @@ times for the same point pairs (`scripts/validate_local_routing.py`): median abs
 
 Street-corner meetup points ("E 81st St & East End Ave") are named from the drive network, because
 New York sidewalks are mapped as separate, unnamed footways.
+
+**Walking guidance.** "Start walking" follows the route in the browser (Geolocation API, screen
+Wake Lock): live position, remaining time, the next turn ("In 150 m: Turn left onto E 20th St",
+from street names along the graph path), a new route from where you are after 15 s more than 50 m
+off it, an arrival card within 40 m, and cards for parks, historic sites, artworks, memorials and
+landmarks within ~40 m of the route. The track stays in the phone; only a re-plan sends the
+current position, which the server neither stores nor logs. The map-app link stays as a fallback.
 
 ### Run
 
@@ -97,6 +105,11 @@ Tests run with `USE_MOCKS=true` against recorded fixtures and cannot open networ
 | `scripts/benchmark.py` | runs the planner on the benchmark pairs and writes `benchmarks/<date>.md` |
 | `scripts/capture_fixtures.py` | records real API responses into `fixtures/` for offline tests |
 | `scripts/warm_cache.py` | pre-fetches Overpass tiles (only needed with `PLACES_PROVIDER=overpass`) |
+| `scripts/add_street_names.py` | adds every graph node's nearby street names (turn instructions) |
+| `scripts/build_route_pois.py` | points of interest for walks -> `deploy/data/nyc_pois.json.gz` |
+| `scripts/make_poi_intros.py` | Wikipedia-sourced, fact-checked intros -> `frontend/data/poi_intros.json` |
+| `scripts/make_illustrations.py` | the 24 invite-card illustrations (Muse Image) |
+| `scripts/user_test_report.py` | user-test funnel, survey answers, predicted vs actual walk time |
 
 ## Data and attribution
 
@@ -104,6 +117,10 @@ Map data © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributor
 the [Open Database License (ODbL)](https://opendatacommons.org/licenses/odbl/). The walking graph
 and places are derived from OpenStreetMap via OSMnx and the Overpass API. Walking times from the
 optional ORS fallback come from [openrouteservice](https://openrouteservice.org/) (HeiGIT).
+
+Place intros on walks are shortened from English Wikipedia article summaries (text under
+[CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)); each card links its source
+article, and the intros are shared under the same license.
 
 Opening hours are shown as OSM lists them, "as of" the snapshot date; StrollCall never claims a
 place is open, safe or quiet beyond what the data says.

@@ -26,6 +26,7 @@ class RouteLeg(BaseModel):
     distance_m: float
     duration_min: float
     steps: list[dict] = []  # turn instructions (local graph only), see services/directions.py
+    pois: list[dict] = []  # parks, historic sites, artworks... within ~40 m (providers/route_pois.py)
 
 
 class MeetupCandidate(BaseModel):

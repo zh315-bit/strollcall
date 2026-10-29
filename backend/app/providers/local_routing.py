@@ -124,8 +124,9 @@ def load_graph(path: Path) -> WalkGraph:
 class LocalRouting:
     name = "local"
 
-    def __init__(self, graph: WalkGraph, fallback=None):
+    def __init__(self, graph: WalkGraph, fallback=None, pois=None):
         self.graph = graph
+        self.pois = pois  # RoutePois: points of interest along each leg, or None
         self.fallback = fallback  # ORS provider, or a callable returning one, or None
         self.legs: dict[str, RouteLeg] = {}
         self.elements: dict[str, tuple[float, float] | None] = {}
@@ -251,7 +252,8 @@ class LocalRouting:
         steps = turn_steps(geometry, node_at, [g.names_of(u) for u in nodes]) if g.names_ptr is not None else []
         minutes = float(dist[e_node]) + (s_snap + e_snap) / g.m_per_min
         leg = RouteLeg(geometry=geometry, distance_m=round(minutes * g.m_per_min, 1),
-                       duration_min=round(minutes, 2), steps=steps)
+                       duration_min=round(minutes, 2), steps=steps,
+                       pois=self.pois.along(geometry) if self.pois else [])
         if len(self.legs) > CACHE_MAX:
             self.legs.clear()
         self.legs[key] = leg
