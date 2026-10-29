@@ -46,8 +46,6 @@ async function load() {
       pollTimer = setTimeout(load, 1500); // show each planning step as it happens
     } else if (v.status === "pending" && v.role !== "guest") {
       pollTimer = setTimeout(load, 5000); // A waits for B
-    } else if (v.status === "pending" && !v.image_url && v.sources.image === "pending") {
-      pollTimer = setTimeout(load, 5000); // card image still being drawn
     }
   } catch (e) {
     app.replaceChildren(el("p", { class: "error" }, e.message));
@@ -57,7 +55,7 @@ async function load() {
 function card(v) {
   return el("section", { class: "card" },
     v.image_url ? el("img", { class: "card-image", src: v.image_url, alt: "Illustration of two friends walking toward each other" }) : null,
-    v.image_url && v.sources.image === "mock" ? sourceBadge("mock") : null,
+    v.image_url ? el("p", { class: "muted small" }, "Illustration made with Muse Image for this kind of walk.") : null,
     el("p", { class: "invite-text" }, v.invite_text, sourceBadge(v.sources.invite_text)),
     el("p", { class: "muted" }, `${v.a_intent.duration_min}-minute walk, ending ${v.a_intent.endpoint_type ? "at a " + prettyType(v.a_intent.endpoint_type) : "anywhere nice"}`
       + (v.a_intent.vibes.length ? ` · ${v.a_intent.vibes.join(", ")}` : "")));

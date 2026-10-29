@@ -68,32 +68,21 @@ def _event(public: dict, name: str) -> bool:
 
 
 def create(a_intent: WalkIntent, a_origin: tuple[float, float], a_text: str = "") -> tuple[Invite, str]:
-    from app.services.invite_card import invite_text
+    from app.services.invite_card import invite_text, pick_illustration
 
     text, text_source = invite_text(a_intent, a_text)
+    image_url, image_source = pick_illustration(a_intent)
     invite = Invite(token=secrets.token_urlsafe(16), status="pending", expires_at=_now() + INVITE_TTL,
                     invite_text=text, a_intent=a_intent)
     a_key = secrets.token_urlsafe(16)
     save_invite(invite)
     save_invite_extra(
         invite.token,
-        {"sources": {"invite_text": text_source, "image": "pending"}, "events": {"created": _now().isoformat()}},
+        {"sources": {"invite_text": text_source, "image": image_source}, "image_url": image_url,
+         "events": {"created": _now().isoformat()}},
         {"a_origin": list(a_origin), "a_key": a_key, "a_text": a_text[:500]},
     )
     return invite, a_key
-
-
-def make_image(token: str) -> None:
-    """Background: the Muse Image card illustration."""
-    from app.services.invite_card import make_card_image
-
-    invite = load_invite(token)
-    if invite is None:
-        return
-    source = make_card_image(token, invite.a_intent)
-    public, private = load_invite_extra(token)
-    public.setdefault("sources", {})["image"] = source
-    save_invite_extra(token, public, private)
 
 
 def _expire_if_due(invite: Invite) -> Invite:
@@ -144,7 +133,6 @@ def view(token: str, key: str | None = None) -> InviteView | None:
             update["b_leg"] = trim_start(c.b_leg)
         candidates.append(c.model_copy(update=update))
     sources = public.get("sources", {})
-    image_ready = sources.get("image") in ("meta", "mock")
     return InviteView(
         token=invite.token, role=role, status=invite.status, expires_at=invite.expires_at,
         invite_text=invite.invite_text, a_intent=invite.a_intent, b_intent=invite.b_intent,
@@ -152,7 +140,7 @@ def view(token: str, key: str | None = None) -> InviteView | None:
         places=public.get("places", {}), tradeoff=public.get("tradeoff"), reasons=public.get("reasons", {}),
         failure=public.get("failure"), notes=public.get("notes", []),
         progress=_live.get(token) or public.get("progress"),
-        image_url=f"/api/invites/{token}/card" if image_ready else None,
+        image_url=public.get("image_url"),
         feedback_given=role in ("a", "b") and role in feedback_roles(token),
         sources=sources, demo_data=any(v in ("mock", "default") for v in sources.values()),
     )

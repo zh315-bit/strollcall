@@ -1,0 +1,245 @@
+{
+  "pictures": {
+    "park-cafe.jpg": {
+      "scene": "park",
+      "ending": "cafe",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a leafy park path, about to continue together toward a friendly corner cafe with two coffee cups. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:03:10+00:00",
+      "bytes": 110762,
+      "sha256": "0b5037cefb6b93cecd90525123753acb467142c3172bcab2cc829288bffd22cb",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "park-bakery.jpg": {
+      "scene": "park",
+      "ending": "bakery",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a leafy park path, about to continue together toward a small bakery window with pastries. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:03:22+00:00",
+      "bytes": 124237,
+      "sha256": "a72492107a08b8e1f2c056fa1464c826f5b5a635c3507e9e2446126dcd7a4fd8",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "park-bookstore.jpg": {
+      "scene": "park",
+      "ending": "bookstore",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a leafy park path, about to continue together toward a little bookstore front. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:03:32+00:00",
+      "bytes": 126862,
+      "sha256": "b010dea16616efa29973e5ff48b5bb7f6e5758d524fe5f629f4e0e0e7715e8b1",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "park-ice_cream.jpg": {
+      "scene": "park",
+      "ending": "ice_cream",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a leafy park path, about to continue together toward an ice cream window. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:03:44+00:00",
+      "bytes": 128002,
+      "sha256": "198e42b4a7929d54e184d2a5089229d9f8d4b89082d893bbeb0ea229049dff95",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "park-park.jpg": {
+      "scene": "park",
+      "ending": "park",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a leafy park path, about to continue together toward an open lawn with trees. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:03:55+00:00",
+      "bytes": 110278,
+      "sha256": "66c36519bdeb66cd22cd766f8abcd50e3ec427833c0ceccc8aade028ed940319",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "park-landmark.jpg": {
+      "scene": "park",
+      "ending": "landmark",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a leafy park path, about to continue together toward a classic city monument. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:04:06+00:00",
+      "bytes": 113974,
+      "sha256": "9d9733ae06d6eed19ac99a758995a801c910f74775851b60b60de0fcb3274be1",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "quiet-cafe.jpg": {
+      "scene": "quiet",
+      "ending": "cafe",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a quiet tree-lined New York side street, about to continue together toward a friendly corner cafe with two coffee cups. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:04:17+00:00",
+      "bytes": 125734,
+      "sha256": "b2426483c8f8833fb68385ddd1a02f4b4016f461349b0176d160ab2f75f8b6e1",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "quiet-bakery.jpg": {
+      "scene": "quiet",
+      "ending": "bakery",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a quiet tree-lined New York side street, about to continue together toward a small bakery window with pastries. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:04:27+00:00",
+      "bytes": 138294,
+      "sha256": "1f8c1e1ba1dc8bcb476e0c9ec10ab408f61eae61d6c0c526e5c31f9f53b3b86f",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "quiet-bookstore.jpg": {
+      "scene": "quiet",
+      "ending": "bookstore",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a quiet tree-lined New York side street, about to continue together toward a little bookstore front. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:04:39+00:00",
+      "bytes": 118022,
+      "sha256": "99c5bedc35cdf24f75441fb61475443bb04422166b5049a5f86c7e7f2029035d",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "quiet-ice_cream.jpg": {
+      "scene": "quiet",
+      "ending": "ice_cream",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a quiet tree-lined New York side street, about to continue together toward an ice cream window. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:04:49+00:00",
+      "bytes": 119791,
+      "sha256": "bdd002c456e08aa160684f6d71f508bca49a0e26a65a43f55dd079e3636247c6",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "quiet-park.jpg": {
+      "scene": "quiet",
+      "ending": "park",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a quiet tree-lined New York side street, about to continue together toward an open lawn with trees. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:04:59+00:00",
+      "bytes": 121879,
+      "sha256": "303a7fec63322f4c5857b9b989b22243586cbd7f95248a4bf33ac84351a57775",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "quiet-landmark.jpg": {
+      "scene": "quiet",
+      "ending": "landmark",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a quiet tree-lined New York side street, about to continue together toward a classic city monument. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:05:10+00:00",
+      "bytes": 145021,
+      "sha256": "9ffe8ee1dcb9207d5e78d89aa094b9ac35231295927c7265016a2cdc9c4c80a0",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "historic-cafe.jpg": {
+      "scene": "historic",
+      "ending": "cafe",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a historic New York brownstone street, about to continue together toward a friendly corner cafe with two coffee cups. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:05:24+00:00",
+      "bytes": 133368,
+      "sha256": "89e2511f61bfea8f6e465064c42235727b6e18719b9de0500ef416bcbb0ae6b5",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "historic-bakery.jpg": {
+      "scene": "historic",
+      "ending": "bakery",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a historic New York brownstone street, about to continue together toward a small bakery window with pastries. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:05:34+00:00",
+      "bytes": 134157,
+      "sha256": "56d1dbfe0a50d9c6ec382b5dbdcd64ac183d0d4dfbac7eb0ea836c9c7115dcae",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "historic-bookstore.jpg": {
+      "scene": "historic",
+      "ending": "bookstore",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a historic New York brownstone street, about to continue together toward a little bookstore front. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:05:44+00:00",
+      "bytes": 141440,
+      "sha256": "de81a9ac616f8f3c256087a0357448b8f9f602fb798a5adef4805541762458d4",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "historic-ice_cream.jpg": {
+      "scene": "historic",
+      "ending": "ice_cream",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a historic New York brownstone street, about to continue together toward an ice cream window. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:05:57+00:00",
+      "bytes": 133918,
+      "sha256": "e83bd430be0906f2732bf91a050aaeff9a160ee908f2e1a0e8cff48d092882b7",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "historic-park.jpg": {
+      "scene": "historic",
+      "ending": "park",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a historic New York brownstone street, about to continue together toward an open lawn with trees. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:06:08+00:00",
+      "bytes": 160831,
+      "sha256": "ae9b067fcedc863ae528c7ba25f41893cf4e7f8f91e7747a79914999c1b644ca",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "historic-landmark.jpg": {
+      "scene": "historic",
+      "ending": "landmark",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a historic New York brownstone street, about to continue together toward a classic city monument. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:06:21+00:00",
+      "bytes": 144753,
+      "sha256": "b77cd66b1fd3d28ab59233cfec77a223da23a8643001284f227f58097389b16a",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "lively-cafe.jpg": {
+      "scene": "lively",
+      "ending": "cafe",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a lively New York street with small shops, about to continue together toward a friendly corner cafe with two coffee cups. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:06:32+00:00",
+      "bytes": 137983,
+      "sha256": "62caddc87ddcbc23e44a69fc29d72e5eae65a6270315bdc2907519be9acc20b6",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "lively-bakery.jpg": {
+      "scene": "lively",
+      "ending": "bakery",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a lively New York street with small shops, about to continue together toward a small bakery window with pastries. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:06:44+00:00",
+      "bytes": 145277,
+      "sha256": "90f242e1235d711f183219f8f14a4724ba0feec3865672ffc57de300d15a029e",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "lively-bookstore.jpg": {
+      "scene": "lively",
+      "ending": "bookstore",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a lively New York street with small shops, about to continue together toward a little bookstore front. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:06:55+00:00",
+      "bytes": 158046,
+      "sha256": "e1fb246e4db9c1684432cf3d1f1643ac43f8aeab1660ceb15ff6c6f4fb86ee86",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "lively-ice_cream.jpg": {
+      "scene": "lively",
+      "ending": "ice_cream",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a lively New York street with small shops, about to continue together toward an ice cream window. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:07:07+00:00",
+      "bytes": 135827,
+      "sha256": "1d84e5501b65c9ca56502f567234debc9f6b1b1156625e085c56406e2dbb2b5d",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "lively-park.jpg": {
+      "scene": "lively",
+      "ending": "park",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a lively New York street with small shops, about to continue together toward an open lawn with trees. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:07:19+00:00",
+      "bytes": 126105,
+      "sha256": "45f888cd954021624f2e30a76edef5015603044cd3aae8139956f36af89f9aee",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    },
+    "lively-landmark.jpg": {
+      "scene": "lively",
+      "ending": "landmark",
+      "model": "muse-image-1.0",
+      "prompt": "Warm flat illustration of exactly two friends, no other people, walking toward each other on a lively New York street with small shops, about to continue together toward a classic city monument. Soft autumn light, gentle colors, simple shapes. No text, no letters, no logos, no recognizable real people.",
+      "generated_at": "2026-10-29T17:07:29+00:00",
+      "bytes": 159414,
+      "sha256": "dc429fda3b3aa527f65c3a2753948c802090b75a71f1a834a835500742c05d8f",
+      "processing": "resized to max 768 px, JPEG quality 82 (sips)"
+    }
+  },
+  "note": "Invite-card illustrations generated with Meta Muse Image for StrollCall; one per theme, picked by app/services/invite_card.py."
+}

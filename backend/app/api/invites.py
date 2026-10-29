@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field
 
 from app.models.schemas import WalkIntent
 from app.services import invites
-from app.services.invite_card import card_path
 
 router = APIRouter(prefix="/api/invites", tags=["invites"])
 
@@ -51,9 +50,8 @@ def _raise(e: invites.InviteError):
 
 
 @router.post("", status_code=201)
-def create_invite(req: CreateInviteRequest, background: BackgroundTasks) -> CreateInviteResponse:
+def create_invite(req: CreateInviteRequest) -> CreateInviteResponse:
     invite, a_key = invites.create(req.a_intent, (req.a_origin.lat, req.a_origin.lon), req.a_text)
-    background.add_task(invites.make_image, invite.token)
     return CreateInviteResponse(token=invite.token, invite_path=f"/i/{invite.token}", a_key=a_key,
                                 expires_at=invite.expires_at, view=invites.view(invite.token, a_key))
 
@@ -99,12 +97,3 @@ def give_feedback(token: str, req: FeedbackRequest) -> Response:
     except invites.InviteError as e:
         _raise(e)
     return Response(status_code=204)
-
-
-@router.get("/{token}/card")
-def invite_card(token: str) -> Response:
-    path = card_path(token)
-    if path is None:
-        raise HTTPException(status_code=404, detail="no card image")
-    media = {"webp": "image/webp", "png": "image/png", "jpg": "image/jpeg"}[path.suffix[1:]]
-    return Response(content=path.read_bytes(), media_type=media, headers={"Cache-Control": "max-age=3600"})

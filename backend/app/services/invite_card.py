@@ -1,13 +1,12 @@
-"""Invite card: a short invitation (Muse Spark) and an illustration (Muse Image).
+"""Invite card: a short invitation (Muse Spark) and an illustration (Muse Image, pre-generated).
 
 Both have deterministic fallbacks, and every result says where it came from
 (meta / mock / default) so the page can label demo data.
 """
 
 import logging
-from pathlib import Path
 
-from app.core.config import get_settings
+from app.core.config import ROOT_DIR
 from app.core.errors import ProviderError
 from app.models.schemas import WalkIntent
 from app.providers import meta_or_mock
@@ -60,38 +59,54 @@ def invite_text(intent: WalkIntent, a_text: str = "") -> tuple[str, str]:
     return text, source
 
 
+# --- Illustration: one of 24 pre-generated Muse Image pictures, picked by theme ---
+# Generated once with scripts/make_illustrations.py (model and exact prompt per file in
+# frontend/illustrations/manifest.json). Picking by theme needs no Meta call per invite, works the
+# same on every host, and survives the free plan's ephemeral disk.
+
+SCENES = {
+    "park": "a leafy park path",
+    "quiet": "a quiet tree-lined New York side street",
+    "historic": "a historic New York brownstone street",
+    "lively": "a lively New York street with small shops",
+}
+ENDINGS = {  # the six endpoint types; "anywhere" uses the cafe picture, as before
+    "cafe": "a friendly corner cafe with two coffee cups", "bakery": "a small bakery window with pastries",
+    "bookstore": "a little bookstore front", "ice_cream": "an ice cream window",
+    "park": "an open lawn with trees", "landmark": "a classic city monument",
+}
+ILLUSTRATIONS_DIR = ROOT_DIR / "frontend" / "illustrations"
+
+
+def theme_for(intent: WalkIntent) -> tuple[str, str]:
+    """(scene, ending) from A's preferences only, never from places or locations."""
+    vibes = set(intent.vibes)
+    scene = ("park" if {"green", "shady"} & vibes or intent.endpoint_type == "park"
+             else "quiet" if "quiet" in vibes
+             else "historic" if {"historic", "scenic"} & vibes or intent.endpoint_type == "landmark"
+             else "lively")
+    ending = intent.endpoint_type if intent.endpoint_type in ENDINGS else "cafe"
+    return scene, ending
+
+
+def theme_prompt(scene: str, ending: str) -> str:
+    return (f"Warm flat illustration of exactly two friends, no other people, walking toward each other on "
+            f"{SCENES[scene]}, about to continue together toward {ENDINGS[ending]}. Soft autumn light, gentle "
+            "colors, simple shapes. No text, no letters, no logos, no recognizable real people.")
+
+
 def image_prompt(intent: WalkIntent) -> str:
-    """Deterministic: built from A's preferences only, never from places or locations."""
-    scene = "a leafy park path" if {"green", "shady"} & set(intent.vibes) or intent.endpoint_type == "park" \
-        else "a quiet tree-lined New York side street" if "quiet" in intent.vibes \
-        else "a lively New York street with small shops"
-    ending = {
-        "cafe": "a cozy cafe with two coffee cups", "bakery": "a small bakery window with pastries",
-        "bookstore": "a little bookstore front", "ice_cream": "an ice cream window",
-        "park": "an open lawn with trees", "landmark": "a classic city monument",
-    }.get(intent.endpoint_type or "", "a friendly corner cafe")
-    return (f"Warm flat illustration of exactly two friends, no other people, walking toward each other on {scene}, "
-            f"about to continue together toward {ending}. Soft autumn light, gentle colors, "
-            "simple shapes. No text, no letters, no logos, no recognizable real people.")
+    return theme_prompt(*theme_for(intent))
 
 
-def card_path(token: str) -> Path | None:
-    for ext in ("webp", "png", "jpg"):
-        p = get_settings().cards_dir / f"{token}.{ext}"
-        if p.exists():
-            return p
-    return None
+def illustration_file(scene: str, ending: str) -> str:
+    return f"{scene}-{ending}.jpg"
 
 
-def make_card_image(token: str, intent: WalkIntent) -> str:
-    """Generate and store the card image; returns its source (meta / mock / default)."""
-    try:
-        data, source = meta_or_mock(lambda m: m.generate_image(image_prompt(intent)))
-    except ProviderError as e:
-        log.warning("invite image unavailable (%s); card stays text-only", e.code)
-        return "default"
-    ext = "webp" if data[:4] == b"RIFF" else "png" if data[:4] == b"\x89PNG" else "jpg"
-    cards = get_settings().cards_dir
-    cards.mkdir(parents=True, exist_ok=True)
-    (cards / f"{token}.{ext}").write_bytes(data)
-    return source
+def pick_illustration(intent: WalkIntent) -> tuple[str | None, str]:
+    """(URL path, source) of the pre-generated picture for this intent's theme.
+    source is "meta" (made by Muse Image) or "default" when it has not been generated."""
+    name = illustration_file(*theme_for(intent))
+    if (ILLUSTRATIONS_DIR / name).exists():
+        return f"/static/illustrations/{name}", "meta"
+    return None, "default"

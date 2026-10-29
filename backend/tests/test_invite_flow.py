@@ -45,17 +45,33 @@ def create(town, text="Coffee at the end, let's sit outside"):
     return resp.json()
 
 
-def test_create_shows_text_card_and_demo_label(town):
+def test_create_shows_text_card_and_demo_label(town, tmp_path, monkeypatch):
+    monkeypatch.setattr("app.services.invite_card.ILLUSTRATIONS_DIR", tmp_path)  # no pictures here
     body = create(town)
     view = body["view"]
     assert view["status"] == "pending" and view["role"] == "a"
     assert view["invite_text"].startswith("Mock data")
     assert view["sources"]["invite_text"] == "mock" and view["demo_data"] is True
     assert "a_origin" not in str(body) and str(town["a"]["lat"]) not in str(body)
-    # The card image is made in the background (mock placeholder here).
-    again = client.get(f"/api/invites/{body['token']}").json()
-    assert again["sources"]["image"] == "mock" and again["image_url"]
-    assert client.get(again["image_url"]).headers["content-type"] == "image/png"
+    # No pre-generated picture for this theme here: text-only card, labelled.
+    assert view["image_url"] is None and view["sources"]["image"] == "default"
+
+
+def test_card_picks_the_pre_generated_illustration_by_theme(town, tmp_path, monkeypatch):
+    monkeypatch.setattr("app.services.invite_card.ILLUSTRATIONS_DIR", tmp_path)
+    (tmp_path / "lively-cafe.jpg").write_bytes(b"\xff\xd8")
+    view = create(town)["view"]  # 15 min, ending at a cafe, no vibes
+    assert view["image_url"] == "/static/illustrations/lively-cafe.jpg" and view["sources"]["image"] == "meta"
+
+
+def test_themes_cover_24_pictures():
+    from app.models.schemas import WalkIntent
+    from app.services.invite_card import ENDINGS, SCENES, theme_for
+
+    assert len(SCENES) * len(ENDINGS) == 24
+    assert theme_for(WalkIntent(duration_min=20, vibes=["quiet"], endpoint_type="bookstore")) == ("quiet", "bookstore")
+    assert theme_for(WalkIntent(duration_min=20)) == ("lively", "cafe")
+    assert theme_for(WalkIntent(duration_min=20, endpoint_type="landmark")) == ("historic", "landmark")
 
 
 def test_full_flow_create_accept_poll_confirm(town):
