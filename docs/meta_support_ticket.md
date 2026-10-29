@@ -11,7 +11,8 @@
 The same key and the same request body succeed from a residential connection in New York and fail
 from a Render server in Ashburn, Virginia (AWS). On the server, `GET /v1/models` returns 200 but the
 number of listed models changes between calls (6, 9, 6), and every `POST /v1/chat/completions` with
-`muse-spark-1.3` returns 404 `model_not_found`. No proxy, VPN or relay is involved; each host calls
+`muse-spark-1.3` returns 404 `model_not_found`. From a second Render server in Boardman, Oregon
+(AWS), `/v1/models` returns an empty list and chat fails the same way. No proxy, VPN or relay is involved; each host calls
 the API directly.
 
 ## Exact error
@@ -61,8 +62,19 @@ caching rather than region alone.
 
 Egress: IP `74.220.48.143`, Boardman, Oregon, US, AS16509 Amazon.com, Inc.
 
-<!-- OREGON_RESULTS -->
-Meta call results: pending (the key had not yet been added to this test service).
+Same key (same fingerprint as Virginia). Here `/v1/models` returns 200 with an **empty** list, and
+every chat call returns 404.
+
+| UTC | Endpoint | Model | HTTP | Error | Request ID |
+|---|---|---|---|---|---|
+| 2026-10-29T16:30:02Z | GET /v1/models | – | 200 (0 models listed) | – | `b4e33d6f-8f92-4d38-83da-525c033ad7bb` |
+| 2026-10-29T16:30:04Z | GET /v1/models | – | 200 (0 models listed) | – | `cf60c850-2838-4d20-aeb1-9606df7c1a05` |
+| 2026-10-29T16:30:04Z | GET /v1/models | – | 200 (0 models listed) | – | `e98adedb-8d5d-481e-aa4a-24d0d8a54bfc` |
+| 2026-10-29T16:30:05Z | POST /v1/chat/completions | muse-spark-1.3 | 404 | model_not_found: The requested model was not found. | `546a7f9c-1617-4447-9aeb-aba9652f14ea` |
+| 2026-10-29T16:30:05Z | POST /v1/chat/completions | muse-spark-1.3 | 404 | model_not_found: The requested model was not found. | `b497817a-9062-4e8a-9483-b14027db082b` |
+| 2026-10-29T16:30:05Z | POST /v1/chat/completions | muse-spark-1.3 | 404 | model_not_found: The requested model was not found. | `3db5887b-1d60-4fb1-948b-b861ae873ca5` |
+
+The Oregon service was temporary, for this test only.
 
 ## Questions
 
