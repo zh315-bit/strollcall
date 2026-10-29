@@ -68,6 +68,7 @@
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="/static/js/common.js"></script>
+<script src="/static/js/walk.js"></script>
 <script>
 const state = { intent: null, inferred: [], origin: null, text: "", mode: "pair", solo: null, chosen: 0 };
 const $ = (id) => document.getElementById(id);
@@ -190,6 +191,8 @@ function renderSolo() {
     el("p", {}, c.rationale, sourceBadge(v.sources.wishes)),
     ...(v.notes || []).map((n) => el("p", { class: "muted" }, "ℹ️ ", n)),
     el("p", { class: "muted" }, dest.opening_hours ? `Opening hours (OpenStreetMap, as of ${(dest.fetched_at || "").slice(0, 10)}): ${dest.opening_hours}` : "Opening hours unknown."),
+    el("button", { class: "primary start-walk", onclick: () => startWalk([{ name: dest.name, kind: "destination",
+      target: [dest.lat, dest.lon], geometry: c.leg.geometry }]) }, "🚶 Start walking"),
     el("div", { class: "row" }, el("a", { href: mapsLink(dest.lat, dest.lon), target: "_blank", rel: "noopener" }, el("button", {}, "Open in a map app"))),
     el("p", { class: "muted" }, "Walking times assume 80 m/min. We never claim a route or place is safe, quiet or open beyond what the data says.")));
   $("solo-result").replaceChildren(...parts.filter(Boolean));

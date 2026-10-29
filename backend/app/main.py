@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import coverage, dev, intents, invites, solo, voice
+from app.api import coverage, dev, intents, invites, solo, voice, walk
 from app.core.budget import SpendGuard
 from app.core.config import ROOT_DIR, get_settings
 from app.models.db import health as db_health
@@ -17,6 +17,7 @@ app.include_router(intents.router)
 app.include_router(invites.router)
 app.include_router(solo.router)
 app.include_router(voice.router)
+app.include_router(walk.router)
 app.include_router(dev.router)  # answers 404 unless DEBUG=true
 
 @app.on_event("startup")

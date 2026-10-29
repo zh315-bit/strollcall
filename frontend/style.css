@@ -212,3 +212,22 @@ footer { color: var(--muted); font-size: .78rem; margin: 24px 0; text-align: cen
 .survey input.minutes { width: 7em; min-height: 44px; font-size: 16px; }
 .survey label.consent { display: flex; gap: 8px; align-items: flex-start; margin: 14px 0 6px; }
 .survey label.consent input { width: 22px; height: 22px; flex: none; margin-top: 2px; }
+
+/* In-app walking view: full screen, map in the middle, big readable numbers */
+body.walking { overflow: hidden; }
+.walk-screen { position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; gap: 8px;
+  background: var(--bg, #fff7fb); padding: max(10px, env(safe-area-inset-top)) 12px max(10px, env(safe-area-inset-bottom)); }
+.walk-step { font: 400 1.15rem/1.3 var(--display); background: var(--card); border: 2.5px solid var(--line);
+  border-radius: 16px; padding: 10px 14px; box-shadow: var(--shadow-sm); }
+.walk-map { flex: 1 1 auto; min-height: 200px; border: 3px solid var(--line); border-radius: 18px; }
+.walk-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: center; font-weight: 700; font-size: .85rem; }
+.walk-stats > div { background: var(--card); border: 2.5px solid var(--line); border-radius: 14px; padding: 6px; }
+.walk-stats b { display: block; font: 400 1.6rem/1.1 var(--display); }
+.walk-notice p { margin: 0; padding: 8px 12px; border-radius: 12px; font-weight: 700; }
+.walk-notice.warn p { background: color-mix(in srgb, var(--sun) 45%, var(--card)); border: 2px dashed var(--line); }
+.walk-notice.ok p { background: color-mix(in srgb, var(--shared) 25%, var(--card)); }
+.walk-notice .arrival { margin: 0; }
+.walk-actions { justify-content: space-between; align-items: center; }
+.walk-actions button { min-height: 44px; }
+.walk-note { margin: 0; text-align: center; }
+.start-walk { width: 100%; min-height: 52px; font-size: 1.1rem; }

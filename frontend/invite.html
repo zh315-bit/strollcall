@@ -28,6 +28,7 @@
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="/static/js/common.js"></script>
+<script src="/static/js/walk.js"></script>
 <script>
 const token = location.pathname.split("/").pop();
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } },
@@ -170,9 +171,10 @@ function plan(v) {
       v.tradeoff ? el("p", { class: "muted" }, v.tradeoff, sourceBadge(v.sources.negotiation)) : null,
       ...(v.notes || []).map((n) => el("p", { class: "muted" }, "ℹ️ ", n)),
       el("p", { class: "muted" }, dest.opening_hours ? `Opening hours (OpenStreetMap, as of ${(dest.fetched_at || "").slice(0, 10)}): ${dest.opening_hours}` : "Opening hours unknown."),
+      v.role !== "guest" ? el("button", { class: "primary start-walk", onclick: () => walkThePlan(v, c) }, "🚶 Start walking") : null,
       el("div", { class: "row" },
-        el("a", { href: mapsLink(meet.lat, meet.lon), target: "_blank", rel: "noopener" }, el("button", {}, "My way to the meeting point")),
-        el("a", { href: mapsLink(dest.lat, dest.lon), target: "_blank", rel: "noopener" }, el("button", {}, "Meeting point → destination"))),
+        el("a", { href: mapsLink(meet.lat, meet.lon), target: "_blank", rel: "noopener" }, el("button", {}, "Map app: to the meeting point")),
+        el("a", { href: mapsLink(dest.lat, dest.lon), target: "_blank", rel: "noopener" }, el("button", {}, "Map app: on to the destination"))),
       v.status === "confirmed"
         ? el("p", {}, v.selected_id === c.id ? "✅ Confirmed. See you there!" : "Another option was confirmed.")
         : (v.role !== "guest" ? el("div", { class: "row" }, el("button", { class: "primary", onclick: async () => {
@@ -222,6 +224,17 @@ function survey(v) {
     minutes,
     el("label", { class: "consent" }, consent, " I agree that these answers (no names, no locations) may be used in StrollCall's hackathon report."),
     status, el("div", { class: "row" }, send));
+}
+
+// In-app guidance: my own leg to the meeting point, then the shared leg to the destination.
+function walkThePlan(v, c) {
+  const meet = v.places[c.meeting_place_id], dest = v.places[c.endpoint_place_id];
+  const mine = v.role === "b" ? c.b_leg : c.a_leg;
+  clearTimeout(pollTimer);
+  startWalk([
+    { name: meet.name, kind: "meetup", target: [meet.lat, meet.lon], geometry: mine.geometry },
+    { name: dest.name, kind: "destination", target: [dest.lat, dest.lon], geometry: c.shared_leg.geometry },
+  ], { onFinish: () => load() });
 }
 
 function drawPlan(v) {
