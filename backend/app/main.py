@@ -20,7 +20,7 @@ async def revalidate_pages_and_code(request, call_next):
     reaches testers' phones right after a deploy instead of whenever their cache expires."""
     response = await call_next(request)
     path = request.url.path
-    if path == "/" or path.startswith("/i/") or path.endswith((".html", ".js", ".css", ".json")):
+    if path in ("/", "/how", "/walks", "/privacy") or path.startswith(("/i/", "/r/")) or path.endswith((".html", ".js", ".css", ".json")):
         response.headers.setdefault("Cache-Control", "no-cache")
     return response
 app.include_router(coverage.router)
@@ -56,6 +56,11 @@ app.mount("/static", StaticFiles(directory=FRONTEND), name="static")
 @app.get("/", include_in_schema=False)
 def index_page() -> FileResponse:
     return FileResponse(FRONTEND / "index.html")
+
+
+@app.get("/how", include_in_schema=False)
+def how_page() -> FileResponse:
+    return FileResponse(FRONTEND / "how.html")
 
 
 @app.get("/i/{token}", include_in_schema=False)

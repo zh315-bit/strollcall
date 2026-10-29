@@ -277,3 +277,31 @@ body.walking { overflow: hidden; }
 }
 /* Outdoors the map must read in sunlight: full-contrast tiles while walking (planning pages stay muted) */
 .walk-map .leaflet-tile-pane { filter: none; }
+
+/* Top navigation (every page) */
+.topnav { position: sticky; top: 0; z-index: 900; display: flex; justify-content: center; gap: 4px;
+  padding: max(6px, env(safe-area-inset-top)) 8px 6px; background: color-mix(in srgb, var(--card) 88%, transparent);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: var(--shadow-sm); }
+.topnav a { padding: 8px 12px; border-radius: 12px; font-weight: 700; font-size: .92rem; color: var(--muted);
+  text-decoration: none; white-space: nowrap; min-height: 40px; display: inline-flex; align-items: center; }
+.topnav a[aria-current="page"] { color: var(--accent-deep); background: var(--accent-soft); }
+@media (max-width: 360px) { .topnav a { padding: 8px 8px; font-size: .86rem; } }
+.footer-links { display: block; margin-top: 6px; }
+.footer-links a { color: inherit; font-weight: 700; }
+body.walking .topnav { display: none; }
+
+/* Text pages: How it works, Privacy */
+.prose h2 { margin-top: 4px; }
+.prose p, .prose li { line-height: 1.55; }
+.prose ul { padding-left: 1.2em; margin: 6px 0; }
+.prose table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.prose td, .prose th { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--soft-line); vertical-align: top; }
+
+/* My walks and recaps */
+.walk-item { display: grid; gap: 4px; }
+.walk-item .status { font-size: .8rem; font-weight: 700; color: var(--muted); }
+.recap-map { height: 180px; border-radius: 16px; margin: 10px 0; }
+.recap-image { width: 100%; border-radius: 16px; display: block; }
+.recap-stats { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
+.recap-stats div { background: var(--bg); border-radius: 14px; padding: 8px 12px; font-size: .82rem; font-weight: 700; color: var(--muted); }
+.recap-stats b { display: block; font: 400 1.4rem/1.1 var(--display); color: var(--ink); }

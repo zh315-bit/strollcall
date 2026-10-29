@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How StrollCall works</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Mochiy+Pop+One&display=swap">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/bits.css">
+</head>
+<body>
+<main class="prose">
+  <h1>How it works</h1>
+  <p class="tagline">A fair place to meet, a short walk together, and what's behind it.</p>
+
+  <section class="card">
+    <h2>A fair meeting point</h2>
+    <ul>
+      <li>Walking times come from our own walking map of Manhattan, northern Brooklyn and Long Island City,
+        built from OpenStreetMap, at 80 m per minute: a little slower than routing apps, to leave time for crossings.
+        Against openrouteservice, the median difference is 0.83 min.</li>
+      <li>From each start, one search finds how long it takes to reach every street corner. Corners where you two
+        arrive within 2 minutes of each other, inside the first 60% of the walk, become meeting points, along with
+        named parks, plazas and gates near the middle.</li>
+      <li>From there you walk together to a place that fits what you asked for (a cafe, a park, a bookstore...),
+        within your time budget: a few minutes of slack, or none if you set a hard limit. Places known to be closed
+        are left out. You see the best three.</li>
+      <li>If nothing fits, StrollCall says why and suggests what would work, such as "needs about 40 minutes".</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>What the Meta models do</h2>
+    <table>
+      <tr><th>Muse Spark</th><td>Reads your wish ("25 minutes, quiet, coffee at the end"), balances both people's
+        wishes, ranks the three options with reasons, and writes the invite line. Every answer is checked: it must fit
+        the schema, and every number and place feature must come from our data. If it doesn't, rule-based text is
+        used instead, and the page says so.</td></tr>
+      <tr><th>Muse Image</th><td>The 24 invite illustrations, made ahead of time and picked by the kind of walk.</td></tr>
+      <tr><th>Muse Voice Transcribe</th><td>The Speak button: your words become text you can edit before it's read.</td></tr>
+      <tr><th>Muse Spark Open</th><td>Built as a backup for the text jobs (Meta's open-weight model on a hosted
+        provider). It is switched off and not used today.</td></tr>
+    </table>
+  </section>
+
+  <section class="card">
+    <h2>Place intros on walks</h2>
+    <p>Parks, artworks, memorials and landmarks you pass can show a short intro. Each one starts from the place's
+      English Wikipedia summary. Muse Spark shortened it to at most two sentences using only that text, and a check
+      dropped any intro that added a number, a name, a feature or praise not in the source: 502 kept, 56 dropped.
+      Every card links its Wikipedia article (CC BY-SA 4.0). The intros were written ahead of time; no model runs
+      while you walk.</p>
+  </section>
+
+  <section class="card">
+    <h2>When Meta is unavailable</h2>
+    <p>The route and the meeting point never depend on Meta. If a Meta model can't answer, StrollCall uses
+      rule-based text and marks that part "rule-based" or "Demo data". It never presents it as model output.</p>
+  </section>
+
+  <section class="card">
+    <h2>Privacy, briefly</h2>
+    <p>Start points are used to plan, never shown to the other person, and deleted when the invite expires after
+      24 hours. Your live position stays on your phone. <a href="/privacy">All the details</a>.</p>
+  </section>
+
+  <section class="card">
+    <h2>How well it works</h2>
+    <ul>
+      <li>12 test pairs across the map: the right outcome in 12 of 12 (a plan where one exists, an honest "too far"
+        where it doesn't). Median arrival gap 0.2 min, median time-budget error 0.4 min.
+        <a href="https://github.com/zh315-bit/strollcall/blob/main/benchmarks/2026-10-28-local.md" target="_blank" rel="noopener">Report</a></li>
+      <li>10 wish cases written down before testing: the top pick met 7 of 10 wishes with Muse Spark, 4 of 10 with
+        rules only. <a href="https://github.com/zh315-bit/strollcall/blob/main/benchmarks/2026-10-28-ablation-wishes.md" target="_blank" rel="noopener">Report</a></li>
+      <li>Planning on the server takes well under a second; each Muse Spark step adds about 1-2 s.
+        <a href="https://github.com/zh315-bit/strollcall/blob/main/benchmarks/2026-10-29-live-latency.md" target="_blank" rel="noopener">Report</a></li>
+      <li>Place intros: <a href="https://github.com/zh315-bit/strollcall/blob/main/benchmarks/2026-10-29-poi-intros.md" target="_blank" rel="noopener">report</a>.
+        All code and reports: <a href="https://github.com/zh315-bit/strollcall" target="_blank" rel="noopener">github.com/zh315-bit/strollcall</a>.</li>
+    </ul>
+    <p class="muted">Small tests by the team, not a study. A user test with friends is planned for Nov 2-3.</p>
+  </section>
+
+  <footer>Map data © OpenStreetMap contributors (ODbL). Language features by Meta Muse models.</footer>
+</main>
+<script src="/static/js/common.js"></script>
+<script src="/static/js/bits.js"></script>
+<script src="/static/js/specular.js"></script>
+<script src="/static/js/backdrop.js"></script>
+<script src="/static/js/gridmotion.js"></script>
+</body>
+</html>

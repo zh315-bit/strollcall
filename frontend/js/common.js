@@ -200,4 +200,64 @@ function decorate() {
   document.querySelector("main").prepend(el("header", { class: "hero" }, mascots, text));
 }
 
+// ---- Site navigation (top) and the privacy link (footer), on every page ----
+
+const NAV = [["/", "New walk"], ["/walks", "My walks"], ["/how", "How it works"]];
+
+function siteChrome() {
+  const here = location.pathname;
+  const current = (href) => href === "/" ? here === "/" : here.startsWith(href);
+  const nav = el("nav", { class: "topnav", "aria-label": "StrollCall" },
+    NAV.map(([href, label]) => el("a", { href, "aria-current": current(href) ? "page" : null }, label)));
+  const main = document.querySelector("main");
+  if (main) main.before(nav);
+  const footer = document.querySelector("footer");
+  if (footer && !footer.querySelector('a[href="/privacy"]')) {
+    footer.append(el("span", { class: "footer-links" }, el("a", { href: "/privacy" }, "Privacy"), " · ",
+      el("a", { href: "/how" }, "How it works"), " · ",
+      el("a", { href: "https://github.com/zh315-bit/strollcall", target: "_blank", rel: "noopener" }, "GitHub")));
+  }
+}
+
+// ---- This device's walks: invite tokens and what happened, in browser storage only ----
+// Every access is wrapped: storage can be missing or blocked (private mode, settings).
+
+const deviceStore = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* this device keeps no history */ } },
+  json(k, fallback) { try { return JSON.parse(localStorage.getItem(k)) ?? fallback; } catch (e) { return fallback; } },
+};
+
+function rememberWalk(token, role) {
+  const walks = deviceStore.json("strollcall:walks", []).filter((w) => w.token !== token);
+  walks.unshift({ token, role, saved_at: new Date().toISOString() });
+  deviceStore.set("strollcall:walks", JSON.stringify(walks.slice(0, 50)));
+}
+
+function myWalks() {
+  return deviceStore.json("strollcall:walks", []).filter((w) => w && w.token);
+}
+
+// After "Finish walk": minutes walked and the places passed. No positions, no track.
+function rememberFinishedWalk(token, summary) {
+  deviceStore.set(`strollcall:walked:${token}`, JSON.stringify(summary));
+}
+
+function finishedWalk(token) {
+  return deviceStore.json(`strollcall:walked:${token}`, null);
+}
+
+// "Forget this device": every StrollCall key in this browser's storage.
+function forgetDevice() {
+  let n = 0;
+  try {
+    for (const k of Object.keys(localStorage)) if (k.startsWith("strollcall:")) { localStorage.removeItem(k); n++; }
+  } catch (e) { /* nothing stored */ }
+  try {
+    for (const k of Object.keys(sessionStorage)) if (k.startsWith("strollcall:")) sessionStorage.removeItem(k);
+  } catch (e) { /* nothing stored */ }
+  return n;
+}
+
 document.addEventListener("DOMContentLoaded", decorate);
+document.addEventListener("DOMContentLoaded", siteChrome);
