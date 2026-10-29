@@ -71,3 +71,13 @@ def test_same_sql_runs_on_sqlite_with_upserts(tmp_path):
 
 def test_meta_diag_is_off_by_default():
     assert client.get("/api/dev/meta_diag").status_code == 404
+
+
+def test_meta_diag_without_key_still_reports_egress(monkeypatch):
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("META_DIAG", "true")
+    monkeypatch.setattr("app.api.dev._egress", lambda: [{"source": "test", "country": "US"}])
+    get_settings.cache_clear()
+    body = client.get("/api/dev/meta_diag").json()
+    assert body["egress"][0]["country"] == "US" and "not set" in body["calls"]

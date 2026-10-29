@@ -142,5 +142,5 @@ def meta_diag() -> dict:
                  "render_instance": os.environ.get("RENDER_INSTANCE_ID"), "platform": platform.platform()},
         "egress": _egress(),
         "base_url": s.model_base_url,
-        "calls": _meta_calls(),
+        "calls": _meta_calls() if s.model_api_key.get_secret_value() else "MODEL_API_KEY is not set on this host",
     }
