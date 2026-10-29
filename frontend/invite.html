@@ -5,14 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StrollCall invite</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Mochiy+Pop+One&display=swap">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <main>
   <h1>StrollCall</h1>
-  <div id="banner"></div>
-  <div id="app"><p class="muted"><span class="spinner"></span>Loading…</p></div>
-  <div id="map" hidden></div>
+  <div class="layout">
+    <div class="pane-left">
+      <div id="banner"></div>
+      <div id="app"><p class="muted"><span class="spinner"></span>Loading…</p></div>
+    </div>
+    <div class="pane-right">
+      <div id="side"></div>
+      <div id="map" hidden></div>
+    </div>
+  </div>
   <footer>Map data © OpenStreetMap contributors (ODbL). Walking times assume 80 m/min. StrollCall never
     claims a route or place is safe, quiet or open beyond what the data says.</footer>
 </main>
@@ -55,7 +64,8 @@ function card(v) {
 
 function render(v) {
   document.getElementById("banner").replaceChildren(demoBanner(v.sources) || "");
-  const parts = [card(v)];
+  document.getElementById("side").replaceChildren(card(v));
+  const parts = [];
   if (v.status === "expired") parts.push(el("p", { class: "error" }, "This invite has expired."));
   else if (v.status === "pending" && v.role === "a") parts.push(waitingForB(v));
   else if (v.status === "pending") parts.push(acceptForm(v));

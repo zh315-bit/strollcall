@@ -5,15 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StrollCall</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Mochiy+Pop+One&display=swap">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <main>
   <h1>StrollCall</h1>
-  <p class="tagline">Less planning. More meeting. Invite a friend to a short walk; we find a fair place to meet.</p>
+  <p class="tagline" id="tagline">Less planning. More meeting. Invite a friend to a short walk; we find a fair place to meet.</p>
 
+  <div class="mode-switch" role="radiogroup" aria-label="Who is walking">
+    <button type="button" role="radio" id="mode-pair" aria-checked="true">👫 With a friend</button>
+    <button type="button" role="radio" id="mode-solo" aria-checked="false">🚶 On my own</button>
+  </div>
+
+  <div class="layout">
+  <div class="pane-left">
   <section class="card">
-    <h2>1. What kind of walk?</h2>
+    <h2><span class="step-no">1</span>What kind of walk?</h2>
     <textarea id="text" placeholder="e.g. 25 minutes, quiet streets, coffee at the end"></textarea>
     <div class="row" id="text-row">
       <button class="primary" id="parse">Read my wish</button>
@@ -39,27 +48,55 @@
       <div class="row" id="intent-source"></div>
     </div>
   </section>
+  <button class="primary" id="create" disabled>Create invite</button>
+  <p id="create-error" class="error"></p>
+  <div id="solo-result"></div>
+  </div>
 
-  <section class="card">
-    <h2>2. Where do you start?</h2>
-    <p class="muted">Only used to find a fair meeting point. Your friend never sees your exact start.</p>
+  <div class="pane-right">
+  <section class="card map-card">
+    <h2><span class="step-no">2</span>Where do you start?</h2>
+    <p class="muted" id="privacy-note">Only used to find a fair meeting point. Your friend never sees your exact start.</p>
     <div class="row"><button id="locate">Use my location</button><span class="muted">or tap the map</span></div>
     <div id="map"></div>
     <p class="muted" id="origin-label">No start point yet.</p>
   </section>
-
-  <button class="primary" id="create" disabled>Create invite</button>
-  <p id="create-error" class="error"></p>
+  </div>
+  </div>
 
   <footer>Map data © OpenStreetMap contributors (ODbL). Language features by Meta Muse models.</footer>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="/static/js/common.js"></script>
 <script>
-const state = { intent: null, inferred: [], origin: null, text: "" };
+const state = { intent: null, inferred: [], origin: null, text: "", mode: "pair", solo: null, chosen: 0 };
 const $ = (id) => document.getElementById(id);
 const map = makeMap("map");
-let marker = null;
+let marker = null, routeLayers = [];
+
+const MODES = {
+  pair: { tagline: "Less planning. More meeting. Invite a friend to a short walk; we find a fair place to meet.",
+          privacy: "Only used to find a fair meeting point. Your friend never sees your exact start.",
+          button: "Create invite" },
+  solo: { tagline: "Less planning. More walking. Tell us the walk you feel like; we find a place worth walking to.",
+          privacy: "Only used to plan this walk. It is not stored.",
+          button: "Find my walk" },
+};
+
+function setMode(mode) {
+  state.mode = mode;
+  try { localStorage.setItem("strollcall:mode", mode); } catch (e) { /* fine without it */ }
+  $("mode-pair").setAttribute("aria-checked", mode === "pair");
+  $("mode-solo").setAttribute("aria-checked", mode === "solo");
+  $("tagline").textContent = MODES[mode].tagline;
+  $("privacy-note").textContent = MODES[mode].privacy;
+  $("create").textContent = MODES[mode].button;
+  $("create-error").textContent = "";
+  clearSolo();
+  refresh();
+}
+$("mode-pair").addEventListener("click", () => setMode("pair"));
+$("mode-solo").addEventListener("click", () => setMode("solo"));
 
 $("text-row").insertBefore(micButton($("text"), (s) => {
   $("voice-source").replaceChildren(el("span", { class: "muted" }, "transcribed"), sourceBadge(s) || "");
@@ -112,15 +149,82 @@ $("strict").addEventListener("change", () => { state.intent.duration_strict = $(
 
 function refresh() { $("create").disabled = !(state.intent && state.origin); }
 
+// ---- Solo mode: results on this page ----
+
+function clearSolo() {
+  state.solo = null;
+  $("solo-result").replaceChildren();
+  routeLayers.forEach((l) => l.remove());
+  routeLayers = [];
+}
+
+function renderSolo() {
+  const v = state.solo;
+  const parts = [demoBanner(v.sources)];
+  if (v.status !== "proposed") {
+    const msg = { no_feasible_plan: "We couldn't find a walk that fits.", routing_unavailable: "Unable to verify a walking route right now.",
+                  places_unavailable: "Place data is unavailable right now." }[v.status] || v.status;
+    parts.push(el("section", { class: "card" }, el("p", { class: "error" }, msg), v.failure ? el("p", {}, v.failure.suggestion) : null));
+    $("solo-result").replaceChildren(...parts);
+    return;
+  }
+  const c = v.candidates[state.chosen];
+  const dest = v.places[c.destination_place_id];
+  parts.push(el("section", { class: "card" },
+    el("h2", {}, el("span", { class: "step-no" }, "3"), "Your walk"),
+    el("div", { class: "tabs" }, v.candidates.map((x, i) => el("button", { class: i === state.chosen ? "active" : "",
+      onclick: () => { state.chosen = i; renderSolo(); } }, i === 0 ? "Best" : `Option ${i + 1}`))),
+    el("h2", {}, dest.name),
+    el("div", { class: "times" }, el("div", {}, el("b", {}, Math.round(c.total_min)), "min walk"),
+      el("div", {}, el("b", {}, (c.leg.distance_m / 1000).toFixed(1)), "km"),
+      el("div", {}, el("b", {}, prettyType(dest.category)), "ends at")),
+    el("p", {}, c.rationale, sourceBadge(v.sources.wishes)),
+    ...(v.notes || []).map((n) => el("p", { class: "muted" }, "ℹ️ ", n)),
+    el("p", { class: "muted" }, dest.opening_hours ? `Opening hours (OpenStreetMap, as of ${(dest.fetched_at || "").slice(0, 10)}): ${dest.opening_hours}` : "Opening hours unknown."),
+    el("div", { class: "row" }, el("a", { href: mapsLink(dest.lat, dest.lon), target: "_blank", rel: "noopener" }, el("button", {}, "Open in a map app"))),
+    el("p", { class: "muted" }, "Walking times assume 80 m/min. We never claim a route or place is safe, quiet or open beyond what the data says.")));
+  $("solo-result").replaceChildren(...parts.filter(Boolean));
+  routeLayers.forEach((l) => l.remove());
+  const color = getComputedStyle(document.documentElement).getPropertyValue("--a").trim();
+  routeLayers = [L.polyline(c.leg.geometry, { color, weight: 5, opacity: .85 }).addTo(map),
+                 L.marker([dest.lat, dest.lon]).addTo(map).bindPopup(dest.name)];
+  map.invalidateSize();
+  map.fitBounds(L.featureGroup(routeLayers).getBounds(), { padding: [20, 20] });
+}
+
+async function findSoloWalk() {
+  clearSolo();
+  $("solo-result").replaceChildren(el("p", { class: "muted" }, el("span", { class: "spinner" }), "Finding a walk for you…"));
+  try {
+    state.solo = await api("/api/solo/plan", { method: "POST", body: { intent: state.intent, origin: state.origin, text: state.text } });
+    state.chosen = 0;
+    renderSolo();
+    $("solo-result").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (e) {
+    $("solo-result").replaceChildren();
+    $("create-error").textContent = e.message === "Not Found"
+      ? "This server doesn't have solo walks yet. Restart it to load the latest version."
+      : `Couldn't plan the walk: ${e.message}`;
+  }
+}
+
 $("create").addEventListener("click", async () => {
   $("create").disabled = true;
   $("create-error").textContent = "";
+  if (state.mode === "solo") {
+    await findSoloWalk();
+    $("create").disabled = false;
+    return;
+  }
   try {
     const r = await api("/api/invites", { method: "POST", body: { a_intent: state.intent, a_origin: state.origin, a_text: state.text } });
     try { localStorage.setItem(`strollcall:${r.token}`, r.a_key); } catch (e) { /* private mode: key stays in the URL */ }
     location.href = `${r.invite_path}#key=${encodeURIComponent(r.a_key)}`;
   } catch (e) { $("create-error").textContent = e.message; $("create").disabled = false; }
 });
+let savedMode = "pair";
+try { savedMode = localStorage.getItem("strollcall:mode") || "pair"; } catch (e) { /* default */ }
+setMode(new URLSearchParams(location.search).get("mode") === "solo" ? "solo" : savedMode === "solo" ? "solo" : "pair");
 </script>
 </body>
 </html>
