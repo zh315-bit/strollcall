@@ -24,3 +24,100 @@
   from { opacity: 0; transform: translateY(24px) scale(.94) rotate(-1.5deg); }
   to { opacity: 1; transform: none; }
 }
+
+/* GridMotion (js/gridmotion.js): the original component CSS */
+.grid-motion { position: relative; isolation: isolate; width: 100%; height: 100%; overflow: hidden; }
+.grid-motion__plane { position: absolute; top: 50%; left: 50%; opacity: 0; }
+.grid-motion__row { position: absolute; left: 0; display: flex; gap: var(--gm-gap); will-change: transform; }
+.grid-motion__tile { position: relative; display: flex; flex: none; align-items: center; justify-content: center;
+  width: var(--gm-tile-w); height: var(--gm-tile-h); overflow: hidden; border-radius: var(--gm-radius);
+  background: var(--gm-tile); color: var(--gm-text); font-size: var(--gm-font); line-height: 1.2; text-align: center;
+  opacity: calc(1 - var(--gm-dim) * (1 - var(--spot, 0))); }
+.grid-motion__tile::after { content: ""; position: absolute; inset: 0; border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--gm-border); pointer-events: none; }
+.grid-motion--gray .grid-motion__tile { filter: grayscale(calc(1 - var(--spot, 0))); }
+.grid-motion__tile img { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; user-select: none; }
+.grid-motion__text { padding: 0 1em; }
+
+/* JellyRadio (js/jellyradio.js): the original component CSS */
+.jelly-radio {
+  --jr-chip: #27272a; --jr-active: #f5f5f5; --jr-text: #f5f5f5; --jr-active-text: #18181b;
+  --jr-gap: 8px; --jr-radius: 18px; --jr-h: 36px; --jr-font: 13px; --jr-px: 16px; --jr-pad-x: 16px; --jr-pad-y: 6px;
+  --jr-ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  display: inline-flex; align-items: center; gap: var(--jr-gap); padding: var(--jr-pad-y) var(--jr-pad-x);
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+}
+.jelly-radio[data-disabled] { opacity: 0.5; pointer-events: none; }
+.jelly-radio__chip { position: relative; margin: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit;
+  cursor: pointer; outline: none; transform-origin: 50% 50%; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.jelly-radio__chip[data-on='true'] { cursor: default; }
+.jelly-radio:not([data-disabled]) .jelly-radio__chip:disabled { cursor: default; opacity: 0.4; }
+.jelly-radio__skin { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 0.4em;
+  height: var(--jr-h); padding: 0 var(--jr-px); border-radius: var(--jr-radius); overflow: hidden;
+  background: var(--jr-chip); color: var(--jr-text); font-size: var(--jr-font); font-weight: 500; line-height: 1; white-space: nowrap;
+  transition: transform 160ms var(--jr-ease-out), background-color 200ms ease, color 200ms ease; }
+.jelly-radio__skin::before { content: ''; position: absolute; inset: 0; background: var(--jr-text); opacity: 0;
+  pointer-events: none; transition: opacity 160ms ease; }
+@media (hover: hover) and (pointer: fine) {
+  .jelly-radio__chip[data-on='false']:not(:disabled):hover .jelly-radio__skin::before { opacity: 0.11; }
+}
+.jelly-radio__chip:active .jelly-radio__skin { transform: scale(0.97); }
+.jelly-radio__chip[data-on='true'] .jelly-radio__skin { background: var(--jr-active); color: var(--jr-active-text); }
+.jelly-radio__icon { display: inline-flex; }
+@media (prefers-reduced-motion: reduce) { .jelly-radio__chip:active .jelly-radio__skin { transform: none; } }
+
+/* Fitting it into this page: undo the global button look (border, pressable bottom edge),
+   a visible keyboard focus ring, the bold rounded font and soft shadows of the rest of the page. */
+.jelly-radio .jelly-radio__chip, .jelly-radio .jelly-radio__chip:active:not(:disabled),
+.jelly-radio .jelly-radio__chip:hover:not(:disabled) { border: 0; margin: 0; filter: none; background: none; }
+.jelly-radio .jelly-radio__skin { font-weight: 700; box-shadow: var(--shadow-sm); }
+.jelly-radio .jelly-radio__chip[data-on='true'] .jelly-radio__skin { box-shadow: 0 6px 16px color-mix(in srgb, var(--accent-line) 40%, transparent); }
+.jelly-radio .jelly-radio__chip:focus-visible .jelly-radio__skin { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+.jelly-radio .jelly-radio__skin .i { width: 1.2em; height: 1.2em; }
+.mode-switch.jelly-radio { margin-left: calc(-1 * var(--jr-pad-x)); margin-top: calc(-1 * var(--jr-pad-y)); }
+
+/* SpecularButton (js/specular.js): the original component CSS. The size modifiers are left out:
+   the buttons keep the page's own padding and font sizes. */
+.specular-button {
+  --sb-radius: 18px; --sb-tint: #ffffff; --sb-tint-opacity: 0.04; --sb-blur: 0px; --sb-text-color: #f5f5f5;
+  position: relative; isolation: isolate; display: inline-flex; align-items: center; justify-content: center; gap: 0.5em;
+  margin: 0; border: 0; font: inherit; font-weight: 500; line-height: 1; letter-spacing: 0.01em;
+  color: var(--sb-text-color);
+  background: color-mix(in srgb, var(--sb-tint) calc(var(--sb-tint-opacity) * 100%), transparent);
+  box-shadow: 0 10px 24px -14px rgba(0, 0, 0, 0.45);
+  -webkit-backdrop-filter: blur(var(--sb-blur)); backdrop-filter: blur(var(--sb-blur));
+  cursor: pointer; outline: none; -webkit-tap-highlight-color: transparent;
+  transition: transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.specular-button:active { transform: scale(0.97); }
+.specular-button:focus-visible { outline: 2px solid color-mix(in srgb, var(--sb-text-color) 55%, transparent); outline-offset: 3px; }
+.specular-button:disabled { opacity: 0.5; cursor: default; }
+.specular-button:disabled:active { transform: none; }
+.specular-button__light { position: absolute; inset: -24px; z-index: 1; display: block;
+  width: calc(100% + 48px); height: calc(100% + 48px); pointer-events: none; }
+.specular-button__label { position: relative; z-index: 2; display: inline-flex; align-items: center; gap: inherit; }
+
+/* Fitting it into this page. The selectors start with "button." to outrank the global button rules
+   in style.css (thick bottom edge, press-down, hover filter, disabled gray).
+   --sb-line: the light on the edge; --sb-base: the thin line under it; --sb-boost: light brightness. */
+button.specular-button, button.specular-button:hover:not(:disabled), button.specular-button:active:not(:disabled) {
+  border: 0; margin: 0; filter: none; font-weight: 700; line-height: 1.2;
+  --sb-tint: var(--card); --sb-tint-opacity: .9; --sb-text-color: var(--ink);
+  --sb-line: var(--accent-line); --sb-base: var(--line); --sb-boost: 1.1;
+  background: color-mix(in srgb, var(--sb-tint) calc(var(--sb-tint-opacity) * 100%), transparent);
+  color: var(--sb-text-color);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+button.specular-button:active:not(:disabled) { transform: scale(0.97); }
+button.specular-button.primary, button.specular-button.primary:hover:not(:disabled) {
+  --sb-tint: var(--accent); --sb-tint-opacity: 1; --sb-text-color: var(--accent-ink);
+  --sb-line: var(--accent-line); --sb-base: color-mix(in srgb, var(--accent-line) 55%, var(--accent)); --sb-boost: 1.3;
+  box-shadow: 0 12px 26px -14px color-mix(in srgb, var(--accent-line) 70%, transparent);
+}
+button.specular-button.active, button.specular-button[aria-checked="true"], button.specular-button[aria-pressed="true"] {
+  --sb-tint: var(--accent-soft); --sb-tint-opacity: 1; --sb-text-color: var(--accent-deep);
+}
+button.specular-button.recording { --sb-tint: var(--err); --sb-tint-opacity: 1; --sb-text-color: #fff; --sb-line: #fff; --sb-base: var(--err); }
+button.specular-button:disabled { opacity: .5; }
+.pane-left > button.specular-button.primary { display: flex; width: 100%; }
+a:has(> button.specular-button) { display: inline-flex; }

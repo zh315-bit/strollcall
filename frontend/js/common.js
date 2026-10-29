@@ -173,12 +173,12 @@ const MASCOTS_SVG = `<svg viewBox="0 0 116 88" aria-hidden="true">
   <g class="bob-a"><ellipse cx="32" cy="58" rx="27" ry="25" fill="var(--a)" stroke="var(--line)" stroke-width="3"/>
     <ellipse cx="24" cy="54" rx="3.2" ry="4.4" fill="#2b2340"/><ellipse cx="40" cy="54" rx="3.2" ry="4.4" fill="#2b2340"/>
     <circle cx="25" cy="52.5" r="1.2" fill="#fff"/><circle cx="41" cy="52.5" r="1.2" fill="#fff"/>
-    <ellipse cx="17" cy="62" rx="4" ry="2.4" fill="#ff9fc0"/><ellipse cx="47" cy="62" rx="4" ry="2.4" fill="#ff9fc0"/>
+    <ellipse cx="17" cy="62" rx="4" ry="2.4" fill="#ffbf8f"/><ellipse cx="47" cy="62" rx="4" ry="2.4" fill="#ffbf8f"/>
     <path d="M28 63 q4 4 8 0" fill="none" stroke="#2b2340" stroke-width="2.4" stroke-linecap="round"/>
     <path d="M30 34 q-2 -10 6 -14" fill="none" stroke="var(--line)" stroke-width="3" stroke-linecap="round"/></g>
   <g class="bob-b"><ellipse cx="86" cy="60" rx="25" ry="23" fill="var(--b)" stroke="var(--line)" stroke-width="3"/>
     <path d="M76 56 q3 -4 6 0 M90 56 q3 -4 6 0" fill="none" stroke="#2b2340" stroke-width="2.6" stroke-linecap="round"/>
-    <ellipse cx="72" cy="64" rx="4" ry="2.4" fill="#ff9fc0"/><ellipse cx="100" cy="64" rx="4" ry="2.4" fill="#ff9fc0"/>
+    <ellipse cx="72" cy="64" rx="4" ry="2.4" fill="#ffd27a"/><ellipse cx="100" cy="64" rx="4" ry="2.4" fill="#ffd27a"/>
     <path d="M82 64 q4 5 8 0 z" fill="#2b2340"/>
     <path d="M70 42 l-6 -10 l12 4 z M102 42 l6 -10 l-12 4 z" fill="var(--b)" stroke="var(--line)" stroke-width="3" stroke-linejoin="round"/></g>
   <path d="M59 22 c-3 -6 -11 -3 -8 3 l8 8 l8 -8 c3 -6 -5 -9 -8 -3 z" fill="var(--accent)" stroke="var(--line)" stroke-width="2.4"/>

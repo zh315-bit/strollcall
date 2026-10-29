@@ -70,6 +70,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="/static/js/common.js"></script>
 <script src="/static/js/bits.js"></script>
+<script src="/static/js/specular.js"></script>
+<script src="/static/js/backdrop.js"></script>
+<script src="/static/js/gridmotion.js"></script>
 <script src="/static/js/walk.js"></script>
 <script>
 const state = { intent: null, inferred: [], origin: null, text: "", mode: "pair", solo: null, chosen: 0 };
@@ -240,6 +243,14 @@ let savedMode = "pair";
 try { savedMode = localStorage.getItem("strollcall:mode") || "pair"; } catch (e) { /* default */ }
 const askedMode = new URLSearchParams(location.search).get("mode");  // a link may pick the mode
 setMode(["pair", "solo"].includes(askedMode) ? askedMode : savedMode === "solo" ? "solo" : "pair");
+</script>
+<script src="/static/js/jellyradio.js"></script>
+<script>
+// The friend / solo switch as a React Bits JellyRadio row; setMode() above still owns the state.
+jellyRadio(document.querySelector(".mode-switch"), {
+  size: "lg", gap: 8, radius: 22, chipColor: "color-mix(in srgb, var(--card) 88%, transparent)",
+  activeColor: "var(--accent)", textColor: "var(--muted)", activeTextColor: "var(--accent-ink)",
+});
 </script>
 </body>
 </html>
