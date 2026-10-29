@@ -69,6 +69,20 @@ class WalkGraph:
             raise OutsideCoverage(f"point is {dist:.0f} m from the walking network")
         return int(node), float(dist)
 
+    def coverage(self, cell_m: float = 250.0) -> dict:
+        """A coarse map of where the network is: the bbox cut into ~cell_m cells, '1' where a
+        cell has a graph node. For the page to say "outside the area" before anything is sent."""
+        s, w, n, e = self.bbox
+        dlat = cell_m / M_PER_DEG_LAT
+        dlon = cell_m / (M_PER_DEG_LAT * self.cos_lat)
+        rows, cols = int(math.ceil((n - s) / dlat)), int(math.ceil((e - w) / dlon))
+        grid = np.zeros((rows, cols), dtype=bool)
+        r = np.clip(((self.lat - s) / dlat).astype(int), 0, rows - 1)
+        c = np.clip(((self.lon - w) / dlon).astype(int), 0, cols - 1)
+        grid[r, c] = True
+        return {"bbox": [s, w, n, e], "cell_deg": [dlat, dlon], "rows": rows, "cols": cols,
+                "covered": "".join("1" if x else "0" for x in grid.ravel())}
+
     def intersection_name(self, u: int) -> str | None:
         """'E 86th St & York Ave' for an intersection node, from the build step; else None."""
         k = int(self.node_label[u])

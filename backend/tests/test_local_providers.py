@@ -322,3 +322,10 @@ def test_bounded_matrix_marks_far_points_over_budget_and_walk_still_routes(graph
     assert leg.duration_min == pytest.approx(7 * STEP * M_PER_DEG / 80, abs=0.02)
     full = routing.matrix([node(graph, 0, 0)], [node(graph, 3, 4)])  # the wider search is reused
     assert full.durations_min[0][0] == pytest.approx(leg.duration_min, abs=0.01)
+
+
+def test_coverage_grid_marks_cells_with_streets(graph):
+    cov = graph[0].coverage(cell_m=100)
+    assert len(cov["covered"]) == cov["rows"] * cov["cols"] and "1" in cov["covered"]
+    s, w = cov["bbox"][:2]
+    assert cov["covered"][0] == "1"  # the grid's corner node sits in the first cell

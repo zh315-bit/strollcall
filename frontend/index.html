@@ -72,6 +72,8 @@
 const state = { intent: null, inferred: [], origin: null, text: "", mode: "pair", solo: null, chosen: 0 };
 const $ = (id) => document.getElementById(id);
 const map = makeMap("map");
+drawCoverage(map);
+loadCoverage().then((c) => { if (c.label && !state.origin) $("origin-label").textContent = `No start point yet. Walks can start inside the dashed box (${c.label}).`; });
 let marker = null, routeLayers = [];
 
 const MODES = {
@@ -103,9 +105,14 @@ $("text-row").insertBefore(micButton($("text"), (s) => {
 }), $("parse"));
 
 function setOrigin(lat, lon) {
-  state.origin = { lat, lon };
   if (marker) marker.setLatLng([lat, lon]); else marker = L.marker([lat, lon]).addTo(map);
-  $("origin-label").textContent = "Start point set.";
+  if (inCoverage(lat, lon) === false) {
+    state.origin = null;
+    $("origin-label").replaceChildren(el("span", { class: "error" }, OUTSIDE_MESSAGE(coverageData.label)));
+  } else {
+    state.origin = { lat, lon };
+    $("origin-label").textContent = "Start point set.";
+  }
   refresh();
 }
 map.on("click", (e) => setOrigin(e.latlng.lat, e.latlng.lng));
@@ -177,7 +184,7 @@ function renderSolo() {
     el("h2", {}, dest.name),
     el("div", { class: "times" }, el("div", {}, el("b", {}, Math.round(c.total_min)), "min walk"),
       el("div", {}, el("b", {}, (c.leg.distance_m / 1000).toFixed(1)), "km"),
-      el("div", {}, el("b", {}, prettyType(dest.category)), "ends at")),
+      el("div", {}, el("b", { class: "word" }, prettyType(dest.category)), "ends at")),
     el("p", {}, c.rationale, sourceBadge(v.sources.wishes)),
     ...(v.notes || []).map((n) => el("p", { class: "muted" }, "ℹ️ ", n)),
     el("p", { class: "muted" }, dest.opening_hours ? `Opening hours (OpenStreetMap, as of ${(dest.fetched_at || "").slice(0, 10)}): ${dest.opening_hours}` : "Opening hours unknown."),
@@ -224,7 +231,8 @@ $("create").addEventListener("click", async () => {
 });
 let savedMode = "pair";
 try { savedMode = localStorage.getItem("strollcall:mode") || "pair"; } catch (e) { /* default */ }
-setMode(new URLSearchParams(location.search).get("mode") === "solo" ? "solo" : savedMode === "solo" ? "solo" : "pair");
+const askedMode = new URLSearchParams(location.search).get("mode");  // a link may pick the mode
+setMode(["pair", "solo"].includes(askedMode) ? askedMode : savedMode === "solo" ? "solo" : "pair");
 </script>
 </body>
 </html>

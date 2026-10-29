@@ -18,8 +18,9 @@
       <div id="app"><p class="muted"><span class="spinner"></span>Loading…</p></div>
     </div>
     <div class="pane-right">
+      <div id="map" hidden></div>  <!-- before the card: on a phone the map follows the form/plan directly -->
       <div id="side"></div>
-      <div id="map" hidden></div>
+      <div id="after"></div>
     </div>
   </div>
   <footer>Map data © OpenStreetMap contributors (ODbL). Walking times assume 80 m/min. StrollCall never
@@ -72,8 +73,8 @@ function render(v) {
   else if (v.status === "planning") parts.push(progressSteps(v.progress));
   else if (v.status === "error") parts.push(problem(v));
   else parts.push(...plan(v));
-  if (v.status === "confirmed" && v.role !== "guest") parts.push(survey(v));
   app.replaceChildren(...parts);
+  document.getElementById("after").replaceChildren(v.status === "confirmed" && v.role !== "guest" ? survey(v) : "");
   if (["proposed", "confirmed"].includes(v.status)) drawPlan(v);
 }
 
@@ -106,12 +107,18 @@ function acceptForm(v) {
     const m = document.getElementById("map"); m.hidden = false;
     if (!map) {
       map = makeMap("map");
+      drawCoverage(map);
       map.on("click", (e) => setB(e.latlng.lat, e.latlng.lng));
     }
   };
   const setB = (lat, lon) => {
-    bOrigin = { lat, lon };
     if (bMarker) bMarker.setLatLng([lat, lon]); else bMarker = L.marker([lat, lon]).addTo(map);
+    if (inCoverage(lat, lon) === false) {
+      bOrigin = null; go.setAttribute("disabled", "");
+      status.replaceChildren(el("span", { class: "error" }, OUTSIDE_MESSAGE(coverageData.label)));
+      return;
+    }
+    bOrigin = { lat, lon };
     status.textContent = "Start point set."; go.removeAttribute("disabled");
   };
   go.addEventListener("click", async () => {
@@ -210,7 +217,7 @@ function survey(v) {
   });
   return el("section", { class: "card survey" },
     el("h2", {}, "After your walk"),
-    el("p", { class: "muted" }, "Three quick questions. We're testing StrollCall with a few friends this week."),
+    el("p", { class: "muted" }, "Come back to this link after your walk: three quick questions. We're testing StrollCall with a few friends this week."),
     ...QUESTIONS.map(([k, q]) => el("fieldset", {}, el("legend", {}, q),
       el("div", { class: "choices", role: "radiogroup" }, choice(k, "yes", "Yes"), choice(k, "no", "No"), choice(k, "not_sure", "Not sure")))),
     el("label", { class: "block", for: "actual-min" }, "Optional: how many minutes did your walk take, from your door to the end?"),

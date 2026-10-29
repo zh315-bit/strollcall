@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import dev, intents, invites, solo, voice
+from app.api import coverage, dev, intents, invites, solo, voice
 from app.core.budget import SpendGuard
 from app.core.config import ROOT_DIR, get_settings
 from app.models.db import health as db_health
@@ -12,6 +12,7 @@ from app.models.db import health as db_health
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
 app = FastAPI(title="StrollCall")
+app.include_router(coverage.router)
 app.include_router(intents.router)
 app.include_router(invites.router)
 app.include_router(solo.router)

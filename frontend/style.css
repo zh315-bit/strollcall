@@ -162,6 +162,8 @@ a { color: var(--accent-2); }
 .times > div:nth-child(2) { background: color-mix(in srgb, var(--b) 22%, var(--card)); }
 .times > div:nth-child(3) { background: color-mix(in srgb, var(--shared) 22%, var(--card)); }
 .times b { display: block; font: 400 1.7rem/1.1 var(--display); }
+.times > div { min-width: 0; }
+.times b.word { font-size: 1.05rem; line-height: 1.9rem; overflow-wrap: anywhere; }
 
 .share { word-break: break-all; font-weight: 700; padding: 10px 12px; border: 2.5px dashed var(--line); border-radius: 14px; background: var(--bg); }
 .spinner { display: inline-block; width: 16px; height: 16px; border: 3px solid var(--soft-line); border-top-color: var(--accent);
@@ -182,14 +184,14 @@ footer { color: var(--muted); font-size: .78rem; margin: 24px 0; text-align: cen
 @media (max-width: 899px) { /* one column: the create button comes after the map step */
   .layout { display: flex; flex-direction: column; }
   .pane-left, .pane-right { display: contents; }
-  .pane-left > #create, .pane-left > #create-error { order: 1; }
+  .pane-left > #create, .pane-left > #create-error, .pane-left > #solo-result { order: 1; }
 }
 @media (min-width: 900px) {
   main { max-width: 1180px; padding: 20px 24px 8px; }
   .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 28px; align-items: start; }
   .pane-right { position: sticky; top: 16px; }
   .map-card #map { height: calc(100vh - 260px); min-height: 360px; margin-bottom: 8px; }
-  #side + #map { height: 380px; margin-top: 16px; }
+  .pane-right > #map { height: 380px; margin-top: 0; margin-bottom: 16px; }
 }
 
 /* Mode switch: walk with a friend or on my own */

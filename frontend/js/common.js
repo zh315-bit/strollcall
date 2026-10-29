@@ -133,6 +133,35 @@ function makeMap(id, center = [40.7308, -73.9973], zoom = 14) {
   return map;
 }
 
+// The area our walking map covers: drawn on the map, and checked before a start point is used.
+let coverageData = null;
+async function loadCoverage() {
+  if (coverageData === null) {
+    try { coverageData = await api("/api/coverage"); } catch (e) { coverageData = { bbox: null }; }
+  }
+  return coverageData;
+}
+
+// true / false, or null when the server has no fixed area (demo mode).
+function inCoverage(lat, lon) {
+  const c = coverageData;
+  if (!c || !c.bbox) return null;
+  const [s, w, n, e] = c.bbox;
+  if (lat < s || lat > n || lon < w || lon > e) return false;
+  const r = Math.floor((lat - s) / c.cell_deg[0]), col = Math.floor((lon - w) / c.cell_deg[1]);
+  return c.covered[Math.min(r, c.rows - 1) * c.cols + Math.min(col, c.cols - 1)] === "1";
+}
+
+const OUTSIDE_MESSAGE = (label) => `That spot is outside the area StrollCall can plan walks in (${label}), or too far from a street we have mapped. Pick a start point inside the dashed box.`;
+
+async function drawCoverage(map) {
+  const c = await loadCoverage();
+  if (!c.bbox) return;
+  const [s, w, n, e] = c.bbox;
+  L.rectangle([[s, w], [n, e]], { color: getComputedStyle(document.documentElement).getPropertyValue("--accent-2").trim() || "#4aa8ff",
+    weight: 2, dashArray: "6 6", fill: false, interactive: false }).addTo(map);
+}
+
 function mapsLink(lat, lon) {
   return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=walking`;
 }
