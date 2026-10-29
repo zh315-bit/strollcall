@@ -9,7 +9,7 @@ client = TestClient(app)
 
 def test_health_reports_mocks_and_spend():
     body = client.get("/health").json()
-    assert body["providers"] == {"meta": "mock", "overpass": "mock", "ors": "mock", "routing": "mock", "places": "mock"}
+    assert body["providers"] == {"meta": "mock", "text_model": "mock", "overpass": "mock", "ors": "mock", "routing": "mock", "places": "mock"}
     assert body["meta_spend_today_usd"] == 0
     assert body["daily_budget_usd"] == 15
 

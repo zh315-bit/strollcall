@@ -144,7 +144,9 @@ $("parse").addEventListener("click", async () => {
     $("strict").checked = !!r.intent.duration_strict;
     renderChips();
     $("intent-source").replaceChildren(
-      r.source === "meta" ? el("span", { class: "muted" }, "Understood by Muse Spark") : sourceBadge(r.source === "default" ? "default" : "mock"));
+      { meta: "Understood by Muse Spark", spark_open: "Understood by Muse Spark Open" }[r.source]
+        ? el("span", { class: "muted" }, { meta: "Understood by Muse Spark", spark_open: "Understood by Muse Spark Open" }[r.source])
+        : sourceBadge(r.source === "default" ? "default" : "mock"));
     $("intent").hidden = false;
   } catch (e) { alert(e.message); }
   $("parse").disabled = false;

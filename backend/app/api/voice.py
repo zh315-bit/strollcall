@@ -25,7 +25,7 @@ async def transcribe(audio: UploadFile) -> Transcript:
         raise HTTPException(status_code=413, detail="recording too long (max about 40 seconds)")
     mime = audio.content_type or "application/octet-stream"
     try:
-        text, source = meta_or_mock(lambda m: m.transcribe(data, mime))
+        text, source = meta_or_mock(lambda m: m.transcribe(data, mime), kind="voice")
     except MetaError as e:
         status = 400 if "WAV" in e.message or "audio" in e.message else 503
         raise HTTPException(status_code=status, detail=e.message) from e

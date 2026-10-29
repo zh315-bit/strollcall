@@ -12,24 +12,31 @@ log = logging.getLogger(__name__)
 T = TypeVar("T")
 
 
-def get_meta():
-    if get_settings().use_mocks:
+def get_meta(kind: str = "text"):
+    """The model provider for a job. kind: text / image / voice. TEXT_PROVIDER=spark_open moves
+    only the text jobs to Muse Spark Open; image and voice stay on the Meta Model API."""
+    s = get_settings()
+    if s.use_mocks:
         return MockMeta()
+    if kind == "text" and s.text_provider == "spark_open":
+        from app.providers.spark_open import SparkOpenProvider
+
+        return SparkOpenProvider()
     from app.providers.meta import MetaProvider
 
     return MetaProvider()
 
 
-def meta_or_mock(call: Callable[[object], T]) -> tuple[T, str]:
-    """Run `call` against the Meta provider; past the daily cap, run it against the mock.
+def meta_or_mock(call: Callable[[object], T], kind: str = "text") -> tuple[T, str]:
+    """Run `call` against the model provider; past the daily cap, run it against the mock.
 
-    Returns (result, source) where source is "meta" or "mock".
+    Returns (result, source) where source is the provider's name ("meta" or "spark_open") or "mock".
     """
-    meta = get_meta()
+    meta = get_meta(kind)
     if meta.name == "mock":
         return call(meta), "mock"
     try:
-        return call(meta), "meta"
+        return call(meta), meta.name
     except BudgetExceeded as e:
         log.warning("Meta budget guard: %s. Falling back to mock Meta provider.", e)
         return call(MockMeta()), "mock"

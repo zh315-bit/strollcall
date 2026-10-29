@@ -1,8 +1,10 @@
-# Plan: compliant fallback on Meta open-weight models (not built)
+# Fallback on Meta open-weight models (built, off by default)
 
-Status: plan only, written 2026-10-28. Build it only if the hosted Meta Model API stays unusable from
-the deployed server. The 404 `model_not_found` seen on 2026-10-28 also happened locally and cleared
-within minutes, so it may not be needed (see "When to switch").
+Status (2026-10-29): option A is built as `backend/app/providers/spark_open.py`, tested against fakes
+only, and **off** (`TEXT_PROVIDER=meta`). To switch on: the account owner sets `TEXT_PROVIDER=spark_open`,
+`SPARK_OPEN_API_KEY`, `SPARK_OPEN_INPUT_PER_M` and `SPARK_OPEN_OUTPUT_PER_M` (from the provider's model page;
+the provider refuses to start without them), and `SPARK_OPEN_JSON_MODE=prompt` if the provider rejects
+`json_schema`. Then run the live smoke test and the re-tests listed below. Originally written 2026-10-28 as a plan.
 
 ## Why this is compliant
 

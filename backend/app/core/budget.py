@@ -34,6 +34,11 @@ def text_cost(input_tokens: int, output_tokens: int, cached_tokens: int = 0) -> 
     ) / 1_000_000
 
 
+def token_cost(input_tokens: int, output_tokens: int, input_per_m: float, output_per_m: float) -> float:
+    """Any provider's per-token prices (USD per 1M tokens)."""
+    return (input_tokens * input_per_m + output_tokens * output_per_m) / 1_000_000
+
+
 def image_cost(n_images: int) -> float:
     return n_images * IMAGE_PER_IMAGE
 

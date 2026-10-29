@@ -2,7 +2,7 @@
 
 const SOURCE_LABELS = {
   mock: "demo data", default: "rule-based", meta: null, local: null, snapshot: null,
-  pending: null, keywords: "keywords", ors: null, overpass: null,
+  pending: null, keywords: "keywords", ors: null, overpass: null, spark_open: "Muse Spark Open",
 };
 
 async function api(path, options = {}) {

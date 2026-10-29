@@ -20,7 +20,7 @@ class FakeMeta:
 @pytest.fixture
 def use_meta(monkeypatch):
     def install(fake):
-        monkeypatch.setattr("app.providers.get_meta", lambda: fake)
+        monkeypatch.setattr("app.providers.get_meta", lambda *a, **k: fake)
 
     return install
 

@@ -29,6 +29,16 @@ class Settings(BaseSettings):
     # instead of 3-8 s at "low"; measured 2026-10-28).
     accept_reasoning_effort: str = "minimal"
     meta_timeout_s: float = 45.0
+    # Text jobs: meta (Meta Model API) or spark_open (Muse Spark Open on a hosted partner;
+    # off until credits or a fix arrive, see docs/fallback_open_weights.md). Image and voice
+    # always use the Meta Model API.
+    text_provider: str = "meta"
+    spark_open_base_url: str = "https://api.fireworks.ai/inference/v1"
+    spark_open_model: str = "accounts/fireworks/models/muse-spark-open"
+    spark_open_api_key: SecretStr = SecretStr("")
+    spark_open_input_per_m: float = 0.0  # USD per 1M tokens, from the provider's model page; required
+    spark_open_output_per_m: float = 0.0
+    spark_open_json_mode: str = "json_schema"  # or "prompt" if the provider rejects json_schema
     # Cap on output tokens per Spark call, reasoning included. Truncation is logged.
     meta_max_output_tokens: int = 4096  # 2048 truncated 3 of 10 live intent calls (2026-10-28)
 

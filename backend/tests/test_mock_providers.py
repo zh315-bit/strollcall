@@ -65,7 +65,7 @@ def test_budget_exceeded_falls_back_to_mock(monkeypatch, caplog):
         def structured_json(self, *a, **k):
             raise BudgetExceeded("daily Meta budget $15.00 reached")
 
-    monkeypatch.setattr("app.providers.get_meta", lambda: BrokeMeta())
+    monkeypatch.setattr("app.providers.get_meta", lambda *a, **k: BrokeMeta())
     result, source = meta_or_mock(lambda m: m.structured_json("s", "u", {}, name="walk_intent"))
     assert source == "mock"
     assert result["duration_min"] == 25

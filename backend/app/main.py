@@ -125,6 +125,7 @@ def health(check_meta: bool = False) -> dict:
         "use_mocks": s.use_mocks,
         "providers": {
             "meta": meta,
+            "text_model": "mock" if s.use_mocks else s.text_provider,  # meta / spark_open
             "overpass": "mock" if s.use_mocks else "live",
             "ors": keyed(bool(s.ors_api_key.get_secret_value())),
             "routing": "mock" if s.use_mocks else s.routing_provider,
