@@ -37,9 +37,11 @@ def test_replan_needs_the_local_graph():
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="Node.js not installed")
-def test_simulated_gps_walk_in_node():
-    test_file = Path(__file__).parent / "js" / "walk.test.js"
-    out = subprocess.run(["node", "--test", str(test_file)], capture_output=True, text=True, timeout=60)
+def test_walk_logic_and_walking_screen_in_node():
+    """walk.test.js: simulated GPS walks; walk_screen.test.js: the walking screen's page/CSS contract."""
+    files = sorted(str(p) for p in (Path(__file__).parent / "js").glob("*.test.js"))
+    assert len(files) >= 2
+    out = subprocess.run(["node", "--test", *files], capture_output=True, text=True, timeout=60)
     assert out.returncode == 0, out.stdout + out.stderr
 
 
