@@ -285,8 +285,14 @@ void main() {
     if (reduced) { frame(4000); return; } // one still frame
     let raf = 0;
     const loop = (now) => { frame(now); raf = requestAnimationFrame(loop); };
-    const run = () => { cancelAnimationFrame(raf); if (!document.hidden) raf = requestAnimationFrame(loop); };
+    // Paused while the tab is hidden, and during a walk: the walking screen covers the page
+    // (style.css also hides .sky then, which stops the photo wall's own loop).
+    const run = () => {
+      cancelAnimationFrame(raf); raf = 0;
+      if (!document.hidden && !document.body.classList.contains("walking")) raf = requestAnimationFrame(loop);
+    };
     document.addEventListener("visibilitychange", run);
+    new MutationObserver(run).observe(document.body, { attributes: true, attributeFilter: ["class"] });
     run();
   }
 

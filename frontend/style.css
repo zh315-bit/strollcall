@@ -77,6 +77,7 @@ main { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; padding
 .photo-wash { background: radial-gradient(120% 90% at 30% 20%, color-mix(in srgb, var(--bg) 72%, transparent),
   color-mix(in srgb, var(--bg) 45%, transparent)); }
 .sky.has-wall .cloud, .sky.has-wall::after { display: none; }
+body.walking .sky { display: none; } /* the walking screen covers it: don't paint or animate it during a walk */
 .sky-rays { animation: sky-in 2.4s ease-out both; }
 @keyframes sky-in { from { opacity: 0; } }
 

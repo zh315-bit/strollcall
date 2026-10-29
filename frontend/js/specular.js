@@ -163,6 +163,7 @@ void main() {
   const entries = new Map(); // button -> entry
   const pointer = { x: 0, y: 0, known: false };
   let raf = 0, last = 0;
+  const walking = () => document.body.classList.contains("walking");
 
   const cornerRadius = (e) => Math.min(e.radius, e.view.width / 2, e.view.height / 2);
   const restSpot = (e) => {
@@ -246,6 +247,7 @@ void main() {
     for (const [button, e] of entries) {
       if (!button.isConnected) { forget(button); continue; }
       if (!e.visible || !e.awake) continue;
+      if (walking() && !button.closest(".walk-screen")) continue; // covered by the walking screen
       e.awake = step(e, dt);
       moving ||= e.awake;
     }
