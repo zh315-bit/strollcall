@@ -199,7 +199,8 @@ class ORSProvider:
         self.store.store("leg", {key: leg.model_dump()})
         return leg
 
-    def matrix(self, sources: list[Point], destinations: list[Point]) -> TravelMatrix:
+    def matrix(self, sources: list[Point], destinations: list[Point],
+               limit_min: float | None = None) -> TravelMatrix:  # limit_min: local engine only
         """Walking minutes and meters from every source to every destination.
 
         An entry is None when ORS found no route between that pair.

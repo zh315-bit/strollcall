@@ -8,6 +8,7 @@ they started. Nothing here logs coordinates.
 
 import logging
 import secrets
+import threading
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
@@ -134,7 +135,8 @@ def view(token: str, key: str | None = None) -> InviteView | None:
         invite_text=invite.invite_text, a_intent=invite.a_intent, b_intent=invite.b_intent,
         candidates=candidates, selected_id=invite.selected_id, error=invite.error,
         places=public.get("places", {}), tradeoff=public.get("tradeoff"), reasons=public.get("reasons", {}),
-        failure=public.get("failure"), notes=public.get("notes", []), progress=public.get("progress"),
+        failure=public.get("failure"), notes=public.get("notes", []),
+        progress=_live.get(token) or public.get("progress"),
         image_url=f"/api/invites/{token}/card" if image_ready else None,
         sources=sources, demo_data=any(v in ("mock", "default") for v in sources.values()),
     )
@@ -166,22 +168,46 @@ def accept(token: str, b_origin: tuple[float, float], b_text: str = "") -> str:
 
 PROGRESS_STEPS = ("understanding", "balancing", "finding", "done")
 
+# Progress while planning runs lives in memory (one process on the free plan); pages poll it
+# every second, and writing each step to Neon cost a round trip per step. The final state is
+# saved with the plan.
+_live: dict[str, dict] = {}
+_live_lock = threading.Lock()
 
-def _progress(token: str, public: dict, private: dict, step: str, started: float) -> None:
+
+def _progress(token: str, step: str, started: float, timings: dict | None = None) -> dict:
     """Record the step both pages show, with seconds since B accepted."""
     import time
 
-    prog = public.setdefault("progress", {"steps": [], "seconds": {}})
-    prog["step"] = step
-    prog["seconds"][step] = round(time.perf_counter() - started, 2)
-    save_invite_extra(token, public, private)
+    with _live_lock:
+        prog = _live.setdefault(token, {"seconds": {}})
+        prog["step"] = step
+        prog["seconds"][step] = round(time.perf_counter() - started, 2)
+        if timings is not None:
+            prog["timings"] = dict(timings)
+        return dict(prog)
 
 
-def _warm_routing(routing, a_origin, b_origin) -> None:
-    """Run the two Dijkstra searches while Muse Spark reads the preferences (local engine only)."""
+def _timed(timings: dict, name: str, fn, *args):
+    """Run fn and record its wall time in seconds under `name` (for profiling, no data)."""
+    import time
+
+    t = time.perf_counter()
+    try:
+        return fn(*args)
+    finally:
+        timings[name] = round(time.perf_counter() - t, 3)
+
+
+def _warm_routing(routing, a_origin, b_origin, duration_min: int) -> None:
+    """Run the two Dijkstra searches while Muse Spark reads the preferences (local engine only),
+    bounded like the planner's meetup search."""
+    from app.services.planner import MEETUP_TIME_SHARE
+
     if hasattr(routing, "equal_time_nodes"):
         try:
-            routing.matrix([tuple(a_origin), tuple(b_origin)], [tuple(a_origin)])
+            routing.matrix([tuple(a_origin), tuple(b_origin)], [tuple(a_origin)],
+                           limit_min=duration_min * MEETUP_TIME_SHARE)
         except ProviderError:
             pass  # the planner reports routing problems itself
 
@@ -212,7 +238,8 @@ def run_planning(token: str) -> None:
     reasoning_override.set(get_settings().accept_reasoning_effort)
     a, a_text, b_text = invite.a_intent, private.get("a_text", ""), private.get("b_text", "")
     sources = public.setdefault("sources", {})
-    _progress(token, public, private, "understanding", started)
+    timings: dict[str, float] = {}
+    _progress(token, "understanding", started)
     try:
         places, routing = get_places(), get_routing()
         sources["routing"], sources["places"] = routing.name, places.name
@@ -221,9 +248,11 @@ def run_planning(token: str) -> None:
             return ex.submit(contextvars.copy_context().run, fn, *args)
 
         with ThreadPoolExecutor(max_workers=3) as ex:
-            f_parse = submit(ex, parse_intent, b_text) if b_text else None
-            f_wishes = submit(ex, interpret_wishes, a_text, b_text) if (a_text or b_text) else None
-            f_warm = submit(ex, _warm_routing, routing, private["a_origin"], private["b_origin"])
+            f_parse = submit(ex, _timed, timings, "parse_b", parse_intent, b_text) if b_text else None
+            f_wishes = (submit(ex, _timed, timings, "wishes", interpret_wishes, a_text, b_text)
+                        if (a_text or b_text) else None)
+            f_warm = submit(ex, _timed, timings, "routing_search", _warm_routing, routing,
+                            private["a_origin"], private["b_origin"], a.duration_min)
             if f_parse:
                 parsed = f_parse.result()
                 b, sources["b_intent"] = parsed.intent, parsed.source
@@ -235,18 +264,18 @@ def run_planning(token: str) -> None:
             f_warm.result()
         invite.b_intent = b
 
-        _progress(token, public, private, "balancing", started)
-        neg = negotiate(a, b)
+        _progress(token, "balancing", started, timings)
+        neg = _timed(timings, "negotiate", negotiate, a, b)
         sources["negotiation"] = neg.source
 
-        _progress(token, public, private, "finding", started)
-        plan = plan_for_two(tuple(private["a_origin"]), tuple(private["b_origin"]), a, b, neg.joint,
-                            places, routing, datetime.now(NYC), wishes=wishes)
-        ranking = rank_candidates(plan, a, b, neg.joint, wishes) if plan.status == "proposed" else None
+        _progress(token, "finding", started, timings)
+        plan = _timed(timings, "plan", plan_for_two, tuple(private["a_origin"]), tuple(private["b_origin"]),
+                      a, b, neg.joint, places, routing, datetime.now(NYC), False, wishes)
+        ranking = (_timed(timings, "rank", rank_candidates, plan, a, b, neg.joint, wishes)
+                   if plan.status == "proposed" else None)
     except ProviderError as e:
         invite.status, invite.error = "error", e.code
-        save_invite(invite)
-        _progress(token, public, private, "done", started)
+        _finish(token, invite, public, private, started, timings)
         return
 
     public["notes"] = plan.notes
@@ -258,9 +287,18 @@ def run_planning(token: str) -> None:
         invite.status, invite.candidates = "proposed", ranking.candidates
         public.update({"places": {k: v.model_dump(mode="json") for k, v in plan.places.items()},
                        "tradeoff": neg.tradeoff, "reasons": ranking.reasons})
+    _finish(token, invite, public, private, started, timings)
+
+
+def _finish(token: str, invite: Invite, public: dict, private: dict, started: float, timings: dict) -> None:
+    """Save the result and the final progress together, then drop the in-memory copy."""
+    public["progress"] = _progress(token, "done", started, timings)
     save_invite(invite)
-    _progress(token, public, private, "done", started)
-    log.info("invite planned: %s in %.1f s", invite.error or invite.status, public["progress"]["seconds"]["done"])
+    save_invite_extra(token, public, private)
+    with _live_lock:
+        _live.pop(token, None)
+    log.info("invite planned: %s in %.1f s; stages %s", invite.error or invite.status,
+             public["progress"]["seconds"]["done"], public["progress"]["timings"])
 
 
 def confirm(token: str, key: str | None, candidate_id: str | None) -> None:

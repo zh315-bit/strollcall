@@ -111,6 +111,36 @@ def test_intermittent_model_not_found_is_retried_once(monkeypatch):
     assert completions.calls == 2
 
 
+def test_repeated_model_not_found_pauses_the_model(monkeypatch):
+    import httpx
+    import openai
+
+    from app.core.errors import ProviderError
+    from app.providers import meta as meta_mod
+
+    monkeypatch.setattr("app.providers.meta.time.sleep", lambda s: None)
+    monkeypatch.setattr(meta_mod, "_not_found_until", {})
+    req = httpx.Request("POST", "https://api.meta.ai/v1/chat/completions")
+
+    class AlwaysNotFound(FakeCompletions):
+        def create(self, **kwargs):
+            self.calls += 1
+            raise openai.NotFoundError("not found", response=httpx.Response(404, request=req),
+                                       body={"code": "model_not_found", "message": "not found"})
+
+    completions = AlwaysNotFound([])
+    meta = MetaProvider(client=SimpleNamespace(chat=SimpleNamespace(completions=completions)),
+                        guard=SpendGuard(daily_cap_usd=15))
+    for _ in range(2):
+        with pytest.raises(ProviderError):
+            meta.structured_json("s", "u", {"type": "object"})
+    assert completions.calls == 2  # the second call skipped the request
+    meta_mod._not_found_until.clear()  # the pause ended: requests go out again
+    with pytest.raises(ProviderError):
+        meta.structured_json("s", "u", {"type": "object"})
+    assert completions.calls == 4
+
+
 def test_health_meta_check_needs_debug():
     from fastapi.testclient import TestClient
 

@@ -36,16 +36,22 @@ TRANSIENT_ERRORS = (
     openai.InternalServerError,
 )
 RETRY_WAIT_S = 1.5
+# After a call fails twice with model_not_found, later calls for that model skip the request for
+# this long and fall back at once (labelled), instead of each spending ~2 s on a 404 and a retry.
+NOT_FOUND_PAUSE_S = 120.0
+_not_found_until: dict[str, float] = {}
+
+
+def _is_not_found(e: Exception) -> bool:
+    body = getattr(e, "body", None)
+    code = (body.get("code") or (body.get("error") or {}).get("code")) if isinstance(body, dict) else None
+    return isinstance(e, openai.NotFoundError) and code == "model_not_found"
 
 
 def _transient(e: Exception) -> bool:
     """Timeouts, 429, 5xx, and the intermittent 404 model_not_found seen on 2026-10-28 for a model
     the same key can list (it cleared within minutes, locally and on the server alike)."""
-    if isinstance(e, TRANSIENT_ERRORS):
-        return True
-    body = getattr(e, "body", None)
-    code = (body.get("code") or (body.get("error") or {}).get("code")) if isinstance(body, dict) else None
-    return isinstance(e, openai.NotFoundError) and code == "model_not_found"
+    return isinstance(e, TRANSIENT_ERRORS) or _is_not_found(e)
 
 
 class MetaError(ProviderError):
@@ -91,8 +97,12 @@ class MetaProvider:
         # Upper bound: ~3 chars per input token, and the full output allowance.
         est_input = (len(system) + len(user) + len(json.dumps(schema))) // 3 + 50
         estimate = text_cost(est_input, max_tokens)
+        if time.monotonic() < _not_found_until.get(model, 0.0):
+            raise MetaError(f"Muse Spark skipped: {model} returned model_not_found in the last "
+                            f"{NOT_FOUND_PAUSE_S:.0f} s")
 
         last_error: MetaError | None = None
+        not_found = 0
         for attempt in range(2):
             self.guard.check(estimate)
             try:
@@ -113,11 +123,17 @@ class MetaProvider:
                 if _transient(e):
                     last_error = MetaError(f"Muse Spark: {_describe(e)}")
                     log.warning("Muse Spark attempt %d failed: %s", attempt + 1, _describe(e))
+                    not_found += _is_not_found(e)
+                    if not_found == 2:
+                        _not_found_until[model] = time.monotonic() + NOT_FOUND_PAUSE_S
+                        log.warning("Muse Spark: pausing %s for %.0f s after model_not_found twice",
+                                    model, NOT_FOUND_PAUSE_S)
                     if attempt == 0:
                         time.sleep(RETRY_WAIT_S)
                     continue
                 raise MetaError(f"Muse Spark request rejected: {_describe(e)}") from e
 
+            _not_found_until.pop(model, None)
             self._record_text(resp, model, name)
             choice = resp.choices[0]
             if getattr(choice, "finish_reason", None) == "length":

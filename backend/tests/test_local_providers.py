@@ -77,7 +77,7 @@ class FakeFallback:
     def __init__(self):
         self.calls = 0
 
-    def matrix(self, sources, destinations):
+    def matrix(self, sources, destinations, limit_min=None):
         self.calls += 1
         return TravelMatrix(durations_min=[[1.0]], distances_m=[[80.0]])
 
@@ -310,3 +310,15 @@ def test_snapshot_used_when_the_circle_crosses_the_edge(tmp_path):
     # configured, so the old behaviour (fall back when the circle leaves the box) would raise.
     places = SnapshotPlaces(snapshot_file(tmp_path / "p.json.gz"), fallback=None)
     assert [p.id for p in places.meetup_candidates(40.7300, -74.0150, 1500)] == ["way/1"]
+
+
+def test_bounded_matrix_marks_far_points_over_budget_and_walk_still_routes(graph, monkeypatch):
+    monkeypatch.setattr("app.providers.local_routing.MIN_LIMIT_MIN", 1.0)
+    routing = LocalRouting(graph[0])
+    m = routing.matrix([node(graph, 0, 0)], [node(graph, 0, 1), node(graph, 3, 4)], limit_min=2.0)
+    assert m.durations_min[0][0] == pytest.approx(STEP * M_PER_DEG / 80, abs=0.02)
+    assert m.durations_min[0][1] == math.inf  # beyond the bound: over budget, not "no route"
+    leg = routing.walk(node(graph, 0, 0), node(graph, 3, 4))  # the bounded search is not enough here
+    assert leg.duration_min == pytest.approx(7 * STEP * M_PER_DEG / 80, abs=0.02)
+    full = routing.matrix([node(graph, 0, 0)], [node(graph, 3, 4)])  # the wider search is reused
+    assert full.durations_min[0][0] == pytest.approx(leg.duration_min, abs=0.01)

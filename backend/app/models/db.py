@@ -161,15 +161,36 @@ def db(path: Path | None = None):
         return _backends[key]
 
 
+def db_region(url: str) -> str | None:
+    """'aws us-east-1' from a Neon host like ep-x-pooler.us-east-1.aws.neon.tech; never the host itself."""
+    from urllib.parse import urlsplit
+
+    parts = (urlsplit(url).hostname or "").split(".")
+    if len(parts) >= 5 and parts[-2:] == ["neon", "tech"]:
+        return f"{parts[-3]} {parts[-4]}"
+    return None
+
+
 def health() -> dict:
-    """Backend name and whether a trivial query works (never raises)."""
+    """Backend name, whether a trivial query works, its round trip (median of 3) and, on Neon,
+    the database region (never raises)."""
+    import statistics
+    import time
+
+    url = get_settings().database_url.get_secret_value()
     try:
         backend = db()
-        backend.query("SELECT 1 AS ok")
-        return {"backend": backend.name, "reachable": True}
+        rtts = []
+        for _ in range(3):
+            t = time.perf_counter()
+            backend.query("SELECT 1 AS ok")
+            rtts.append((time.perf_counter() - t) * 1000)
+        out = {"backend": backend.name, "reachable": True, "round_trip_ms": round(statistics.median(rtts), 1)}
     except Exception as e:  # report, don't crash /health
-        name = "postgres" if get_settings().database_url.get_secret_value() else "sqlite"
-        return {"backend": name, "reachable": False, "error": type(e).__name__}
+        out = {"backend": "postgres" if url else "sqlite", "reachable": False, "error": type(e).__name__}
+    if url:
+        out["region"] = db_region(url)
+    return out
 
 
 def save_invite(invite, path: Path | None = None) -> None:

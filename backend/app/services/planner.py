@@ -351,7 +351,8 @@ def generate_candidates(
     stats["meetup_queried"] = len(points)
     kept = []
     if points:
-        times = ors.matrix([a, b], [(p.lat, p.lon) for p in points])
+        times = ors.matrix([a, b], [(p.lat, p.lon) for p in points],
+                           limit_min=intent.duration_min * MEETUP_TIME_SHARE)
         kept = filter_meetups(points, times, intent.duration_min, stats, reserve)
     corners = equal_time_intersections(ors, a, b, intent.duration_min, stats)
     if crowd_filter:
@@ -380,7 +381,8 @@ def generate_candidates(
     if not destinations:
         return _done(CandidateSet(kept, [], None, stats))
 
-    shared = ors.matrix([(m.place.lat, m.place.lon) for m in kept], [(d.lat, d.lon) for d in destinations])
+    shared = ors.matrix([(m.place.lat, m.place.lon) for m in kept], [(d.lat, d.lon) for d in destinations],
+                        limit_min=intent.duration_min + time_slack(intent))
     return _done(CandidateSet(kept, destinations, shared, stats))
 
 

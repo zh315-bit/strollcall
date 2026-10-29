@@ -92,7 +92,7 @@ class MockORS:
                 return RouteLeg.model_validate(route["leg"])
         raise ProviderError("routing_unavailable", "no captured route for this pair in mock mode")
 
-    def matrix(self, sources, destinations) -> TravelMatrix:
+    def matrix(self, sources, destinations, limit_min=None) -> TravelMatrix:
         elements = _load(self.fixtures_dir, "ors_matrix_elements.json")
         durations, distances = [], []
         for s in sources:

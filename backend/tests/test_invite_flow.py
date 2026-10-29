@@ -72,6 +72,11 @@ def test_full_flow_create_accept_poll_confirm(town):
     assert a_view["status"] == "proposed", a_view
     assert a_view["candidates"] and "node/9" in a_view["places"]
     assert {"routing", "places", "negotiation", "ranking"} <= set(a_view["sources"])
+    # Progress was kept in memory while planning and saved with the result, with stage timings.
+    from app.services.invites import _live
+
+    assert token not in _live and a_view["progress"]["step"] == "done"
+    assert {"routing_search", "negotiate", "plan", "rank"} <= set(a_view["progress"]["timings"])
     b_view = client.get(f"/api/invites/{token}", headers={"X-Invite-Key": b_key}).json()
     c_a, c_b = a_view["candidates"][0], b_view["candidates"][0]
     # Each sees their own leg in full and the other's leg trimmed at the start.

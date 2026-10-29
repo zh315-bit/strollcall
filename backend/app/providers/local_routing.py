@@ -27,7 +27,8 @@ log = logging.getLogger(__name__)
 
 Point = tuple[float, float]  # (lat, lon)
 SNAP_MAX_M = 200.0
-SEARCH_LIMIT_MIN = 40.0  # bounded Dijkstra
+SEARCH_LIMIT_MIN = 40.0  # bounded Dijkstra: the most any search explores
+MIN_LIMIT_MIN = 10.0  # smallest bound used for a caller-supplied limit
 M_PER_DEG_LAT = 111_320.0
 CACHE_MAX = 20_000
 DIJKSTRA_CACHE = 64  # recent single-source results kept for directions
@@ -105,7 +106,7 @@ class LocalRouting:
         self.fallback = fallback  # ORS provider, or a callable returning one, or None
         self.legs: dict[str, RouteLeg] = {}
         self.elements: dict[str, tuple[float, float] | None] = {}
-        self._trees: OrderedDict[int, tuple[np.ndarray, np.ndarray]] = OrderedDict()
+        self._trees: OrderedDict[int, tuple[np.ndarray, np.ndarray, float]] = OrderedDict()
         self.snap_m: list[float] = []  # recent snap distances, for reporting
 
     def _fallback(self, why: str):
@@ -115,14 +116,20 @@ class LocalRouting:
         log.info("local routing: point outside the covered area; using %s", fb.name)
         return fb
 
-    def _search(self, source: int) -> tuple[np.ndarray, np.ndarray]:
-        """Bounded single-source Dijkstra: minutes to every node and predecessors."""
-        if source in self._trees:
+    def _search(self, source: int, limit: float = SEARCH_LIMIT_MIN) -> tuple[np.ndarray, np.ndarray]:
+        """Bounded single-source Dijkstra: minutes to every node within `limit`, and predecessors.
+
+        A cached search is reused when it went at least as far; nodes beyond its bound are inf.
+        """
+        limit = min(max(limit, MIN_LIMIT_MIN), SEARCH_LIMIT_MIN)
+        hit = self._trees.get(source)
+        if hit is not None and hit[2] >= limit:
             self._trees.move_to_end(source)
-            return self._trees[source]
+            return hit[0], hit[1]
         dist, pred = dijkstra(self.graph.csr, directed=True, indices=source,
-                              limit=SEARCH_LIMIT_MIN, return_predecessors=True)
-        self._trees[source] = (dist, pred)
+                              limit=limit, return_predecessors=True)
+        self._trees[source] = (dist, pred, limit)
+        self._trees.move_to_end(source)
         if len(self._trees) > DIJKSTRA_CACHE:
             self._trees.popitem(last=False)
         return dist, pred
@@ -135,14 +142,18 @@ class LocalRouting:
         """
         (na, sa), (nb, sb) = self.graph.snap(a), self.graph.snap(b)
         speed = self.graph.m_per_min
-        ta = self._search(na)[0] + sa / speed
-        tb = self._search(nb)[0] + sb / speed
+        ta = self._search(na, max_minutes)[0] + sa / speed
+        tb = self._search(nb, max_minutes)[0] + sb / speed
         with np.errstate(invalid="ignore"):  # inf - inf for nodes neither reaches
             mask = np.isfinite(ta) & np.isfinite(tb) & (np.abs(ta - tb) <= max_gap) & (np.maximum(ta, tb) <= max_minutes)
         nodes = np.nonzero(mask)[0]
         return nodes, ta[nodes], tb[nodes]
 
-    def matrix(self, sources: list[Point], destinations: list[Point]) -> TravelMatrix:
+    def matrix(self, sources: list[Point], destinations: list[Point],
+               limit_min: float | None = None) -> TravelMatrix:
+        """Walking minutes and meters. With `limit_min`, the searches stop there: a destination
+        beyond it gets inf (over any budget the caller checks), not None (no route at all)."""
+        bound = SEARCH_LIMIT_MIN if limit_min is None else min(limit_min + 1.0, SEARCH_LIMIT_MIN)
         try:
             src = [self.graph.snap(p) for p in sources]
         except OutsideCoverage as e:
@@ -162,10 +173,14 @@ class LocalRouting:
         speed = self.graph.m_per_min
         durations, distances = [], []
         for (s_node, s_snap), s in zip(src, sources):
-            dist, _ = self._search(s_node)
+            dist, _ = self._search(s_node, bound)
             row_t, row_d = [], []
             for (d_node, d_snap), d in zip(dst, destinations):
                 t = dist[d_node] if d_node is not None else np.inf
+                if not np.isfinite(t) and d_node is not None and bound < SEARCH_LIMIT_MIN:
+                    row_t.append(math.inf)  # beyond the caller's bound; not cached
+                    row_d.append(math.inf)
+                    continue
                 if not np.isfinite(t):
                     value = None  # no walking path within SEARCH_LIMIT_MIN
                 else:
@@ -188,7 +203,9 @@ class LocalRouting:
             (s_node, s_snap), (e_node, e_snap) = self.graph.snap(start), self.graph.snap(end)
         except OutsideCoverage as e:
             return self._fallback(str(e)).walk(start, end)
-        dist, pred = self._search(s_node)
+        dist, pred = self._search(s_node, MIN_LIMIT_MIN)  # any cached search; else a short one
+        if not np.isfinite(dist[e_node]):
+            dist, pred = self._search(s_node, SEARCH_LIMIT_MIN)
         if not np.isfinite(dist[e_node]):
             raise ProviderError("no_route", f"no walking path within {SEARCH_LIMIT_MIN:.0f} min")
 

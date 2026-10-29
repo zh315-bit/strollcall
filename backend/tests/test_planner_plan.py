@@ -40,7 +40,7 @@ class FakeORS:
         self.origin_times, self.shared_times = origin_times, shared_times
         self.fail_directions = fail_directions
 
-    def matrix(self, sources, destinations):
+    def matrix(self, sources, destinations, limit_min=None):
         if sources == [A, B]:
             rows = [[self.origin_times[s][d] for d in destinations] for s in (A, B)]
         else:

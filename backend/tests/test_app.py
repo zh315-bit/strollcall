@@ -53,7 +53,8 @@ def test_pages_are_served():
 
 
 def test_health_reports_the_database():
-    assert client.get("/health").json()["database"] == {"backend": "sqlite", "reachable": True}
+    database = client.get("/health").json()["database"]
+    assert database["backend"] == "sqlite" and database["reachable"] and database["round_trip_ms"] >= 0
 
 
 def test_same_sql_runs_on_sqlite_with_upserts(tmp_path):
@@ -81,3 +82,10 @@ def test_meta_diag_without_key_still_reports_egress(monkeypatch):
     get_settings.cache_clear()
     body = client.get("/api/dev/meta_diag").json()
     assert body["egress"][0]["country"] == "US" and "not set" in body["calls"]
+
+
+def test_db_region_names_the_cloud_region_only():
+    from app.models.db import db_region
+
+    assert db_region("postgresql://u:p@ep-cool-x-pooler.us-east-1.aws.neon.tech/db?sslmode=require") == "aws us-east-1"
+    assert db_region("postgresql://u:p@localhost/db") is None

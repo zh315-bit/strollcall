@@ -109,7 +109,7 @@ def _plan(origin: Point, intent: WalkIntent, places, routing, depart_at: datetim
     if not shortlist:
         return SoloPlan(status="no_feasible_plan", stats=stats)
 
-    times = routing.matrix([origin], [(p.lat, p.lon) for p in shortlist])
+    times = routing.matrix([origin], [(p.lat, p.lon) for p in shortlist], limit_min=intent.duration_min + slack)
     need_open = requires_open(intent)
     scored = []
     for p, t in zip(shortlist, times.durations_min[0]):
