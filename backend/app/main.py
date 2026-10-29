@@ -18,6 +18,24 @@ app.include_router(solo.router)
 app.include_router(voice.router)
 app.include_router(dev.router)  # answers 404 unless DEBUG=true
 
+@app.on_event("startup")
+def preload_map_data() -> None:
+    """Load the walking graph and place snapshot in the background at startup, so the first
+    planning request after a deploy or wake-up does not wait for them."""
+    import threading
+
+    def load():
+        from app.providers import get_places, get_routing
+
+        try:
+            get_routing(), get_places()
+        except Exception as e:  # the planner reports a missing graph itself
+            logging.getLogger(__name__).warning("preload skipped: %s", type(e).__name__)
+
+    if not get_settings().use_mocks:
+        threading.Thread(target=load, daemon=True).start()
+
+
 FRONTEND = ROOT_DIR / "frontend"
 app.mount("/static", StaticFiles(directory=FRONTEND), name="static")
 

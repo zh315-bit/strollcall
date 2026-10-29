@@ -63,6 +63,17 @@ class MetaInvalidJSON(MetaError):
     pass
 
 
+_clients: dict[tuple, OpenAI] = {}
+
+
+def _shared_client(base_url: str, api_key: str, timeout: float) -> OpenAI:
+    """One client (and connection pool) per process: building one costs ~0.3 s on the free plan."""
+    k = (base_url, api_key, timeout)
+    if k not in _clients:
+        _clients[k] = OpenAI(base_url=base_url, api_key=api_key, timeout=timeout, max_retries=0)
+    return _clients[k]
+
+
 class MetaProvider:
     name = "meta"
 
@@ -82,12 +93,7 @@ class MetaProvider:
             forbid_live_client_in_tests("MetaProvider")
         # The OpenAI SDK does not read MODEL_API_KEY on its own, so pass it explicitly.
         # Retries are ours (at most one), not the SDK's.
-        self.client = client or OpenAI(
-            base_url=self.settings.model_base_url,
-            api_key=api_key,
-            timeout=self.settings.meta_timeout_s,
-            max_retries=0,
-        )
+        self.client = client or _shared_client(self.settings.model_base_url, api_key, self.settings.meta_timeout_s)
         self._http = http  # created on first transcribe
         self._api_key = api_key
 
