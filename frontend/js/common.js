@@ -246,6 +246,7 @@ const ARRIVED_IN_SITE = (() => { // also lets bits.js skip its entrance effects 
   try { const from = JSON.parse(sessionStorage.getItem("strollcall:from")); return from && Date.now() - from.at < 5000 ? from : null; }
   catch (err) { return null; }
 })();
+if (ARRIVED_IN_SITE) document.documentElement.classList.add("in-site"); // style.css: the sky doesn't fade in again
 addEventListener("pageswap", (ev) => {
   quietSkip(ev.viewTransition);
   try { sessionStorage.setItem("strollcall:from", JSON.stringify({ path: location.pathname, at: Date.now() })); } catch (err) { /* fine */ }
@@ -300,5 +301,9 @@ function forgetDevice() {
   return n;
 }
 
-document.addEventListener("DOMContentLoaded", decorate);
-document.addEventListener("DOMContentLoaded", siteChrome);
+// Built right away: the pages load this script after <main> and <footer>, and they hold their first render
+// until the scripts have run (<link rel="expect" blocking="render">), so a page switch never shows the
+// page without its top bar, header or sky. If a page ever loads it earlier, wait for the DOM instead.
+function buildChrome() { decorate(); siteChrome(); }
+if (document.querySelector("main") && document.querySelector("footer")) buildChrome();
+else document.addEventListener("DOMContentLoaded", buildChrome);

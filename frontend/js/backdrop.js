@@ -271,12 +271,7 @@ void main() {
     const wash = document.createElement("div");
     wash.className = "photo-wash";
     sky.prepend(wall, wash); // under the rays and motes
-    fetch("/static/illustrations/manifest.json").then((r) => r.json()).then(({ pictures }) => {
-      // A new visit gets a fresh mix; moving between pages keeps the order and the drift (see WALL_KEY).
-      const files = Object.keys(pictures);
-      const saved = readWall();
-      const order = saved && saved.order.length === files.length && saved.order.every((f) => f in pictures)
-        ? saved.order : files.map((f) => [f, Math.random()]).sort((a, b) => a[1] - b[1]).map(([f]) => f);
+    const build = (order, saved) => {
       const items = order.map((file) => ({ src: `/static/illustrations/thumbs/${file}`, alt: "" }));
       sky.classList.add("has-wall");
       const wallMotion = gridMotion(wall, { items, rows: innerHeight > innerWidth ? 5 : 4, aspectRatio: 1.5, gap: 18, radius: 22,
@@ -288,6 +283,13 @@ void main() {
       };
       addEventListener("pageswap", save);
       addEventListener("pagehide", save);
+    };
+    // Moving between pages: the previous page's wall is in sessionStorage, so build it now, before the
+    // first render, and the page switch shows the same wall. A new visit fetches the list and mixes it.
+    const saved = readWall();
+    if (saved) { build(saved.order, saved); return; }
+    fetch("/static/illustrations/manifest.json").then((r) => r.json()).then(({ pictures }) => {
+      build(Object.keys(pictures).map((f) => [f, Math.random()]).sort((a, b) => a[1] - b[1]).map(([f]) => f), null);
     }).catch(() => { wall.remove(); wash.remove(); }); // no pictures: the plain sky stays
   }
 
@@ -299,7 +301,8 @@ void main() {
     const layers = [lightRays(sky), motes(sky)].filter(Boolean);
     photoWall(sky); // GridMotion runs its own frame loop
     const frame = () => { const t = (Date.now() % 1e7) / 1000; layers.forEach((draw) => draw(t)); }; // wall-clock: same phase across pages
-    if (reduced) { frame(4000); return; } // one still frame
+    frame(); // drawn before the first render, so a page switch never shows an empty sky
+    if (reduced) return; // one still frame
     let raf = 0;
     const loop = (now) => { frame(now); raf = requestAnimationFrame(loop); };
     // Paused while the tab is hidden, and during a walk: the walking screen covers the page
@@ -313,6 +316,6 @@ void main() {
     run();
   }
 
-  // common.js builds the .sky on DOMContentLoaded; this listener is added later, so it runs after.
-  document.addEventListener("DOMContentLoaded", init);
+  // common.js has usually built the .sky already (before the page's first render); otherwise wait for it.
+  if (document.querySelector(".sky")) init(); else document.addEventListener("DOMContentLoaded", init);
 })();

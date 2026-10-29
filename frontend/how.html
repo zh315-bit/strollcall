@@ -8,6 +8,9 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Mochiy+Pop+One&display=swap">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/bits.css">
+  <!-- Hold the first render until the top bar, header and sky are built, so a page switch never
+       shows the bare page. Browsers without rel="expect" ignore it. -->
+  <link rel="expect" href="#chrome-ready" blocking="render">
 </head>
 <body>
 <main class="prose">
@@ -86,7 +89,8 @@
 <script src="/static/js/common.js"></script>
 <script src="/static/js/bits.js"></script>
 <script src="/static/js/specular.js"></script>
-<script src="/static/js/backdrop.js"></script>
 <script src="/static/js/gridmotion.js"></script>
+<script src="/static/js/backdrop.js"></script>
+<div id="chrome-ready" hidden></div> <!-- first render waits for the scripts above (see <head>) -->
 </body>
 </html>

@@ -79,6 +79,7 @@ main { position: relative; z-index: 1; max-width: 640px; margin: 0 auto; padding
 .sky.has-wall .cloud, .sky.has-wall::after { display: none; }
 body.walking .sky { display: none; } /* the walking screen covers it: don't paint or animate it during a walk */
 .sky-rays { animation: sky-in 2.4s ease-out both; }
+html.in-site .sky-rays { animation: none; } /* after a page switch the sky continues; it only fades in on arrival */
 @keyframes sky-in { from { opacity: 0; } }
 
 /* ---- Page header: title + one line under the top bar (common.js decorate()). On the home and invite

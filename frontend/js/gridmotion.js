@@ -44,12 +44,12 @@
     return IMAGE.test(text) ? { kind: "image", src: text, alt: "" } : { kind: "text", text };
   };
 
-  function tileEl(tile) {
+  function tileEl(tile, decoding = "async") {
     const div = document.createElement("div");
     div.className = "grid-motion__tile";
     if (tile.kind === "image") {
       const img = document.createElement("img");
-      img.src = tile.src; img.alt = tile.alt; img.draggable = false; img.decoding = "async";
+      img.src = tile.src; img.alt = tile.alt; img.draggable = false; img.decoding = decoding;
       div.append(img);
     } else if (tile.kind === "text") {
       const span = document.createElement("span");
@@ -136,7 +136,8 @@
         row.style.top = `${layout.top + r * (layout.tileHeight + s.gap)}px`;
         const sequence = Array.from({ length: layout.perRow }, (_, j) =>
           tiles.length ? tiles[(r * layout.perRow + j) % tiles.length] : { kind: "empty" });
-        for (let k = 0; k < layout.copies * layout.perRow; k++) row.append(tileEl(sequence[k % layout.perRow]));
+        // Resuming on a new page: the images are cached, decode them before the first paint (no empty tiles).
+        for (let k = 0; k < layout.copies * layout.perRow; k++) row.append(tileEl(sequence[k % layout.perRow], resume ? "sync" : "async"));
         plane.append(row);
       }
       root.append(plane);
