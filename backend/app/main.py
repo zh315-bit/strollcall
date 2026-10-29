@@ -75,6 +75,11 @@ def walks_page() -> FileResponse:
     return FileResponse(FRONTEND / "walks.html")
 
 
+@app.get("/privacy", include_in_schema=False)
+def privacy_page() -> FileResponse:
+    return FileResponse(FRONTEND / "privacy.html")
+
+
 @app.get("/r/{recap_id}", include_in_schema=False)
 def recap_page(recap_id: str) -> FileResponse:
     return FileResponse(FRONTEND / "recap.html")

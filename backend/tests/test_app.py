@@ -95,3 +95,9 @@ def test_pages_and_code_are_revalidated_after_a_deploy():
     for path in ("/", "/i/abc", "/static/js/walk.js", "/static/style.css"):
         assert client.get(path).headers.get("cache-control") == "no-cache", path
     assert "no-cache" not in client.get("/static/illustrations/lively-cafe.jpg").headers.get("cache-control", "")
+
+
+def test_every_page_serves_with_the_nav_and_privacy_link_script():
+    for path in ("/", "/i/abc", "/how", "/walks", "/privacy", "/r/abc"):
+        r = client.get(path)
+        assert r.status_code == 200 and "/static/js/common.js" in r.text, path
