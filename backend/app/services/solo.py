@@ -16,8 +16,8 @@ from app.core.hours import is_open
 from app.models.schemas import Place, RouteLeg, WalkIntent
 from app.services.planner import (
     CATEGORY_LABELS, CROWD_NOTE, CROWD_NOTE_NO_DATA, DETOUR_FACTOR, VIBE_TESTS, WALK_M_PER_MIN,
-    PlanFailure, Weights, avoids_crowds, destination_types, drop_crowded, explain_failure, requires_open,
-    time_slack,
+    PlanFailure, Weights, avoids_crowds, destination_types, drop_crowded, explain_failure, pass_by_term,
+    passed_on, requires_open, time_slack,
 )
 
 log = logging.getLogger(__name__)
@@ -80,7 +80,8 @@ def solo_fit(dest: Place, intent: WalkIntent, wishes=None) -> tuple[float, list[
     return (sum(scores) / len(scores) if scores else 0.5), met
 
 
-def _plan(origin: Point, intent: WalkIntent, places, routing, depart_at: datetime, wishes, weights) -> SoloPlan:
+def _plan(origin: Point, intent: WalkIntent, places, routing, depart_at: datetime, wishes, weights,
+          pass_by=None) -> SoloPlan:
     stats: dict[str, int] = {}
     slack = time_slack(intent)
     reach_m = (intent.duration_min + slack) * WALK_M_PER_MIN / DETOUR_FACTOR * 1.1
@@ -131,7 +132,8 @@ def _plan(origin: Point, intent: WalkIntent, places, routing, depart_at: datetim
             continue
         fit, met = solo_fit(p, intent, wishes)
         time_dev = min(abs(t - intent.duration_min) / (0.4 * intent.duration_min), 1.0)
-        score = weights.fit * fit - weights.time_dev * time_dev - weights.uncertainty * (0.0 if open_now else 1.0)
+        score = (weights.fit * fit - weights.time_dev * time_dev - weights.uncertainty * (0.0 if open_now else 1.0)
+                 + weights.pass_by * pass_by_term([(origin, (p.lat, p.lon))], pass_by))
         scored.append((round(score, 6), p.id, p, met, open_now))
     scored.sort(key=lambda s: (-s[0], s[1]))
     stats["feasible_options"] = len(scored)
@@ -144,12 +146,13 @@ def _plan(origin: Point, intent: WalkIntent, places, routing, depart_at: datetim
         if leg.duration_min > intent.duration_min + slack:
             _count(stats, "directions_broke_constraint")
             continue
-        hours = "open when you arrive (per OSM)" if open_now else "opening hours unknown"
+        hours = "open when you arrive, per OSM" if open_now else "opening hours unknown"
         suits = f", for you: {', '.join(met)}" if met else ""
         candidates.append(SoloCandidate(
             id=pid, destination_place_id=pid, leg=leg, total_min=round(leg.duration_min, 2), score=score,
             rationale=(f"Walk about {leg.duration_min:.0f} min to {p.name} "
-                       f"({CATEGORY_LABELS.get(p.category, p.category)}{suits}, {hours})."),
+                       f"({CATEGORY_LABELS.get(p.category, p.category)}{suits}, {hours})."
+                       + "".join(f" Passes {n}." for n in passed_on([leg], pass_by))),
         ))
     if not candidates:
         return SoloPlan(status="no_feasible_plan", stats=stats)
@@ -174,10 +177,10 @@ def _solo_failure(stats: dict, intent: WalkIntent, replan) -> PlanFailure:
 
 
 def plan_solo(origin: Point, intent: WalkIntent, places, routing, depart_at: datetime, wishes=None,
-              weights: Weights | None = None) -> SoloPlan:
+              weights: Weights | None = None, pass_by=None) -> SoloPlan:
     weights = weights or Weights.from_settings()
     try:
-        plan = _plan(origin, intent, places, routing, depart_at, wishes, weights)
+        plan = _plan(origin, intent, places, routing, depart_at, wishes, weights, pass_by)
     except ProviderError as e:
         status = "places_unavailable" if e.code == "places_unavailable" else "routing_unavailable"
         return SoloPlan(status=status, error=e.message)
@@ -188,7 +191,7 @@ def plan_solo(origin: Point, intent: WalkIntent, places, routing, depart_at: dat
         if getattr(routing, "name", "") == "local":  # cheap to replan only on the local graph
             def replan(i):
                 try:
-                    return _plan(origin, i, places, routing, depart_at, wishes, weights).status == "proposed"
+                    return _plan(origin, i, places, routing, depart_at, wishes, weights, pass_by).status == "proposed"
                 except ProviderError:
                     return False
         plan.failure = _solo_failure(plan.stats, intent, replan)

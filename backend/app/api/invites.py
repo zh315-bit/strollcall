@@ -20,6 +20,7 @@ class CreateInviteRequest(BaseModel):
     a_intent: WalkIntent
     a_origin: LatLon
     a_text: str = Field(default="", max_length=500)
+    pass_by_ids: list[str] = Field(default=[], max_length=3)  # "Add to my wish" from Near you: soft
 
 
 class CreateInviteResponse(BaseModel):
@@ -51,7 +52,7 @@ def _raise(e: invites.InviteError):
 
 @router.post("", status_code=201)
 def create_invite(req: CreateInviteRequest) -> CreateInviteResponse:
-    invite, a_key = invites.create(req.a_intent, (req.a_origin.lat, req.a_origin.lon), req.a_text)
+    invite, a_key = invites.create(req.a_intent, (req.a_origin.lat, req.a_origin.lon), req.a_text, req.pass_by_ids)
     return CreateInviteResponse(token=invite.token, invite_path=f"/i/{invite.token}", a_key=a_key,
                                 expires_at=invite.expires_at, view=invites.view(invite.token, a_key))
 

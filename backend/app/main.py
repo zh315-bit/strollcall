@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import coverage, dev, intents, invites, solo, voice, walk
+from app.api import coverage, dev, intents, invites, nearby, solo, voice, walk
 from app.core.budget import SpendGuard
 from app.core.config import ROOT_DIR, get_settings
 from app.models.db import health as db_health
@@ -24,6 +24,7 @@ async def revalidate_pages_and_code(request, call_next):
         response.headers.setdefault("Cache-Control", "no-cache")
     return response
 app.include_router(coverage.router)
+app.include_router(nearby.router)
 app.include_router(intents.router)
 app.include_router(invites.router)
 app.include_router(invites.recaps)

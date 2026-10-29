@@ -52,9 +52,10 @@
       <div class="row" id="intent-source"></div>
     </div>
   </section>
+  <!-- One slot under step 1: "Near you" until a walk is found, then the step 3 result in its place. -->
+  <div id="solo-result"></div>
   <button class="primary" id="create" disabled>Create invite</button>
   <p id="create-error" class="error"></p>
-  <div id="solo-result"></div>
   </div>
 
   <div class="pane-right">
@@ -79,7 +80,8 @@
 <div id="chrome-ready" hidden></div> <!-- first render waits for the scripts above (see <head>) -->
 <script src="/static/js/walk.js"></script>
 <script>
-const state = { intent: null, inferred: [], origin: null, text: "", mode: "pair", solo: null, chosen: 0 };
+const state = { intent: null, inferred: [], origin: null, text: "", mode: "pair", solo: null, chosen: 0,
+                near: null, nearFor: null, nearOpen: null, passBy: [] };
 const $ = (id) => document.getElementById(id);
 const map = makeMap("map");
 drawCoverage(map);
@@ -124,6 +126,7 @@ function setOrigin(lat, lon) {
     $("origin-label").textContent = "Start point set.";
   }
   refresh();
+  loadNear();
 }
 map.on("click", (e) => setOrigin(e.latlng.lat, e.latlng.lng));
 $("locate").addEventListener("click", () => {
@@ -168,11 +171,106 @@ $("strict").addEventListener("change", () => { state.intent.duration_strict = $(
 
 function refresh() { $("create").disabled = !(state.intent && state.origin); }
 
+// ---- "Near you": 2-3 places within about 15 minutes' walk of the start point (local data, no model) ----
+
+const NEAR_ICONS = { park: "🌳", cafe: "☕", landmark: "🏛️" };
+let nearLayers = [], nearSeq = 0;
+
+function nearPhrase(h) { return `pass by ${h.name}`; }
+
+function addToWish(h) {
+  if (!state.passBy.some((p) => p.id === h.id)) state.passBy.push({ id: h.id, name: h.name });
+  const t = $("text"), phrase = nearPhrase(h);
+  if (!t.value.includes(phrase)) t.value = t.value.trim() ? `${t.value.trim().replace(/[.,;]$/, "")}, ${phrase}` : phrase;
+  showNear();
+}
+
+function removePassBy(id) {
+  const p = state.passBy.find((x) => x.id === id);
+  state.passBy = state.passBy.filter((x) => x.id !== id);
+  if (p) $("text").value = $("text").value.replace(new RegExp(`(, )?pass by ${p.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`), "").replace(/^, /, "");
+  showNear();
+}
+
+function nearItem(h) {
+  const open = state.nearOpen === h.id;
+  const hours = h.opening_hours
+    ? el("p", { class: "muted small" }, h.open_now ? "Open now · " : "", h.opening_hours, ` (${h.hours_source})`) : null;
+  const intro = h.has_intro && poiIntros ? introBlock(poiIntros[h.id]) : null;
+  const added = state.passBy.some((p) => p.id === h.id);
+  return el("li", { class: "near-item" + (open ? " open" : "") },
+    el("button", { type: "button", class: "near-head", "aria-expanded": String(open), onclick: () => showOnMap(h) },
+      el("span", { class: "near-icon", "aria-hidden": "true" }, NEAR_ICONS[h.kind] || "📍"),
+      el("span", { class: "near-name" }, h.name, el("small", {}, `${h.category} · ${h.walk_min} min walk`))),
+    open ? el("div", { class: "near-more" }, hours, intro,
+      added ? el("p", { class: "muted small" }, "In your wish. The walk will try to pass by, but it isn't a must.")
+            : el("button", { type: "button", onclick: () => addToWish(h) }, "Add to my wish")) : null);
+}
+
+function showOnMap(h) {
+  state.nearOpen = state.nearOpen === h.id ? null : h.id;
+  nearLayers.forEach((l) => l.remove());
+  nearLayers = [];
+  if (state.nearOpen) {
+    nearLayers = [L.circleMarker([h.lat, h.lon], { radius: 9, weight: 3, color: "#fff", fillColor: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#ff5c8a", fillOpacity: 1 })
+      .addTo(map).bindTooltip(h.name, { permanent: true, direction: "top", offset: [0, -8] })];
+    const pts = [[h.lat, h.lon]].concat(state.origin ? [[state.origin.lat, state.origin.lon]] : []);
+    map.fitBounds(L.latLngBounds(pts).pad(0.4), { maxZoom: 17 });
+  }
+  showNear();
+}
+
+function nearCard() {
+  const passing = state.passBy.length ? el("p", { class: "near-passing" }, "Your wish: pass by ",
+    state.passBy.map((p, i) => [i ? ", " : "", el("span", { class: "chip" }, p.name,
+      el("button", { type: "button", "aria-label": `remove ${p.name}`, onclick: () => removePassBy(p.id) }, "×"))]).flat()) : null;
+  if (!state.origin) {
+    return el("section", { class: "card near-card" },
+      el("h2", {}, "Near you"),
+      el("img", { class: "near-image", src: "/static/illustrations/park-cafe.jpg", alt: "Illustration of two friends walking past a park toward a cafe" }),
+      el("p", {}, "Set a start point to see what's near you."),
+      el("div", { class: "row" }, el("button", { type: "button", onclick: () => $("locate").click() }, "Use my location"),
+        el("span", { class: "muted" }, "or tap the map in step 2")),
+      el("p", { class: "muted small" }, "Illustration made with Muse Image."), passing);
+  }
+  if (state.near === null) {
+    return el("section", { class: "card near-card" }, el("h2", {}, "Near you"),
+      el("p", { class: "muted" }, el("span", { class: "spinner" }), "Looking around your start point…"), passing);
+  }
+  if (!state.near.length) {
+    return el("section", { class: "card near-card" }, el("h2", {}, "Near you"),
+      el("p", { class: "muted" }, "No parks, open cafes or landmarks within about 15 minutes' walk in our map data."), passing);
+  }
+  return el("section", { class: "card near-card" },
+    el("h2", {}, "Near you"),
+    el("p", { class: "muted small" }, "Within about 15 minutes' walk. Tap one to see it on the map."),
+    el("ul", { class: "near-list" }, state.near.map(nearItem)), passing);
+}
+
+function showNear() {
+  if (state.solo) return;  // a found walk holds this slot
+  $("solo-result").replaceChildren(nearCard());
+}
+
+async function loadNear() {
+  if (!state.origin) { state.near = null; showNear(); return; }
+  const seq = ++nearSeq;
+  state.near = null; state.nearOpen = null;
+  nearLayers.forEach((l) => l.remove()); nearLayers = [];
+  showNear();
+  try {
+    const [r] = await Promise.all([api("/api/nearby", { method: "POST", body: { origin: state.origin } }), loadPoiIntros()]);
+    if (seq !== nearSeq) return;  // a newer start point is loading
+    state.near = r.highlights;
+  } catch (e) { if (seq === nearSeq) state.near = []; }
+  showNear();
+}
+
 // ---- Solo mode: results on this page ----
 
 function clearSolo() {
   state.solo = null;
-  $("solo-result").replaceChildren();
+  showNear();
   routeLayers.forEach((l) => l.remove());
   routeLayers = [];
 }
@@ -198,6 +296,8 @@ function renderSolo() {
       el("div", {}, el("b", {}, (c.leg.distance_m / 1000).toFixed(1)), "km"),
       el("div", {}, el("b", { class: "word" }, prettyType(dest.category)), "ends at")),
     el("p", {}, c.rationale, sourceBadge(v.sources.wishes)),
+    ...state.passBy.filter((p) => !c.rationale.includes(`Passes ${p.name}.`)).map((p) =>
+      el("p", { class: "muted small" }, `This walk doesn't pass ${p.name}: it was a wish, not a must.`)),
     ...(v.notes || []).map((n) => el("p", { class: "muted" }, el("span", { class: "i i-info", "aria-hidden": "true" }), " ", n)),
     el("p", { class: "muted" }, dest.opening_hours ? `Opening hours (OpenStreetMap, as of ${(dest.fetched_at || "").slice(0, 10)}): ${dest.opening_hours}` : "Opening hours unknown."),
     el("button", { class: "primary start-walk", onclick: () => startWalk([{ id: dest.id, name: dest.name, kind: "destination",
@@ -217,12 +317,13 @@ async function findSoloWalk() {
   clearSolo();
   $("solo-result").replaceChildren(el("p", { class: "muted" }, el("span", { class: "spinner" }), "Finding a walk for you…"));
   try {
-    state.solo = await api("/api/solo/plan", { method: "POST", body: { intent: state.intent, origin: state.origin, text: state.text } });
+    state.solo = await api("/api/solo/plan", { method: "POST", body: { intent: state.intent, origin: state.origin,
+      text: $("text").value.trim(), pass_by_ids: state.passBy.map((p) => p.id) } });
     state.chosen = 0;
     renderSolo();
     $("solo-result").scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (e) {
-    $("solo-result").replaceChildren();
+    showNear();
     $("create-error").textContent = e.message === "Not Found"
       ? "This server doesn't have solo walks yet. Restart it to load the latest version."
       : `Couldn't plan the walk: ${e.message}`;
@@ -238,7 +339,8 @@ $("create").addEventListener("click", async () => {
     return;
   }
   try {
-    const r = await api("/api/invites", { method: "POST", body: { a_intent: state.intent, a_origin: state.origin, a_text: state.text } });
+    const r = await api("/api/invites", { method: "POST", body: { a_intent: state.intent, a_origin: state.origin,
+      a_text: $("text").value.trim(), pass_by_ids: state.passBy.map((p) => p.id) } });
     try { localStorage.setItem(`strollcall:${r.token}`, r.a_key); } catch (e) { /* private mode: key stays in the URL */ }
     rememberWalk(r.token, "a");
     location.href = `${r.invite_path}#key=${encodeURIComponent(r.a_key)}`;

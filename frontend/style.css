@@ -197,7 +197,7 @@ footer { color: var(--muted); font-size: .78rem; margin: 24px 0; text-align: cen
 @media (max-width: 899px) { /* one column: the create button comes after the map step */
   .layout { display: flex; flex-direction: column; }
   .pane-left, .pane-right { display: contents; }
-  .pane-left > #create, .pane-left > #create-error, .pane-left > #solo-result { order: 1; }
+  .pane-left > #create, .pane-left > #create-error { order: 1; }  /* the result slot stays under step 1 */
 }
 @media (min-width: 900px) {
   main { max-width: 1180px; padding: 20px 24px 8px; }
@@ -357,3 +357,20 @@ html:active-view-transition-type(fade)::view-transition-new(page) { animation: 2
 .recap-stats { display: flex; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
 .recap-stats div { background: var(--bg); border-radius: 14px; padding: 8px 12px; font-size: .82rem; font-weight: 700; color: var(--muted); }
 .recap-stats b { display: block; font: 400 1.4rem/1.1 var(--display); color: var(--ink); }
+
+/* "Near you" card under step 1 (the step 3 result takes the same slot) */
+.near-image { width: 100%; max-height: 180px; object-fit: cover; border-radius: 16px; display: block; margin: 4px 0 10px; }
+.near-list { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; }
+.near-item { border-radius: 16px; background: var(--bg); }
+.near-head { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left; border: 0; background: none;
+  padding: 10px 12px; min-height: 52px; border-radius: 16px; }
+.near-head:active:not(:disabled) { margin: 0; }
+.near-icon { font-size: 1.4rem; flex: none; }
+.near-name { display: grid; font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.near-name small { font-weight: 500; color: var(--muted); font-size: .8rem; }
+.near-more { padding: 0 12px 12px 48px; }
+.near-more p { margin: 4px 0; }
+.near-passing { margin: 10px 0 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+/* The button effect (specular.js) centres a label span inside each button: list rows read left to right */
+.near-head.specular-button { display: flex; justify-content: flex-start; }
+.near-head .specular-button__label { flex: 1; gap: 10px; justify-content: flex-start; min-width: 0; }

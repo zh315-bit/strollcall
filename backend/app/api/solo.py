@@ -19,6 +19,7 @@ class SoloRequest(BaseModel):
     intent: WalkIntent
     origin: LatLon
     text: str = Field(default="", max_length=500)  # what they typed: Muse Spark reads wishes from it
+    pass_by_ids: list[str] = Field(default=[], max_length=3)  # "Add to my wish" from Near you: soft
 
 
 class SoloResponse(SoloPlan):
@@ -30,6 +31,7 @@ class SoloResponse(SoloPlan):
 def solo_plan(req: SoloRequest) -> SoloResponse:
     from app.core.config import get_settings, reasoning_override
     from app.providers import get_places, get_routing
+    from app.services.nearby import resolve_pass_by
     from app.services.wishes import interpret_wishes
 
     reasoning_override.set(get_settings().accept_reasoning_effort)  # someone is waiting
@@ -43,6 +45,7 @@ def solo_plan(req: SoloRequest) -> SoloResponse:
     if req.text.strip():
         wishes = interpret_wishes(req.text, "")
         sources["wishes"] = wishes.source
-    plan = plan_solo((req.origin.lat, req.origin.lon), req.intent, places, routing, datetime.now(NYC), wishes)
+    plan = plan_solo((req.origin.lat, req.origin.lon), req.intent, places, routing, datetime.now(NYC), wishes,
+                     pass_by=resolve_pass_by(req.pass_by_ids))
     return SoloResponse(**plan.model_dump(), sources=sources,
                         demo_data=any(v in ("mock", "default") for v in sources.values()))

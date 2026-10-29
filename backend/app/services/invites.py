@@ -68,8 +68,10 @@ def _event(public: dict, name: str) -> bool:
     return True
 
 
-def create(a_intent: WalkIntent, a_origin: tuple[float, float], a_text: str = "") -> tuple[Invite, str]:
+def create(a_intent: WalkIntent, a_origin: tuple[float, float], a_text: str = "",
+           pass_by_ids: list[str] | None = None) -> tuple[Invite, str]:
     from app.services.invite_card import invite_text, pick_illustration
+    from app.services.nearby import resolve_pass_by
 
     sweep_expired()
     text, text_source = invite_text(a_intent, a_text)
@@ -81,6 +83,8 @@ def create(a_intent: WalkIntent, a_origin: tuple[float, float], a_text: str = ""
     save_invite_extra(
         invite.token,
         {"sources": {"invite_text": text_source, "image": image_source}, "image_url": image_url,
+         # Places A asked to pass by (known places, public): a soft preference for the planner.
+         "pass_by": [vars(p) for p in resolve_pass_by(pass_by_ids or [])],
          "events": {"created": _now().isoformat()}},
         {"a_origin": list(a_origin), "a_key": a_key, "a_text": a_text[:500]},
     )
@@ -311,8 +315,11 @@ def run_planning(token: str) -> None:
         sources["negotiation"] = neg.source
 
         _progress(token, "finding", started, timings)
+        from app.services.nearby import PassBy
+
+        pass_by = [PassBy(**p) for p in public.get("pass_by", [])]
         plan = _timed(timings, "plan", plan_for_two, tuple(private["a_origin"]), tuple(private["b_origin"]),
-                      a, b, neg.joint, places, routing, datetime.now(NYC), False, wishes)
+                      a, b, neg.joint, places, routing, datetime.now(NYC), False, wishes, pass_by)
         ranking = (_timed(timings, "rank", rank_candidates, plan, a, b, neg.joint, wishes)
                    if plan.status == "proposed" else None)
     except ProviderError as e:

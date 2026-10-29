@@ -75,6 +75,7 @@ class Settings(BaseSettings):
     planner_w_detour: float = 0.4
     planner_w_uncertainty: float = 0.3
     planner_w_named_place: float = 0.1  # named POI beats an equally good street corner
+    planner_w_pass_by: float = 0.25  # a place the walker asked to pass by: soft, never a constraint
 
     debug: bool = False  # enables /api/dev/*
     meta_diag: bool = False  # enables /api/dev/meta_diag only, for a support ticket; switch off afterwards

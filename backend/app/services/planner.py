@@ -417,6 +417,7 @@ class Weights:
     detour: float
     uncertainty: float
     named_place: float = 0.1  # bonus for a named POI over a street intersection
+    pass_by: float = 0.25  # bonus per share of asked-for places the walk is likely to pass
 
     @classmethod
     def from_settings(cls) -> "Weights":
@@ -424,7 +425,42 @@ class Weights:
 
         s = get_settings()
         return cls(s.planner_w_fit, s.planner_w_gap, s.planner_w_time_dev, s.planner_w_detour,
-                   s.planner_w_uncertainty, s.planner_w_named_place)
+                   s.planner_w_uncertainty, s.planner_w_named_place, s.planner_w_pass_by)
+
+
+# --- "Pass by" a place (soft preference from the Near you card) ---
+
+PASS_BY_NEAR_M = 150.0  # scoring: a straight line between the walk's points comes this close
+PASS_BY_ROUTE_M = 60.0  # explanation: the real route comes this close, else it is not mentioned
+
+
+def _segment_m(p: Point, a: Point, b: Point) -> float:
+    """Meters from p to the segment a-b (local flat approximation)."""
+    import math
+
+    k = math.cos(math.radians(p[0])) * 111_320.0
+    ax, ay, bx, by, px, py = a[1] * k, a[0] * 111_320.0, b[1] * k, b[0] * 111_320.0, p[1] * k, p[0] * 111_320.0
+    dx, dy = bx - ax, by - ay
+    t = 0.0 if dx == dy == 0 else max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)))
+    return math.hypot(px - ax - t * dx, py - ay - t * dy)
+
+
+def pass_by_term(segments: list[tuple[Point, Point]], pass_by) -> float:
+    """Share (0-1) of the asked-for places some segment passes within PASS_BY_NEAR_M of."""
+    if not pass_by:
+        return 0.0
+    hit = sum(any(_segment_m(tuple(q), a, b) <= PASS_BY_NEAR_M for q in pb.pts for a, b in segments) for pb in pass_by)
+    return hit / len(pass_by)
+
+
+def passed_on(legs: list[RouteLeg], pass_by) -> list[str]:
+    """Names of the asked-for places the real legs pass within PASS_BY_ROUTE_M of."""
+    names = []
+    for pb in pass_by or []:
+        if any(_segment_m(tuple(q), g[i], g[i + 1]) <= PASS_BY_ROUTE_M
+               for leg in legs for g in [leg.geometry] for i in range(len(g) - 1) for q in pb.pts):
+            names.append(pb.name)
+    return names
 
 
 @dataclass
@@ -544,7 +580,7 @@ def detour_term(a: Point, b: Point, option: MeetupOption) -> float:
 
 def score_options(
     a: Point, b: Point, cs: CandidateSet, intent: WalkIntent, weights: Weights, depart_at: datetime,
-    joint: JointPreference | None = None, wishes=None,
+    joint: JointPreference | None = None, wishes=None, pass_by=None,
 ) -> list[ScoredOption]:
     """Every feasible (meetup, destination) pair, best first. Failures go to cs.stats."""
     if cs.shared is None:
@@ -575,6 +611,8 @@ def score_options(
                 "detour": detour_term(a, b, m),
                 "uncertainty": 0.0 if open_at_arrival is True else 1.0,
                 "named_place": 0.0 if m.place.category == "intersection" else 1.0,
+                "pass_by": pass_by_term([(a, (m.place.lat, m.place.lon)), (b, (m.place.lat, m.place.lon)),
+                                         ((m.place.lat, m.place.lon), (dest.lat, dest.lon))], pass_by),
             }
             score = (
                 weights.fit * terms["fit"]
@@ -583,6 +621,7 @@ def score_options(
                 - weights.detour * terms["detour"]
                 - weights.uncertainty * terms["uncertainty"]
                 + weights.named_place * terms["named_place"]
+                + weights.pass_by * terms["pass_by"]
             )
             options.append(
                 ScoredOption(m, dest, t_shared, cs.shared.distances_m[i][j], terms, round(score, 6))
@@ -607,7 +646,7 @@ CATEGORY_LABELS = {"ice_cream": "ice cream shop", "park_gate": "park gate", "sub
 def rationale(option: ScoredOption, gap: float, t_a: float, t_b: float, t_shared: float,
               people: dict[str, WalkIntent] | None = None) -> str:
     m, d = option.meetup.place, option.destination
-    hours = "opening hours unknown" if option.terms["uncertainty"] else "open when you arrive (per OSM)"
+    hours = "opening hours unknown" if option.terms["uncertainty"] else "open when you arrive, per OSM"
     who = served(m, d, people)
     meet_for = f", {_for_text(who['meetup'])}" if who["meetup"] else ""
     dest_for = f"{_for_text(who['destination'])}, " if who["destination"] else ""
@@ -620,7 +659,7 @@ def rationale(option: ScoredOption, gap: float, t_a: float, t_b: float, t_shared
 
 def top_candidates(
     a: Point, b: Point, ranked: list[ScoredOption], intent: WalkIntent, ors, stats: dict,
-    people: dict[str, WalkIntent] | None = None,
+    people: dict[str, WalkIntent] | None = None, pass_by=None,
 ) -> list[MeetupCandidate]:
     """Fetch real directions for the best options and re-check them with those legs.
 
@@ -651,7 +690,8 @@ def top_candidates(
                 total_elapsed_min=round(elapsed, 2),
                 score=option.score,
                 rationale=rationale(option, gap, a_leg.duration_min, b_leg.duration_min,
-                                    shared_leg.duration_min, people),
+                                    shared_leg.duration_min, people)
+                + "".join(f" Passes {n}." for n in passed_on([a_leg, shared_leg], pass_by)),
             )
         )
     return result
@@ -754,11 +794,13 @@ def plan_walk(
     a: Point, b: Point, intent: WalkIntent, overpass, ors, depart_at: datetime,
     weights: Weights | None = None, debug: bool = False,
     joint: JointPreference | None = None, endpoint_options: list[str] | None = None, wishes=None,
-    people: dict[str, WalkIntent] | None = None,
+    people: dict[str, WalkIntent] | None = None, pass_by=None,
 ) -> PlanResult:
-    """Full deterministic planning. Never returns a route the routing engine did not produce."""
+    """Full deterministic planning. Never returns a route the routing engine did not produce.
+    pass_by: places A asked to pass by (services/nearby.PassBy), a soft preference only."""
     weights = weights or Weights.from_settings()
-    result = _plan(a, b, intent, overpass, ors, depart_at, weights, joint, endpoint_options, wishes, people)
+    result = _plan(a, b, intent, overpass, ors, depart_at, weights, joint, endpoint_options, wishes, people,
+                   pass_by)
     if avoids_crowds(intent):
         result.notes.append(CROWD_NOTE if hasattr(overpass, "crowd_risk") else CROWD_NOTE_NO_DATA)
     if result.status == "no_feasible_plan":
@@ -767,7 +809,7 @@ def plan_walk(
         if getattr(ors, "name", "") == "local":
             def replan(i):
                 return _plan(a, b, i, overpass, ors, depart_at, weights, joint, endpoint_options,
-                             wishes, people).status == "proposed"
+                             wishes, people, pass_by).status == "proposed"
         result.failure = explain_failure(result.stats, intent, replan)
         log.info("planner: no feasible plan, binding %s; suggestion %s",
                  result.failure.constraint, result.failure.suggestion_type)
@@ -777,11 +819,11 @@ def plan_walk(
 
 
 def _plan(a, b, intent, overpass, ors, depart_at, weights, joint=None, endpoint_options=None,
-          wishes=None, people=None) -> PlanResult:
+          wishes=None, people=None, pass_by=None) -> PlanResult:
     try:
         cs = generate_candidates(a, b, intent, overpass, ors, depart_at, endpoint_options, wishes, people)
-        ranked = score_options(a, b, cs, intent, weights, depart_at, joint, wishes)
-        top = top_candidates(a, b, ranked, intent, ors, cs.stats, people) if ranked else []
+        ranked = score_options(a, b, cs, intent, weights, depart_at, joint, wishes, pass_by)
+        top = top_candidates(a, b, ranked, intent, ors, cs.stats, people, pass_by) if ranked else []
     except ProviderError as e:
         status = "places_unavailable" if e.code == "places_unavailable" else "routing_unavailable"
         log.warning("planner failed: %s (%s)", status, e.message)
@@ -804,7 +846,7 @@ def _plan(a, b, intent, overpass, ors, depart_at, weights, joint=None, endpoint_
 
 def plan_for_two(
     a: Point, b: Point, a_intent: WalkIntent, b_intent: WalkIntent, joint: JointPreference,
-    places, routing, depart_at: datetime, debug: bool = False, wishes=None,
+    places, routing, depart_at: datetime, debug: bool = False, wishes=None, pass_by=None,
 ) -> PlanResult:
     """Plan for A and B: hard limits from both (combined_intent), fit from the joint preference
     and from the wishes Muse Spark mapped to checkable requirements."""
@@ -814,4 +856,4 @@ def plan_for_two(
     options = [t for t in (a_intent.endpoint_type, b_intent.endpoint_type) if t]
     return plan_walk(a, b, intent, places, routing, depart_at, debug=debug, joint=joint,
                      endpoint_options=options if len(set(options)) > 1 else None, wishes=wishes,
-                     people={"A": a_intent, "B": b_intent})
+                     people={"A": a_intent, "B": b_intent}, pass_by=pass_by)
