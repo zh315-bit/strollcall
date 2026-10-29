@@ -16,7 +16,33 @@
 <body>
 <main>
   <h1>StrollCall</h1>
-  <p class="tagline" id="tagline">Less planning. More meeting. Invite a friend to a short walk; we find a fair place to meet.</p>
+  <p class="tagline" id="tagline">Plan less. Meet more.</p>
+  <script>
+  // Ten short taglines per mode (each fits one line at 320 px), one picked at random per visit.
+  // Chosen here, before the first paint, so the page never shows one line and then swaps it.
+  const TAGLINES = {
+    pair: ["Plan less. Meet more.", "Meet halfway, then walk.", "Two starts, one walk.", "A fair place to meet.",
+           "Meet in the middle.", "Halfway to each other.", "Invite a friend for a stroll.", "Fair for both of you.",
+           "Two friends, one walk.", "Walk to meet, then stroll."],
+    solo: ["Plan less. Walk more.", "A walk worth taking.", "Somewhere nice, on foot.", "A short walk, a nice end.",
+           "Just you and a good walk.", "Coffee, a park, or books?", "Let the walk find you.", "Somewhere new today.",
+           "Pick a mood, get a walk.", "Step out for a walk."],
+  };
+  function pickTagline(mode, avoid) {
+    const list = TAGLINES[mode].filter((t) => t !== avoid);
+    return list[Math.floor(Math.random() * list.length)];
+  }
+  (function () {
+    let mode = "pair";
+    try {
+      const asked = new URLSearchParams(location.search).get("mode");
+      mode = TAGLINES[asked] ? asked : (localStorage.getItem("strollcall:mode") === "solo" ? "solo" : "pair");
+    } catch (e) { /* storage blocked: with a friend */ }
+    const p = document.getElementById("tagline");
+    p.textContent = pickTagline(mode);
+    p.dataset.mode = mode;
+  })();
+  </script>
 
   <div class="mode-switch" role="radiogroup" aria-label="Who is walking">
     <button type="button" role="radio" id="mode-pair" aria-checked="true"><span class="i i-users" aria-hidden="true"></span>With a friend</button>
@@ -89,11 +115,9 @@ loadCoverage().then((c) => { if (c.label && !state.origin) $("origin-label").tex
 let marker = null, routeLayers = [];
 
 const MODES = {
-  pair: { tagline: "Less planning. More meeting. Invite a friend to a short walk; we find a fair place to meet.",
-          privacy: "Only used to find a fair meeting point. Your friend never sees your exact start.",
+  pair: { privacy: "Only used to find a fair meeting point. Your friend never sees your exact start.",
           button: "Create invite" },
-  solo: { tagline: "Less planning. More walking. Tell us the walk you feel like; we find a place worth walking to.",
-          privacy: "Only used to plan this walk. It is not stored.",
+  solo: { privacy: "Only used to plan this walk. It is not stored.",
           button: "Find my walk" },
 };
 
@@ -102,7 +126,8 @@ function setMode(mode) {
   try { localStorage.setItem("strollcall:mode", mode); } catch (e) { /* fine without it */ }
   $("mode-pair").setAttribute("aria-checked", mode === "pair");
   $("mode-solo").setAttribute("aria-checked", mode === "solo");
-  $("tagline").textContent = MODES[mode].tagline;
+  const tag = $("tagline");  // keep the visit's line; a new mode gets a new random line (retyped by bits.js)
+  if (tag.dataset.mode !== mode) { tag.textContent = pickTagline(mode, tag.textContent); tag.dataset.mode = mode; }
   $("privacy-note").textContent = MODES[mode].privacy;
   $("create").textContent = MODES[mode].button;
   $("create-error").textContent = "";

@@ -108,3 +108,14 @@ test("the typing tagline's source line stays transparent on every page head", ()
   const hide = rule(".page-head .tt .tt-source.tagline");
   assert.equal(hide.color, "transparent");
 });
+
+test("ten taglines per mode, each short enough for one line at 320 px", () => {
+  const src = read("index.html").match(/const TAGLINES = (\{[\s\S]*?\});/)[1];
+  const T = Function(`return (${src})`)();
+  for (const mode of ["pair", "solo"]) {
+    assert.equal(T[mode].length, 10, mode);
+    assert.equal(new Set(T[mode]).size, 10, `${mode}: no repeats`);
+    // 29 characters was the longest line measured to fit one line in the title font at 320 px.
+    for (const t of T[mode]) assert.ok(t.length <= 29, `${mode}: "${t}" may wrap`);
+  }
+});
