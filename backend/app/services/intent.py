@@ -3,12 +3,16 @@
 The model only extracts and reconciles; Pydantic and deterministic checks decide.
 """
 
+import hashlib
 import json
 import logging
+import threading
+import time
+from concurrent.futures import Future
 
 from pydantic import BaseModel, ValidationError
 
-from app.core.config import get_settings, output_cap_override
+from app.core.config import get_settings, output_cap_override, reasoning_override
 from app.core.errors import ProviderError
 from app.models.schemas import JointPreference, WalkIntent
 from app.providers import meta_or_mock
@@ -75,11 +79,44 @@ def _clean(items: list[str]) -> list[str]:
     return seen
 
 
+# Recent parses, so the invite flow can read B's wish while B is still on the page (the page asks as
+# soon as B stops typing) and find it ready on accept. In memory only, keyed by a hash of the text and
+# the reasoning effort; a parse still running is shared, not repeated. Fallbacks are not kept.
+PARSE_TTL_S = 900
+_parsed: dict[str, tuple[float, Future]] = {}
+_parsed_lock = threading.Lock()
+
+
 def parse_intent(text: str) -> ParsedIntent:
     text = text.strip()
     if not text:
         return default_intent("empty text")
+    key = hashlib.sha256(f"{reasoning_override.get()}\n{text}".encode()).hexdigest()
+    now = time.monotonic()
+    with _parsed_lock:
+        for k in [k for k, (until, _) in _parsed.items() if until < now]:
+            del _parsed[k]
+        hit = _parsed.get(key)
+        if hit is None:
+            mine: Future = Future()
+            _parsed[key] = (now + PARSE_TTL_S, mine)
+    if hit is not None:
+        return hit[1].result()
+    try:
+        result = _parse_now(text)
+    except BaseException as e:
+        with _parsed_lock:
+            _parsed.pop(key, None)
+        mine.set_exception(e)
+        raise
+    if result.source not in ("meta", "spark_open"):
+        with _parsed_lock:
+            _parsed.pop(key, None)
+    mine.set_result(result)
+    return result
 
+
+def _parse_now(text: str) -> ParsedIntent:
     user = f"Walk description:\n{text}"
     cap = output_cap_override.set(get_settings().parse_max_output_tokens)  # a short JSON answer
     try:

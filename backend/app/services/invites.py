@@ -275,7 +275,7 @@ def run_planning(token: str) -> None:
     from app.core.config import get_settings, reasoning_override
     from app.providers import get_places, get_routing
     from app.services.explain import rank_candidates
-    from app.services.intent import negotiate, parse_intent
+    from app.services.intent import default_negotiation, negotiate, parse_intent
     from app.services.planner import plan_for_two
     from app.services.wishes import interpret_wishes
 
@@ -285,7 +285,7 @@ def run_planning(token: str) -> None:
         return
     started = time.perf_counter()
     reasoning_override.set(get_settings().accept_reasoning_effort)
-    a, a_text, b_text = invite.a_intent, private.get("a_text", ""), private.get("b_text", "")
+    a, a_text, b_text = invite.a_intent, private.get("a_text", ""), private.get("b_text", "").strip()
     sources = public.setdefault("sources", {})
     timings: dict[str, float] = {}
     _progress(token, "understanding", started)
@@ -297,25 +297,27 @@ def run_planning(token: str) -> None:
             return ex.submit(contextvars.copy_context().run, fn, *args)
 
         with ThreadPoolExecutor(max_workers=3) as ex:
-            f_parse = submit(ex, _timed, timings, "parse_b", parse_intent, b_text) if b_text else None
             f_wishes = (submit(ex, _timed, timings, "wishes", interpret_wishes, a_text, b_text)
                         if (a_text or b_text) else None)
             f_warm = submit(ex, _timed, timings, "routing_search", _warm_routing, routing,
                             private["a_origin"], private["b_origin"], a.duration_min)
-            if f_parse:
-                parsed = f_parse.result()
+            if b_text:
+                # Usually already parsed while B was typing (the page asks /api/intents/parse): a cache hit.
+                parsed = _timed(timings, "parse_b", parse_intent, b_text)
                 b, sources["b_intent"] = parsed.intent, parsed.source
+                _progress(token, "balancing", started, timings)
+                # Balancing runs alongside reading the wishes, not after it.
+                neg = _timed(timings, "negotiate", negotiate, a, b)
+                sources["negotiation"] = neg.source
             else:
-                b = WalkIntent(duration_min=a.duration_min)  # B gave no preference: no extra limits
+                # B gave no preference: nothing to read or to balance; plan with A's intent.
+                b = WalkIntent(duration_min=a.duration_min)
+                neg = default_negotiation(a, b, "b_gave_no_preference")
             wishes = f_wishes.result() if f_wishes else None
             if wishes is not None:
                 sources["wishes"] = wishes.source
             f_warm.result()
         invite.b_intent = b
-
-        _progress(token, "balancing", started, timings)
-        neg = _timed(timings, "negotiate", negotiate, a, b)
-        sources["negotiation"] = neg.source
 
         _progress(token, "finding", started, timings)
         from app.services.nearby import PassBy
@@ -339,7 +341,7 @@ def run_planning(token: str) -> None:
     sources["ranking"] = "pending"
     invite.status, invite.candidates = "proposed", plan.candidates
     public.update({"places": {k: v.model_dump(mode="json") for k, v in plan.places.items()},
-                   "tradeoff": neg.tradeoff, "reasons": {}, "explaining": True})
+                   "tradeoff": neg.tradeoff if b_text else None, "reasons": {}, "explaining": True})
     public["progress"] = _progress(token, "explaining", started, timings)
     _event(public, "planned")
     save_invite(invite)

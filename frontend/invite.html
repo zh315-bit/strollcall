@@ -141,8 +141,25 @@ function acceptForm(v) {
     bOrigin = { lat, lon };
     status.textContent = "Start point set."; go.removeAttribute("disabled");
   };
+  // Read B's wish while B is still on the page: after a pause in typing, on leaving the box, or once a
+  // recording is transcribed. The server keeps the result briefly, so planning after "I'm in" finds it
+  // ready. A newer text cancels the request for the older one.
+  let prepared = "", pending = null, pause = null;
+  const prepare = () => {
+    clearTimeout(pause);
+    const t = text.value.trim();
+    if (!t || t === prepared) return;
+    pending?.abort();
+    pending = new AbortController();
+    prepared = t;
+    fetch("/api/intents/parse", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: t }), signal: pending.signal }).catch(() => { if (prepared === t) prepared = ""; });
+  };
+  text.addEventListener("input", () => { clearTimeout(pause); pause = setTimeout(prepare, 900); });
+  text.addEventListener("blur", prepare);
   go.addEventListener("click", async () => {
     go.setAttribute("disabled", "");
+    clearTimeout(pause);
     try {
       const r = await api(`/api/invites/${token}/accept`, { method: "POST", body: { b_origin: bOrigin, b_text: text.value.trim() } });
       key = r.b_key; store.set(`strollcall:${token}`, key);
@@ -159,7 +176,7 @@ function acceptForm(v) {
       (p) => { setB(p.coords.latitude, p.coords.longitude); map.setView([p.coords.latitude, p.coords.longitude], 15); },
       () => alert("Location not available. Tap the map instead."), { enableHighAccuracy: true, timeout: 10000 }) }, "Use my location")),
     status,
-    el("div", { class: "row" }, micButton(text)), text,
+    el("div", { class: "row" }, micButton(text, prepare)), text,
     el("p", { class: "muted", id: "text-hint" }, "What you type or say goes to Meta's models, which may use it to improve their products. Please leave out names, addresses and other personal details."),
     el("div", { class: "row" }, go));
 }

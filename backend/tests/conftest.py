@@ -32,3 +32,13 @@ def no_network(monkeypatch):
 
     monkeypatch.setattr(socket.socket, "connect", blocked)
     monkeypatch.setattr(socket, "create_connection", blocked)
+
+
+@pytest.fixture(autouse=True)
+def fresh_parse_cache():
+    """parse_intent keeps recent parses in memory; each test starts without them."""
+    from app.services import intent
+
+    intent._parsed.clear()
+    yield
+    intent._parsed.clear()

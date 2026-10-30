@@ -87,12 +87,16 @@ def test_full_flow_create_accept_poll_confirm(town):
     a_view = client.get(f"/api/invites/{token}", headers={"X-Invite-Key": a_key}).json()  # A polls
     assert a_view["status"] == "proposed", a_view
     assert a_view["candidates"] and "node/9" in a_view["places"]
-    assert {"routing", "places", "negotiation", "ranking"} <= set(a_view["sources"])
+    assert {"routing", "places", "ranking"} <= set(a_view["sources"])
+    # B typed nothing: nothing to read or balance, so no parse, no negotiation and no tradeoff line.
+    assert "negotiation" not in a_view["sources"] and "b_intent" not in a_view["sources"]
+    assert a_view["tradeoff"] is None
     # Progress was kept in memory while planning and saved with the result, with stage timings.
     from app.services.invites import _live
 
     assert token not in _live and a_view["progress"]["step"] == "done"
-    assert {"routing_search", "negotiate", "plan", "rank"} <= set(a_view["progress"]["timings"])
+    assert {"routing_search", "plan", "rank"} <= set(a_view["progress"]["timings"])
+    assert not {"parse_b", "negotiate"} & set(a_view["progress"]["timings"])
     b_view = client.get(f"/api/invites/{token}", headers={"X-Invite-Key": b_key}).json()
     c_a, c_b = a_view["candidates"][0], b_view["candidates"][0]
     # Each sees their own leg in full and the other's leg trimmed at the start.
@@ -316,3 +320,64 @@ def test_invite_line_runs_at_minimal_effort_with_a_tight_output_cap(town, monkey
     create(town)
     assert seen == {"effort": "minimal", "cap": get_settings().card_max_output_tokens}
     assert output_cap_override.get() is None
+
+
+def test_b_preference_parsed_while_typing_is_reused_on_accept(town, monkeypatch):
+    """The page parses B's text before B taps "I'm in"; planning then reuses it, and negotiation runs."""
+    from app.providers.mock import MockMeta
+
+    calls = []
+
+    class Counting(MockMeta):
+        name = "meta"
+
+        def structured_json(self, system, user, schema, name="result"):
+            calls.append(name)
+            return super().structured_json(system, user, schema, name)
+
+    monkeypatch.setattr("app.providers.get_meta", lambda kind="text": Counting())
+    body = create(town)
+    text = "somewhere green, I'm bringing my dog"
+    assert client.post("/api/intents/parse", json={"text": text}).status_code == 200  # while B types
+    assert calls.count("walk_intent") == 1
+    client.post(f"/api/invites/{body['token']}/accept", json={"b_origin": town["b"], "b_text": text})
+    v = client.get(f"/api/invites/{body['token']}", headers={"X-Invite-Key": body["a_key"]}).json()
+    assert calls.count("walk_intent") == 1  # not parsed again
+    assert v["sources"]["b_intent"] == "meta" and "negotiation" in v["sources"]
+    assert "joint_preference" in calls and v["tradeoff"]  # B said something: the two are balanced
+
+
+def test_parse_cache_shares_a_running_parse_and_skips_fallbacks(monkeypatch):
+    import threading
+
+    from app.providers.mock import MockMeta
+    from app.services.intent import parse_intent
+
+    started, release, calls = threading.Event(), threading.Event(), []
+
+    class Slow(MockMeta):
+        name = "meta"
+
+        def structured_json(self, system, user, schema, name="result"):
+            calls.append(name)
+            started.set()
+            release.wait(5)
+            return super().structured_json(system, user, schema, name)
+
+    monkeypatch.setattr("app.providers.get_meta", lambda kind="text": Slow())
+    out = []
+    t = threading.Thread(target=lambda: out.append(parse_intent("25 minutes, coffee")))
+    t.start()
+    started.wait(5)
+    waiter = threading.Thread(target=lambda: out.append(parse_intent("  25 minutes, coffee ")))
+    waiter.start()
+    release.set()
+    t.join(5), waiter.join(5)
+    assert len(calls) == 1 and len(out) == 2 and out[0] == out[1]
+    # A fallback (here: the mock, labelled "mock") is not kept: the next call asks again.
+    monkeypatch.setattr("app.providers.get_meta", lambda kind="text": MockMeta())
+    parse_intent("an hour by the river")
+    parse_intent("an hour by the river")
+    from app.services import intent
+
+    assert [f.result().source for _, f in intent._parsed.values()] == ["meta"]  # only the Meta parse is kept
