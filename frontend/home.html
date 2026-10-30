@@ -13,7 +13,7 @@
        Its load only reads the coverage area; nothing is sent until the visitor acts. Chrome / Edge only. -->
   <script type="speculationrules">
   { "prefetch": [{ "urls": ["/new"], "eagerness": "immediate" }],
-    "prerender": [{ "where": { "or": [{ "href_matches": "/new" }, { "href_matches": "/new\\?*" }] }, "eagerness": "moderate" }] }
+    "prerender": [{ "where": { "href_matches": "/new" }, "eagerness": "moderate" }] }
   </script>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/bits.css">
@@ -40,9 +40,6 @@
       <br class="wide-only">then a short walk somewhere worth arriving.</p>
     <div class="hero-actions">
       <a class="pill pill-white" href="/new">Start a walk</a>
-      <a class="pill pill-mint" href="/new?mode=solo">
-        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4.5" r="2"/><path d="M9 21l2.5-6 2.5 2v4M8 12l2-4 4 1 2 3 2 1M11.5 15L10 9"/></svg>
-        Walk on my own</a>
     </div>
     </div>
 
