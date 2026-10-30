@@ -380,7 +380,21 @@ html:active-view-transition-type(fade)::view-transition-new(page) { animation: 2
 @keyframes page-in-left { from { opacity: 0; transform: translateX(-24px); } }
 @keyframes page-fade-out { to { opacity: 0; } }
 @keyframes page-fade-in { from { opacity: 0; } }
+/* Home -> New walk ("Start a walk"): the whole screen is one picture, and the new page opens from the
+   middle as a growing circle, settling from a slight zoom, while Home behind it leans in and softens. */
+html:active-view-transition-type(reveal) * { view-transition-name: none !important; }
+html:active-view-transition-type(reveal)::view-transition-old(root),
+html:active-view-transition-type(reveal)::view-transition-new(root) { mix-blend-mode: normal; }
+html:active-view-transition-type(reveal)::view-transition-old(root) { animation: 950ms cubic-bezier(.65, 0, .35, 1) both reveal-under; }
+html:active-view-transition-type(reveal)::view-transition-new(root) { animation: 950ms cubic-bezier(.65, 0, .35, 1) both reveal-open; }
+@keyframes reveal-open {
+  from { clip-path: circle(0% at 50% 50%); transform: scale(.88); }
+  to { clip-path: circle(75% at 50% 50%); transform: scale(1); }
+}
+@keyframes reveal-under { to { transform: scale(1.1); filter: blur(6px) saturate(1.1); } }
 @media (prefers-reduced-motion: reduce) {
+  html:active-view-transition-type(reveal)::view-transition-old(root) { animation: 120ms both page-fade-out; }
+  html:active-view-transition-type(reveal)::view-transition-new(root) { animation: 120ms both page-fade-in; }
   ::view-transition-group(*) { animation-duration: 120ms; }
   html:active-view-transition-type(forward, back, fade)::view-transition-old(page) { animation: 120ms both page-fade-out; }
   html:active-view-transition-type(forward, back, fade)::view-transition-new(page) { animation: 120ms both page-fade-in; }

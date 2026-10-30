@@ -254,6 +254,8 @@ const ARRIVED_IN_SITE = (() => { // also lets bits.js skip its entrance effects 
 if (ARRIVED_IN_SITE) document.documentElement.classList.add("in-site"); // style.css: the sky doesn't fade in again
 addEventListener("pageswap", (ev) => {
   quietSkip(ev.viewTransition);
+  const to = ev.activation?.entry?.url;
+  if (ev.viewTransition && to && isReveal(location.pathname, new URL(to).pathname)) ev.viewTransition.types.add("reveal");
   try { sessionStorage.setItem("strollcall:from", JSON.stringify({ path: location.pathname, at: Date.now() })); } catch (err) { /* fine */ }
 });
 // A transition the browser skips (tab hidden, a quick second click) rejects its `ready` promise: the page
@@ -261,11 +263,14 @@ addEventListener("pageswap", (ev) => {
 const quietSkip = (vt) => vt?.ready.catch(() => {});
 const PAGES = ["/", "/new", "/walks", "/how"];
 const pageIndex = (path) => (path === "/" ? 0 : PAGES.findIndex((p, i) => i > 0 && path.startsWith(p)));
+// Home -> New walk ("Start a walk") opens the new page from the middle of the screen (style.css: reveal).
+// Both documents tag the switch, so both capture the whole screen as one picture.
+const isReveal = (from, to) => pageIndex(from) === 0 && pageIndex(to) === 1;
 addEventListener("pagereveal", (ev) => {
   if (!ev.viewTransition) return;
   quietSkip(ev.viewTransition);
   const a = ARRIVED_IN_SITE ? pageIndex(ARRIVED_IN_SITE.path) : -1, b = pageIndex(location.pathname);
-  ev.viewTransition.types.add(a < 0 || b < 0 || a === b ? "fade" : b > a ? "forward" : "back");
+  ev.viewTransition.types.add(a === 0 && b === 1 ? "reveal" : a < 0 || b < 0 || a === b ? "fade" : b > a ? "forward" : "back");
 });
 
 // ---- This device's walks: invite tokens and what happened, in browser storage only ----
