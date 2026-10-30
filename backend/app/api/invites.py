@@ -5,6 +5,7 @@ from datetime import datetime
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Response
 from pydantic import BaseModel, Field
 
+from app.api.coverage import outside_message
 from app.models.schemas import WalkIntent
 from app.services import invites
 
@@ -52,6 +53,8 @@ def _raise(e: invites.InviteError):
 
 @router.post("", status_code=201)
 def create_invite(req: CreateInviteRequest) -> CreateInviteResponse:
+    if msg := outside_message((req.a_origin.lat, req.a_origin.lon)):
+        raise HTTPException(status_code=422, detail=msg)
     invite, a_key = invites.create(req.a_intent, (req.a_origin.lat, req.a_origin.lon), req.a_text, req.pass_by_ids)
     return CreateInviteResponse(token=invite.token, invite_path=f"/i/{invite.token}", a_key=a_key,
                                 expires_at=invite.expires_at, view=invites.view(invite.token, a_key))
@@ -68,6 +71,8 @@ def get_invite(token: str, x_invite_key: str | None = Header(default=None)) -> i
 
 @router.post("/{token}/accept")
 def accept_invite(token: str, req: AcceptRequest, background: BackgroundTasks) -> AcceptResponse:
+    if msg := outside_message((req.b_origin.lat, req.b_origin.lon)):
+        raise HTTPException(status_code=422, detail=msg)
     try:
         b_key = invites.accept(token, (req.b_origin.lat, req.b_origin.lon), req.b_text)
     except invites.InviteError as e:

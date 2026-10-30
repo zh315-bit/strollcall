@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
+from app.api.coverage import outside_message
 from app.api.invites import LatLon
 from app.core.errors import ProviderError
 from app.models.schemas import WalkIntent
@@ -35,6 +36,8 @@ def solo_plan(req: SoloRequest) -> SoloResponse:
     from app.services.wishes import interpret_wishes
 
     reasoning_override.set(get_settings().accept_reasoning_effort)  # someone is waiting
+    if msg := outside_message((req.origin.lat, req.origin.lon)):
+        return SoloResponse(status="outside_area", error=msg)
     sources: dict[str, str] = {}
     try:
         places, routing = get_places(), get_routing()

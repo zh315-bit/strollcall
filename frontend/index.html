@@ -356,7 +356,7 @@ function renderSolo() {
   const parts = [demoBanner(v.sources)];
   if (v.status !== "proposed") {
     const msg = { no_feasible_plan: "We couldn't find a walk that fits.", routing_unavailable: "Unable to verify a walking route right now.",
-                  places_unavailable: "Place data is unavailable right now." }[v.status] || v.status;
+                  places_unavailable: "Place data is unavailable right now.", outside_area: v.error }[v.status] || v.status;
     parts.push(el("section", { class: "card" }, el("p", { class: "error" }, msg), v.failure ? el("p", {}, v.failure.suggestion) : null));
     $("solo-result").replaceChildren(...parts);
     return;

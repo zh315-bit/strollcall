@@ -218,6 +218,6 @@ def _grounded(data: dict, labelled: dict, result: PlanResult, a: WalkIntent, b: 
         evidence = place_evidence([result.places[c.meeting_place_id], result.places[c.endpoint_place_id]])
         problems = unsupported(_without_names(item["reason"], names), evidence, prefs)
         if problems:
-            log.warning("ranking reason for %s rejected: %s", item["id"], "; ".join(problems))
+            log.warning("ranking reason for %s rejected: %s in %r", item["id"], "; ".join(problems), item["reason"][:200])
             return "unsupported_feature"
     return None

@@ -252,3 +252,14 @@ def test_recap_has_no_start_points_and_expires_after_30_days(town, monkeypatch):
 
     monkeypatch.setattr(inv, "_now", lambda: datetime.now(timezone.utc) + timedelta(days=31))
     assert client.get("/api/recaps/" + r.json()["recap_path"].split("/")[-1]).status_code == 404
+
+
+def test_start_outside_the_map_gets_a_clear_message(town):
+    far = {"lat": 40.85, "lon": -73.87}  # well off the synthetic grid
+    resp = client.post("/api/invites", json={"a_intent": {"duration_min": 15}, "a_origin": far})
+    assert resp.status_code == 422 and "outside the area" in resp.json()["detail"]
+    token = create(town)["token"]
+    resp = client.post(f"/api/invites/{token}/accept", json={"b_origin": far})
+    assert resp.status_code == 422 and "outside the area" in resp.json()["detail"]
+    solo = client.post("/api/solo/plan", json={"intent": {"duration_min": 15}, "origin": far}).json()
+    assert solo["status"] == "outside_area" and "outside the area" in solo["error"]
