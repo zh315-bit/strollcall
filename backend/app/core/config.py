@@ -43,8 +43,8 @@ class Settings(BaseSettings):
     meta_max_output_tokens: int = 4096  # 2048 truncated 3 of 10 live intent calls (2026-10-28)
     # Intent parsing at minimal effort used 561-884 output tokens (2026-10-30); room for about twice that.
     parse_max_output_tokens: int = 1536
-    # The invite line at minimal effort used 223-529 output tokens (2026-10-30).
-    card_max_output_tokens: int = 1024
+    # The invite line at minimal effort used 223-529 output tokens locally, up to 844 live (2026-10-30).
+    card_max_output_tokens: int = 1536
 
     # Routing and places run on local OSM data by default (no daily quota); see build_graph.py.
     routing_provider: str = "local"  # local / ors / mock
