@@ -253,6 +253,11 @@ body.walking { overflow: hidden; }
 .walk-me .walk-me-arrow { display: none; }
 .walk-me.has-heading .walk-me-arrow { display: inline; }
 .walk-me.has-heading .walk-me-dot { display: none; }
+/* Back to my position: a round map button, shown once you've dragged the map away. */
+.walk-recenter { width: 48px; height: 48px; min-height: 48px; padding: 0; border-radius: 50%;
+  background: #fff; color: #2f7bf6; border: 2px solid rgba(0, 0, 0, .15); box-shadow: 0 2px 6px rgba(0, 0, 0, .3);
+  font-size: 1.6rem; line-height: 1; display: grid; place-items: center; cursor: pointer; }
+.walk-recenter[hidden] { display: none; }
 .start-walk { width: 100%; min-height: 52px; font-size: 1.1rem; }
 
 .walk-poi:empty { display: none; }

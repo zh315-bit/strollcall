@@ -89,7 +89,7 @@ test("nothing hides the key parts (only an empty POI area may collapse)", () => 
 });
 
 test("touch targets in the walking screen are at least 44 px tall", () => {
-  for (const sel of [".walk-actions button", ".voice-toggle", ".poi-close"]) {
+  for (const sel of [".walk-actions button", ".voice-toggle", ".poi-close", ".walk-recenter"]) {
     const r = rule(sel);
     const h = parseInt(r["min-height"], 10);
     assert.ok(h >= 36, `${sel} min-height ${r["min-height"]}`);

@@ -401,8 +401,26 @@ function startWalk(legs, opts = {}) {
 
   const map = L.map(mapEl, { zoomControl: true }).setView(legs[0].target, 17);
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: OSM_ATTRIBUTION }).addTo(map);
+  // Like a map app: once your position is known the map zooms in on you and keeps you in the middle.
+  // Dragging the map stops that; the button brings you back.
+  const FOLLOW_ZOOM = 17;
   let follow = true;
-  map.on("dragstart", () => { follow = false; });
+  const recenter = el("button", { type: "button", class: "walk-recenter", hidden: "", "aria-label": "Back to my position",
+    title: "Back to my position", onclick: (e) => {
+      L.DomEvent.stopPropagation(e);
+      setFollow(true);
+      if (me) map.setView(me.getLatLng(), Math.max(map.getZoom(), FOLLOW_ZOOM));
+    } }, el("span", { "aria-hidden": "true" }, "◎"));
+  const RecenterControl = L.Control.extend({ options: { position: "bottomright" }, onAdd: () => {
+    L.DomEvent.disableClickPropagation(recenter);
+    return recenter;
+  } });
+  map.addControl(new RecenterControl());
+  function setFollow(on) {
+    follow = on;
+    recenter.hidden = on || !me;  // nothing to come back to before the first position
+  }
+  map.on("dragstart", () => setFollow(false));
   // Notices and the arrival card change the map's height: let Leaflet re-measure.
   const resize = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => map.invalidateSize()) : null;
   if (resize) resize.observe(mapEl);
@@ -420,7 +438,9 @@ function startWalk(legs, opts = {}) {
       el("b", { class: "walk-next" }, formatStep(stepInfo(leg.steps, 0, leg.name)) || ""));
     fallback.href = mapsLink(leg.target[0], leg.target[1]);
     map.invalidateSize();
-    map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
+    // The whole route until we know where you are (and after a new route if you're looking around).
+    if (me && follow) map.setView(me.getLatLng(), Math.max(map.getZoom(), FOLLOW_ZOOM));
+    else map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
   }
 
   function stats(m) {
@@ -467,6 +487,7 @@ function startWalk(legs, opts = {}) {
     const fix = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy, t: pos.timestamp / 1000 };
     const ll = [fix.lat, fix.lon];
     facing.onFix({ ...fix, heading: pos.coords.heading, speed: pos.coords.speed });
+    const first = !me;
     if (!me) {
       meCircle = L.circle(ll, { radius: fix.accuracy, weight: 1, opacity: .4, fillOpacity: .1 }).addTo(map);
       // A dot until a direction is known, then an arrow pointing the way you face (the map stays north-up).
@@ -476,7 +497,9 @@ function startWalk(legs, opts = {}) {
             + '<circle class="walk-me-dot" r="8"/></svg>' }) }).addTo(map);
     } else { me.setLatLng(ll); meCircle.setLatLng(ll).setRadius(fix.accuracy); }
     pointArrow();
-    if (follow) map.panTo(ll);
+    if (first) setFollow(follow);  // the button may show from now on
+    if (first && follow) map.setView(ll, FOLLOW_ZOOM);  // jump in from the route overview
+    else if (follow) map.panTo(ll);
     const ev = follower.update(fix);
     say(promptFor(ev, said));
     const nextText = ev.type === "arrived" ? "" : formatStep(ev.step);

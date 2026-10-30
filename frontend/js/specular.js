@@ -10,7 +10,7 @@
 
 (() => {
   const PAD = 24;
-  const SKIP = ".mode-switch button, .chip button, .near-refresh";
+  const SKIP = ".mode-switch button, .chip button, .near-refresh, .walk-recenter";
   // The original props, as one shared setting for every button.
   const S = { intensity: 1, idleIntensity: 0.35, shineSize: 10, shineFade: 34, thickness: 1.2, glow: 1,
               followMouse: true, proximity: 250 };
