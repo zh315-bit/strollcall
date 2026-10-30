@@ -197,14 +197,18 @@ function decorate() {
   if (!h1) return;
   const head = el("header", { class: "page-head" }, h1, document.querySelector("main > .tagline"));
   if (h1.textContent.trim() === "StrollCall") { h1.classList.add("sr-only"); head.classList.add("lead-only"); }
-  document.querySelector("main").prepend(head);
+  const main = document.querySelector("main");
+  main.prepend(head);
+  const back = main.querySelector(":scope > .back-home"); // New walk: "← Home" stays above the title
+  if (back) main.prepend(back);
 }
 
 // ---- Site navigation (top) and the privacy link (footer), on every page ----
 
-const NAV = [["/", "New walk"], ["/walks", "My walks"], ["/how", "How it works"]];
+// Home ("/") is the logo; New walk ("/new") is reached from Home's "Start a walk".
+const NAV = [["/walks", "My walks"], ["/how", "How it works"]];
 
-const navIndex = (path) => NAV.findIndex(([href]) => href === "/" ? path === "/" : path.startsWith(href));
+const navIndex = (path) => NAV.findIndex(([href]) => path.startsWith(href));
 
 // Top bar: the logo (mascots + name) top-left, the nav on the right. The pale-yellow pill sits under the
 // current page's link; page switches animate it (see "Page switches" below and style.css).
@@ -238,8 +242,8 @@ function placePill(track, pill) {
 }
 
 // ---- Page switches: cross-document view transitions (style.css) ----
-// The old page records where it was; the new page picks the direction from the nav order:
-// New walk -> My walks -> How it works is "forward" (content moves left), the reverse is "back",
+// The old page records where it was; the new page picks the direction from the page order:
+// Home -> New walk -> My walks -> How it works is "forward" (content moves left), the reverse is "back",
 // anything else (privacy, recaps, invites) a plain crossfade. Browsers without view transitions
 // just navigate.
 
@@ -255,10 +259,12 @@ addEventListener("pageswap", (ev) => {
 // A transition the browser skips (tab hidden, a quick second click) rejects its `ready` promise: the page
 // just shows, so the rejection is expected and handled here instead of surfacing as an error.
 const quietSkip = (vt) => vt?.ready.catch(() => {});
+const PAGES = ["/", "/new", "/walks", "/how"];
+const pageIndex = (path) => (path === "/" ? 0 : PAGES.findIndex((p, i) => i > 0 && path.startsWith(p)));
 addEventListener("pagereveal", (ev) => {
   if (!ev.viewTransition) return;
   quietSkip(ev.viewTransition);
-  const a = ARRIVED_IN_SITE ? navIndex(ARRIVED_IN_SITE.path) : -1, b = navIndex(location.pathname);
+  const a = ARRIVED_IN_SITE ? pageIndex(ARRIVED_IN_SITE.path) : -1, b = pageIndex(location.pathname);
   ev.viewTransition.types.add(a < 0 || b < 0 || a === b ? "fade" : b > a ? "forward" : "back");
 });
 

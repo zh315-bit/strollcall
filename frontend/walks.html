@@ -6,7 +6,7 @@
   <title>My walks · StrollCall</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Mochiy+Pop+One&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/bits.css">
   <!-- Hold the first render until the top bar, header and sky are built, so a page switch never
@@ -81,7 +81,7 @@ async function render() {
   const list = document.getElementById("list");
   if (!walks.length) {
     list.replaceChildren(el("section", { class: "card" }, el("p", {}, "No walks on this phone yet. "),
-      el("a", { href: "/" }, "Plan a walk")));
+      el("a", { href: "/new" }, "Plan a walk")));
     return;
   }
   const cards = [];

@@ -6,7 +6,7 @@
   <title>A StrollCall walk</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;700;800&family=Mochiy+Pop+One&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/bits.css">
   <!-- Hold the first render until the top bar, header and sky are built, so a page switch never
@@ -33,7 +33,7 @@
   const box = document.getElementById("recap");
   let r;
   try { r = await api(`/api/recaps/${location.pathname.split("/").pop()}`); }
-  catch (e) { box.replaceChildren(el("section", { class: "card" }, el("p", {}, e.message), el("a", { href: "/" }, "Plan a walk"))); return; }
+  catch (e) { box.replaceChildren(el("section", { class: "card" }, el("p", {}, e.message), el("a", { href: "/new" }, "Plan a walk"))); return; }
   const mapEl = el("div", { class: "recap-map" });
   const day = new Date(`${r.date}T12:00:00`).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   box.replaceChildren(el("section", { class: "card recap" },
@@ -48,7 +48,7 @@
     mapEl,
     el("p", { class: "muted small" }, "Shows the walk together only, never where anyone started. ",
       `This page is deleted on ${new Date(r.expires_at).toLocaleDateString()}.`),
-    el("a", { href: "/" }, "Plan your own walk")));
+    el("a", { href: "/new" }, "Plan your own walk")));
   const map = L.map(mapEl, { zoomControl: false, dragging: false, scrollWheelZoom: false });
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: OSM_ATTRIBUTION }).addTo(map);
   const color = getComputedStyle(document.documentElement).getPropertyValue("--shared").trim();

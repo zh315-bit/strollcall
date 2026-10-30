@@ -126,3 +126,5 @@ button.specular-button:disabled { opacity: .5; }
 .pane-left > button.specular-button.primary { display: flex; width: 100%; }
 a:has(> button.specular-button) { display: inline-flex; }
 @media (prefers-color-scheme: dark) { .tt-typed::after { background: var(--ink); } }  /* a black cursor would vanish on the dark theme */
+/* A 320 px phone: Nunito runs a little wider, so the chips' side padding shrinks to keep the swollen chip on screen */
+@media (max-width: 360px) { .mode-switch.jelly-radio { --jr-px: 11px !important; } }
