@@ -67,11 +67,11 @@ def ors_with(origin, shared, **kw):
     )
 
 
-def test_feasible_plan_returns_three_ranked_candidates():
+def test_feasible_plan_returns_up_to_six_ranked_candidates():
     ors = ors_with([(9, 10), (8, 11), (10, 10)], 14)
     result = planner.plan_walk(A, B, WalkIntent(duration_min=25), FakeOverpass(), ors, WED_15, W)
     assert result.status == "proposed"
-    assert len(result.candidates) == 3
+    assert len(result.candidates) == 6  # all 3 meetups x 2 destinations fit
     assert result.candidates[0].meeting_place_id == "m2"  # gap 0
     assert set(result.places) >= {"m2", "e0"}
     for c in result.candidates:
@@ -142,8 +142,9 @@ def test_places_failure():
     assert result.status == "places_unavailable"
 
 
-def test_end_to_end_on_recorded_fixture_pair():
+def test_end_to_end_on_recorded_fixture_pair(monkeypatch):
     """Pair p1 replayed offline from fixtures captured against the real APIs."""
+    monkeypatch.setattr(planner, "TOP_N", 3)  # the fixtures hold directions for the top 3 only
     import sys
     from pathlib import Path
 

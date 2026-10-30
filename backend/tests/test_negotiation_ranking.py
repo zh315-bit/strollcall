@@ -8,7 +8,7 @@ import pytest
 from app.core.budget import BudgetExceeded
 from app.models.schemas import JointPreference, WalkIntent
 from app.providers import get_ors, get_overpass
-from app.services import explain
+from app.services import explain, planner
 from app.services.intent import combined_intent, default_negotiation, negotiate
 from app.services.planner import plan_walk
 
@@ -45,7 +45,8 @@ def use_meta(monkeypatch):
 
 
 @pytest.fixture
-def p1_plan():
+def p1_plan(monkeypatch):
+    monkeypatch.setattr(planner, "TOP_N", 3)  # the fixtures hold directions for the top 3 only
     case = next(c for c in load_cases() if c["id"] == "p1")
     return plan_walk(case["a"], case["b"], case["intent"], get_overpass(), get_ors(), case["depart_at"])
 

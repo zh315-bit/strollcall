@@ -2,6 +2,7 @@
 // gentle arc, the motion of React Bits' CircularGallery (https://reactbits.dev) applied to real DOM
 // panels instead of WebGL image cards. Swipe, drag, a sideways wheel, the arrow keys, the dots or a tap
 // on a side page turn to another option. Only the centred page can be used; the others are inert.
+// Three or more pages close into a ring: after the last option comes the first again.
 // Usage: planDeck([pageEl, …], { start, labels, onChange(i) }) returns { el, go(i), destroy() }.
 
 (() => {
@@ -9,6 +10,8 @@
 
   function planDeck(pages, { start = 0, labels = [], onChange } = {}) {
     const n = pages.length;
+    const loop = n >= 3;
+    const mod = (v) => ((v % n) + n) % n;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const root = document.createElement("div");
     root.className = "plan-deck";
@@ -46,14 +49,18 @@
       const spacing = w * 1.04;
       const R = w * 5;
       pages.forEach((page, i) => {
-        const off = i - pos;
+        // On the ring each page sits at its shortest way round from the centre, in [-n/2, n/2).
+        const off = loop ? mod(i - pos + n / 2) - n / 2 : i - pos;
         const x = off * spacing;
         const reach = Math.min(Math.abs(x), R * 0.999);
         const drop = R - Math.sqrt(R * R - reach * reach);
         const angle = Math.sign(x) * Math.asin(reach / R);
         const far = Math.min(Math.abs(off), 1);
         page.style.transform = `translateX(-50%) translate(${x}px, ${drop}px) rotate(${angle}rad) scale(${1 - 0.06 * far})`;
-        page.style.opacity = String(1 - 0.4 * far);
+        // Pages more than two away fade out, so the one passing behind the ring is never seen jumping sides.
+        const fade = clamp(1 - (Math.abs(off) - 2) / 0.5, 0, 1);
+        page.style.opacity = String((1 - 0.4 * far) * fade);
+        page.style.visibility = fade ? "" : "hidden";
         page.style.zIndex = String(100 - Math.round(Math.abs(off) * 10));
       });
     }
@@ -95,14 +102,23 @@
     }
     function wake() { if (alive && !raf) raf = requestAnimationFrame(frame); }
 
-    function go(i, announce = true) {
-      target = clamp(i, 0, n - 1);
-      setActive(target, announce);
+    // On the ring the target is unbounded (it counts whole turns), so the deck always turns the way it was moved.
+    function turnTo(t, announce = true) {
+      target = loop ? t : clamp(t, 0, n - 1);
+      setActive(loop ? mod(target) : target, announce);
       wake();
     }
+    // Option i, the short way round.
+    function go(i, announce = true) {
+      if (!loop) return turnTo(i, announce);
+      const cur = Math.round(target);
+      let d = mod(i - cur);
+      if (d > n / 2) d -= n;
+      turnTo(cur + d, announce);
+    }
 
-    // Dragging: past the first or last page the deck only gives a little (rubber band).
-    const rubber = (p) => (p < 0 ? p * 0.3 : p > n - 1 ? n - 1 + (p - n + 1) * 0.3 : p);
+    // Dragging: past the first or last page the deck only gives a little (rubber band); a ring has no ends.
+    const rubber = (p) => (loop ? p : p < 0 ? p * 0.3 : p > n - 1 ? n - 1 + (p - n + 1) * 0.3 : p);
 
     const onPointerDown = (e) => {
       if (e.button !== 0) return;
@@ -138,8 +154,9 @@
       }
       const aim = pos + clamp(fling * 0.25, -1, 1);
       // A short quick flick still turns one page.
-      const step = Math.abs(aim - active) > 0.25 && Math.round(aim) === active ? Math.sign(aim - active) : 0;
-      go(clamp(Math.round(aim) + step, 0, n - 1));
+      const near = Math.round(d.start);
+      const step = Math.abs(aim - near) > 0.25 && Math.round(aim) === near ? Math.sign(aim - near) : 0;
+      turnTo(Math.round(aim) + step);
       suppressClick = true;
       setTimeout(() => { suppressClick = false; }, 0);
     };
@@ -149,10 +166,13 @@
       if (suppressClick) { e.preventDefault(); e.stopPropagation(); return; }
       // A tap on a side page (inert, so the tap lands on the deck) turns to it.
       if (e.target === root || e.target === track) {
-        const hit = pages.findIndex((p, i) => {
-          if (i === active) return false;
+        // The page in front wins; pages faded out behind the ring never catch a tap.
+        let hit = -1;
+        pages.forEach((p, i) => {
+          if (i === active || p.style.visibility === "hidden") return;
           const r = p.getBoundingClientRect();
-          return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+          if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom &&
+              (hit < 0 || +p.style.zIndex > +pages[hit].style.zIndex)) hit = i;
         });
         if (hit >= 0) go(hit);
       }

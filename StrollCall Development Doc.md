@@ -52,7 +52,7 @@ P0 is one complete two-person flow; P1 starts only after P0 passes an end-to-end
 
 **P1: only after P0 works end to end**
 
-- [ ] Switch between the 3 candidates ("quieter", "shorter", "more coffee").
+- [ ] Switch between the 6 candidates ("quieter", "shorter", "more coffee").
 - [ ] Privacy mode: parse location-bearing text with the open-weights Muse Glimmer on our own server, so coordinates never leave it.
 - [ ] One-sentence route story.
 - [ ] Secret destination revealed at the meetup point.
@@ -169,7 +169,7 @@ SAM 3.1 and Muse Wonder are not used: they have no natural role in StrollCall, a
 
 ## 6. Planning algorithm
 
-The planner runs one bounded Dijkstra from each person on the local walking graph, which gives walking times to every candidate at once; it then scores a bounded set and keeps the top 3. The time budget covers the whole outing from simultaneous departure to arrival at the destination.
+The planner runs one bounded Dijkstra from each person on the local walking graph, which gives walking times to every candidate at once; it then scores a bounded set and keeps the top 6. The time budget covers the whole outing from simultaneous departure to arrival at the destination.
 
 **6.1 Time semantics** (meetup point m, destination e; MVP assumes A and B leave at the same time)
 
@@ -185,7 +185,7 @@ The planner runs one bounded Dijkstra from each person on the local walking grap
 4. Keep meetup points where max(tA, tB) ≤ 0.6 × duration; named POIs get a small score bonus so they win when close.
 5. Destination candidates of the requested type near the kept meetup points; run Dijkstra from each meetup point for tShared.
 6. Hard constraints: route exists; elapsed ≤ duration + 3 min; gap ≤ 5 min; destination type allowed; not known to be closed.
-7. Score, keep the top 3, build geometry from the graph edges, and let the Meta model rank and explain them.
+7. Score, keep the top 6, build geometry from the graph edges, and let the Meta model rank and explain them.
 
 **6.3 Score** (all terms normalized to 0–1 before weighting)
 

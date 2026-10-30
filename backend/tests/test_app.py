@@ -37,6 +37,9 @@ def test_dev_plan_hidden_without_debug():
 
 def test_dev_plan_with_fixtures(monkeypatch):
     from app.core.config import get_settings
+    from app.services import planner
+
+    monkeypatch.setattr(planner, "TOP_N", 3)  # the fixtures hold directions for the top 3 only
 
     monkeypatch.setenv("DEBUG", "true")
     get_settings.cache_clear()

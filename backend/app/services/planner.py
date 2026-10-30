@@ -636,8 +636,8 @@ def rank(options: list[ScoredOption]) -> list[ScoredOption]:
     )
 
 
-TOP_N = 3
-MAX_DIRECTIONS_TRIES = 6  # ranked options checked with full directions to fill the top 3
+TOP_N = 6  # six options close the ring of pages on the plan screen
+MAX_DIRECTIONS_TRIES = 12  # ranked options checked with full directions to fill the top 6
 
 CATEGORY_LABELS = {"ice_cream": "ice cream shop", "park_gate": "park gate", "subway_entrance": "subway entrance",
                    "intersection": "street corner"}

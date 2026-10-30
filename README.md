@@ -21,7 +21,7 @@ and `benchmarks/` for measured planner results.
 | --- | --- | --- | --- |
 | Parse a walk description | Muse Spark (`muse-spark-1.3`) | `WalkIntent` | JSON schema + Pydantic; default on failure |
 | Reconcile A's and B's preferences | Muse Spark | `JointPreference` + trade-off | shared vibes must come from both people; never changes time or hard constraints |
-| Rank the planner's top 3 | Muse Spark | order + reasons | only the supplied candidates; every number must be a measured fact |
+| Rank the planner's top 6 | Muse Spark | order + reasons | only the supplied candidates; every number must be a measured fact |
 | Speech to text | Muse Voice Transcribe | transcript | WAV format check; user edits before parsing |
 | Invite card illustration | Muse Image (24 pictures made ahead of time, picked by theme) | image | model and prompt per file in `frontend/illustrations/manifest.json` |
 | Intros of places passed on a walk | Muse Spark (ahead of time, `scripts/make_poi_intros.py`) | at most 2 sentences | only from the place's Wikipedia summary; every number, name, feature and evaluative word must be in that text, else dropped |

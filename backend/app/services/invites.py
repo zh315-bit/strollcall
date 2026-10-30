@@ -262,7 +262,7 @@ def run_planning(token: str) -> None:
     """Background, after B accepts. Steps shown on both pages:
     understanding: B's text parsed, wishes read and both Dijkstra runs, in parallel;
     balancing: negotiation (needs B's parsed preference);
-    finding: candidates scored with the joint preference, then Muse Spark ranks the top 3;
+    finding: candidates scored with the joint preference, then Muse Spark ranks the top 6;
     done.
     """
     import contextvars

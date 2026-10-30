@@ -25,8 +25,8 @@ log = logging.getLogger(__name__)
 Point = tuple[float, float]
 MIN_SHARE = 0.6  # a walk shorter than this share of the wish is not what they asked for
 SHORTLIST = 12  # destinations sent to one routing matrix call
-TOP_N = 3
-MAX_DIRECTIONS_TRIES = 6
+TOP_N = 6  # six options close the ring of pages on the plan screen
+MAX_DIRECTIONS_TRIES = 12
 WISH_WINDOW_MIN = 4.0
 
 
