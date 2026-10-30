@@ -205,10 +205,10 @@ function decorate() {
 
 // ---- Site navigation (top) and the privacy link (footer), on every page ----
 
-// Home ("/") is the logo; New walk ("/new") is reached from Home's "Start a walk".
-const NAV = [["/walks", "My walks"], ["/how", "How it works"]];
+// New walk ("/new") is reached from Home's "Start a walk".
+const NAV = [["/", "Home"], ["/walks", "My walks"], ["/how", "How it works"]];
 
-const navIndex = (path) => NAV.findIndex(([href]) => path.startsWith(href));
+const navIndex = (path) => NAV.findIndex(([href]) => (href === "/" ? path === "/" : path.startsWith(href)));
 
 // Top bar: the logo (mascots + name) top-left, the nav on the right. The pale-yellow pill sits under the
 // current page's link; page switches animate it (see "Page switches" below and style.css).
