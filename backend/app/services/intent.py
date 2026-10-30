@@ -112,6 +112,7 @@ Rules:
 - a_priorities / b_priorities: what matters to each person that the other did not ask for, as short phrases taken from their own preferences.
 - compromises: 0-3 short sentences on how a conflict between the two inputs is weighed, e.g. "A's cafe and B's park are both acceptable endings." Only mention real conflicts.
 - Describe preferences, not the route: never promise stops, places on the way, quiet or busy stretches, or anything else the planner has not checked.
+- Qualities nobody can check here (quiet, lively, safe, crowded, scenic) may appear only as a person's wish, e.g. "B's wish for a quiet walk"; never state them as facts about a place or the route.
 - tradeoff: one sentence for both people summarising how their preferences are balanced. No numbers unless they appear in the input.
 - Hard constraints and walk length are decided by the planner, not by you; do not change them.
 Return only JSON matching the schema."""

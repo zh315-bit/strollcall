@@ -54,7 +54,7 @@ def _place_names(result: PlanResult) -> list[str]:
 
 RANKING_PROMPT = """You rank walk plans for two friends, A and B, for StrollCall.
 
-You get their preferences, how they were reconciled, and 2-3 candidate plans that a route
+You get their preferences, how they were reconciled, and 2-6 candidate plans that a route
 planner has already checked: every plan is walkable, within the time budget and fair.
 
 Rules:
@@ -64,6 +64,8 @@ Rules:
   part is for, using the "suits" facts (e.g. "meet at the park for B, end at the cafe for A").
 - Refer to other options by their meeting point or destination name, never by id (c1, c2, c3).
 - Use only the facts given. Do not invent places, opening hours, safety, crowds or noise.
+- Qualities the data cannot verify (quiet, lively, safe, crowded, scenic) may appear only as a
+  person's wish, e.g. "for B's wish for a quiet walk"; never state them as facts about a place or route.
 - Wishes marked "unknown" are not confirmed: never say they are met.
 - Any number you write must appear in that candidate's facts.
 Return only JSON matching the schema."""
@@ -225,6 +227,7 @@ def _grounded(data: dict, labelled: dict, result: PlanResult, a: WalkIntent, b: 
     names = _place_names(result)
     if wishes is not None:
         prefs += " " + " ".join(REQUIREMENTS[w.requirement].description for w in wishes.items)
+
     def evidence_of(c):
         return place_evidence([result.places[c.meeting_place_id], result.places[c.endpoint_place_id]])
 
