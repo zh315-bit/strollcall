@@ -4,14 +4,16 @@ Built with `scripts/build_route_pois.py` and `scripts/make_poi_intros.py`, local
 
 ## Places
 
-2024 points of interest in the covered area (OpenStreetMap): park 810, artwork 330, historic site 327, memorial 312, landmark 245.
-958 have a `wikipedia` or `wikidata` tag; 558 of those resolve to an English Wikipedia article.
+2241 points of interest in the covered area (OpenStreetMap): park 925, historic site 366, artwork 349, memorial 336, landmark 265.
+1021 have a `wikipedia` or `wikidata` tag; 582 of those resolve to an English Wikipedia article.
+(Updated 2026-10-29 evening when the map grew to Jersey City, Hoboken and their neighbors: the 25 new
+places with an article went through the same script, prompt and fact check; nothing earlier was redone.)
 
 ## Intros
 
 Model: `muse-spark-1.3` (Muse Spark), one call per place, exact prompt in `frontend/data/poi_intros.json`.
-Kept: **502** (park 136, historic site 113, landmark 100, memorial 77, artwork 76).
-Dropped: model said the source is not about this place 28, article may not be about this place 25, fact check 2, no usable summary 1.
+Kept: **525** (park 142, historic site 118, landmark 104, memorial 84, artwork 77).
+Dropped: model said the source is not about this place 28, article may not be about this place 25, fact check 2, no usable summary 2.
 
 - *article may not be about this place*: the article title and opening share no word with the OSM name
   (for example a statue tagged with the article about the person it depicts).
@@ -20,7 +22,7 @@ Dropped: model said the source is not about this place 28, article may not be ab
   unverifiable word or a route claim that is not in the source text, or more than 2 sentences.
 
 Places without a kept intro show only their name and category. Every card links its source article
-and the CC BY-SA 4.0 license. Meta spend for the full run: about $2.44 (spend guard log).
+and the CC BY-SA 4.0 license. Meta spend: about $2.44 for the first run and $0.11 for the New Jersey places (spend guard log).
 
 ## Limits
 

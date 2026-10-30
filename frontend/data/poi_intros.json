@@ -4517,6 +4517,213 @@
    "revision": "1362479445",
    "source_timestamp": "2026-07-04T05:49:57Z",
    "retrieved_at": "2026-10-29T19:47:52+00:00"
+  },
+  "node/10996183255": {
+   "name": "Martin Luther King Jr.",
+   "intro": "The Martin Luther King Jr. Memorial is a memorial to Martin Luther King Jr. It is at the Martin Luther King Drive station of the Hudson–Bergen Light Rail in the Jackson Hill section of Jersey City, New Jersey.",
+   "source_title": "Martin Luther King, Jr. Memorial (Jersey City)",
+   "source_url": "https://en.wikipedia.org/wiki/Martin_Luther_King%2C_Jr._Memorial_(Jersey_City)",
+   "revision": "1363988005",
+   "source_timestamp": "2026-07-13T19:41:53Z",
+   "retrieved_at": "2026-10-30T03:40:56+00:00"
+  },
+  "node/1655111595": {
+   "name": "Empty Sky",
+   "intro": "Empty Sky is the official New Jersey September 11 memorial to the state's victims of the September 11 attacks on the United States. It is located in Liberty State Park in Jersey City at the mouth of the Hudson River across from the World Trade Center site.",
+   "source_title": "Empty Sky (memorial)",
+   "source_url": "https://en.wikipedia.org/wiki/Empty_Sky_(memorial)",
+   "revision": "1370064940",
+   "source_timestamp": "2026-08-18T23:04:04Z",
+   "retrieved_at": "2026-10-30T03:40:57+00:00"
+  },
+  "node/2525734185": {
+   "name": "Colgate Clock",
+   "intro": "The Colgate Clock is an octagonal clock facing the Hudson River near Exchange Place in Jersey City, New Jersey. It has a diameter of 50 feet (15 m).",
+   "source_title": "Colgate Clock (Jersey City)",
+   "source_url": "https://en.wikipedia.org/wiki/Colgate_Clock_(Jersey_City)",
+   "revision": "1353976742",
+   "source_timestamp": "2026-05-13T14:39:00Z",
+   "retrieved_at": "2026-10-30T03:40:58+00:00"
+  },
+  "node/2652324730": {
+   "name": "Katyn Memorial",
+   "intro": "The Katyń Memorial is a bronze statue created by Polish-American sculptor Andrzej Pitynski in dedication to the victims of Stalin's March 5, 1940 Katyn massacre. Unveiled in June 1991, the statue stands 34-foot-tall (10-meter) and is atop a granite base containing Katyn soil.",
+   "source_title": "Katyń Memorial (Jersey City)",
+   "source_url": "https://en.wikipedia.org/wiki/Katy%C5%84_Memorial_(Jersey_City)",
+   "revision": "1372746205",
+   "source_timestamp": "2026-09-02T02:37:04Z",
+   "retrieved_at": "2026-10-30T03:40:58+00:00"
+  },
+  "node/2726853514": {
+   "name": "Firemen's Monument",
+   "intro": "The Firemen's Monument is a 28 ft 0 in (8.53 m) tall monument in Hoboken, Hudson County, New Jersey, United States. It was designed by American sculptor Caspar Buberl and completed in 1891.",
+   "source_title": "Firemen's Monument (Hoboken, New Jersey)",
+   "source_url": "https://en.wikipedia.org/wiki/Firemen's_Monument_(Hoboken%2C_New_Jersey)",
+   "revision": "1371286957",
+   "source_timestamp": "2026-08-25T17:26:26Z",
+   "retrieved_at": "2026-10-30T03:41:03+00:00"
+  },
+  "node/6579162051": {
+   "name": "Korean War Veterans Memorial",
+   "intro": "The Korean War Veterans Memorial in Jersey City, New Jersey is located on the Hudson River Waterfront Walkway in Paulus Hook in the Morris Canal section of Liberty State Park. It pays tribute to the Hudson County residents who died during the Korean War.",
+   "source_title": "Korean War Veterans Memorial (Jersey City)",
+   "source_url": "https://en.wikipedia.org/wiki/Korean_War_Veterans_Memorial_(Jersey_City)",
+   "revision": "1309225560",
+   "source_timestamp": "2025-09-02T21:06:52Z",
+   "retrieved_at": "2026-10-30T03:41:02+00:00"
+  },
+  "node/7741011010": {
+   "name": "Jackie Robinson",
+   "intro": "The Statue of Jackie Robinson in Jersey City, New Jersey is located at Journal Square at the entrance to the Journal Square Transportation Center.",
+   "source_title": "Statue of Jackie Robinson (Jersey City)",
+   "source_url": "https://en.wikipedia.org/wiki/Statue_of_Jackie_Robinson_(Jersey_City)",
+   "revision": "1361385400",
+   "source_timestamp": "2026-06-27T16:45:07Z",
+   "retrieved_at": "2026-10-30T03:41:00+00:00"
+  },
+  "node/8905058396": {
+   "name": "Lincoln the Mystic",
+   "intro": "Lincoln the Mystic, also known as the Abraham Lincoln Memorial, is a bronze statue by James Earle Fraser. It is located at Lincoln Park in Jersey City, New Jersey, near the beginning of the Lincoln Highway.",
+   "source_title": "Lincoln the Mystic",
+   "source_url": "https://en.wikipedia.org/wiki/Lincoln_the_Mystic",
+   "revision": "1365716090",
+   "source_timestamp": "2026-07-24T01:14:03Z",
+   "retrieved_at": "2026-10-30T03:41:01+00:00"
+  },
+  "node/9632225717": {
+   "name": "Water's Soul",
+   "intro": "Water's Soul is a sculpture along the Hudson River Waterfront Walkway in the Newport section of Jersey City, New Jersey. It was conceived by Jaume Plensa and stands 80 feet (24 m) tall.",
+   "source_title": "Water's Soul",
+   "source_url": "https://en.wikipedia.org/wiki/Water's_Soul",
+   "revision": "1358380874",
+   "source_timestamp": "2026-06-08T09:29:41Z",
+   "retrieved_at": "2026-10-30T03:41:03+00:00"
+  },
+  "node/9688305193": {
+   "name": "Jersey City 9/11 Memorial",
+   "intro": "The Jersey City 9/11 Memorial comprises a sculpture of steel girders from the original World Trade Center, an inscribed black granite stele, and Makeshift Memorial. The site was a triage set up during the '9/11 boatlift' and became a staging area for rescue operations.",
+   "source_title": "Jersey City 9/11 Memorial",
+   "source_url": "https://en.wikipedia.org/wiki/Jersey_City_9%2F11_Memorial",
+   "revision": "1374371865",
+   "source_timestamp": "2026-09-11T16:51:56Z",
+   "retrieved_at": "2026-10-30T03:41:08+00:00"
+  },
+  "relation/8262630": {
+   "name": "Liberty State Park",
+   "intro": "Liberty State Park (LSP) is a 1,212 acres (490 ha) state park in the U.S. state of New Jersey, located on Upper New York Bay in Jersey City opposite Liberty Island and Ellis Island. The park opened in 1976 to coincide with bicentennial celebrations.",
+   "source_title": "Liberty State Park",
+   "source_url": "https://en.wikipedia.org/wiki/Liberty_State_Park",
+   "revision": "1382317985",
+   "source_timestamp": "2026-10-28T00:32:53Z",
+   "retrieved_at": "2026-10-30T03:41:08+00:00"
+  },
+  "way/1289565926": {
+   "name": "Aviation Hall of Fame and Museum of New Jersey",
+   "intro": "The Aviation Hall of Fame & Museum of New Jersey was founded in 1972 and preserves New Jersey's aviation and space heritage. It is located at Teterboro Airport, the oldest operating airport in the Tri-State Region, at 400 Fred Wehran Drive, Teterboro, New Jersey.",
+   "source_title": "Aviation Hall of Fame and Museum of New Jersey",
+   "source_url": "https://en.wikipedia.org/wiki/Aviation_Hall_of_Fame_and_Museum_of_New_Jersey",
+   "revision": "1368522120",
+   "source_timestamp": "2026-08-09T15:21:53Z",
+   "retrieved_at": "2026-10-30T03:41:05+00:00"
+  },
+  "way/170669052": {
+   "name": "USS Ling",
+   "intro": "USS Ling is a Balao-class submarine of the United States Navy, named for the ling fish, also known as the cobia. She was placed in reserve in 1946 until being converted into a training ship in 1960.",
+   "source_title": "USS Ling",
+   "source_url": "https://en.wikipedia.org/wiki/USS_Ling",
+   "revision": "1378834103",
+   "source_timestamp": "2026-10-06T11:07:44Z",
+   "retrieved_at": "2026-10-30T03:41:06+00:00"
+  },
+  "way/24582243": {
+   "name": "Van Vorst Park",
+   "intro": "Van Vorst Park is a neighborhood in the Historic Downtown of Jersey City, Hudson County, New Jersey, centered on a park sharing the same name. Much of it is included in the Van Vorst Park Historical District.",
+   "source_title": "Van Vorst Park",
+   "source_url": "https://en.wikipedia.org/wiki/Van_Vorst_Park",
+   "revision": "1373467821",
+   "source_timestamp": "2026-09-06T03:36:04Z",
+   "retrieved_at": "2026-10-30T03:41:08+00:00"
+  },
+  "way/27459055": {
+   "name": "Pershing Field",
+   "intro": "Pershing Field is a city square and park in the Heights of Jersey City, New Jersey in the United States. Approximately 13.5 acres (5.5 ha) it is adjacent to Jersey City Reservoir No. 3.",
+   "source_title": "Pershing Field",
+   "source_url": "https://en.wikipedia.org/wiki/Pershing_Field",
+   "revision": "1367817686",
+   "source_timestamp": "2026-08-05T10:28:19Z",
+   "retrieved_at": "2026-10-30T03:41:09+00:00"
+  },
+  "way/27459348": {
+   "name": "Lincoln Park",
+   "intro": "Lincoln Park is an urban park in Jersey City, New Jersey with an area of 273.4 acres (110.6 ha). Part of the Hudson County Park System, it opened in 1905 and was originally known as West Side Park.",
+   "source_title": "Lincoln Park (Jersey City)",
+   "source_url": "https://en.wikipedia.org/wiki/Lincoln_Park_(Jersey_City)",
+   "revision": "1362608607",
+   "source_timestamp": "2026-07-05T02:59:43Z",
+   "retrieved_at": "2026-10-30T03:41:10+00:00"
+  },
+  "way/32965412": {
+   "name": "Statue of Liberty",
+   "intro": "The Statue of Liberty is a colossal neoclassical sculpture of a robed and crowned woman on Liberty Island in New York Harbor. A gift to the United States from the people of France, it was designed by Frédéric Auguste Bartholdi and dedicated on October 28, 1886.",
+   "source_title": "Statue of Liberty",
+   "source_url": "https://en.wikipedia.org/wiki/Statue_of_Liberty",
+   "revision": "1382593263",
+   "source_timestamp": "2026-10-29T11:32:08Z",
+   "retrieved_at": "2026-10-30T03:41:11+00:00"
+  },
+  "way/354424921": {
+   "name": "Berry Lane Park",
+   "intro": "Berry Lane Park is a park created on a 17.5 acres (0.071 km2) of former brownfield site in the Communipaw-Lafayette Section of Jersey City, New Jersey. Construction began in 2012 and the park officially opened in June 2016.",
+   "source_title": "Berry Lane Park",
+   "source_url": "https://en.wikipedia.org/wiki/Berry_Lane_Park",
+   "revision": "1362482597",
+   "source_timestamp": "2026-07-04T06:32:29Z",
+   "retrieved_at": "2026-10-30T03:41:13+00:00"
+  },
+  "way/39681160": {
+   "name": "Hamilton Park",
+   "intro": "Hamilton Park is a neighborhood in Historic Downtown Jersey City, centered on a park with the same name. The park underwent renovations completed in 2010.",
+   "source_title": "Hamilton Park, Jersey City",
+   "source_url": "https://en.wikipedia.org/wiki/Hamilton_Park%2C_Jersey_City",
+   "revision": "1373371634",
+   "source_timestamp": "2026-09-05T16:49:22Z",
+   "retrieved_at": "2026-10-30T03:41:14+00:00"
+  },
+  "way/411768538": {
+   "name": "Van Wagenen House",
+   "intro": "The Van Wagenen House, also known as Apple Tree House, is located near Bergen Square in Jersey City, New Jersey, United States. The house was added to the National Register of Historic Places on August 16, 2006 and is home to the Museum of Jersey City History.",
+   "source_title": "Van Wagenen House",
+   "source_url": "https://en.wikipedia.org/wiki/Van_Wagenen_House",
+   "revision": "1373467831",
+   "source_timestamp": "2026-09-06T03:36:08Z",
+   "retrieved_at": "2026-10-30T03:41:16+00:00"
+  },
+  "way/515955201": {
+   "name": "Liberation Monument",
+   "intro": "Liberation is a bronze Holocaust memorial created by the sculptor Nathan Rapoport in Liberty State Park in Jersey City. Officially dedicated on May 30, 1985, it portrays an American soldier, carrying the body of a Holocaust survivor out of a Nazi concentration camp.",
+   "source_title": "Liberation (Holocaust memorial)",
+   "source_url": "https://en.wikipedia.org/wiki/Liberation_(Holocaust_memorial)",
+   "revision": "1373534886",
+   "source_timestamp": "2026-09-06T14:41:13Z",
+   "retrieved_at": "2026-10-30T03:41:16+00:00"
+  },
+  "way/53883375": {
+   "name": "Liberty Science Center",
+   "intro": "Liberty Science Center (LSC) is an interactive science museum and learning center located in Liberty State Park in Jersey City, New Jersey, United States. At its opening, it was the largest such planetarium in the Western Hemisphere and the world's fourth largest.",
+   "source_title": "Liberty Science Center",
+   "source_url": "https://en.wikipedia.org/wiki/Liberty_Science_Center",
+   "revision": "1379943551",
+   "source_timestamp": "2026-10-12T21:09:24Z",
+   "retrieved_at": "2026-10-30T03:41:16+00:00"
+  },
+  "way/888758560": {
+   "name": "Statue of Liberty Museum",
+   "intro": "The Statue of Liberty Museum is located on Liberty Island in New York City. The museum opened on May 16, 2019, and is focused on the creation, meaning, and history of the Statue of Liberty.",
+   "source_title": "Statue of Liberty Museum",
+   "source_url": "https://en.wikipedia.org/wiki/Statue_of_Liberty_Museum",
+   "revision": "1380568228",
+   "source_timestamp": "2026-10-16T15:02:22Z",
+   "retrieved_at": "2026-10-30T03:41:18+00:00"
   }
  },
  "dropped": {
@@ -4948,6 +5155,10 @@
    "revision": "1380558326",
    "source_timestamp": "2026-10-16T13:43:15Z",
    "retrieved_at": "2026-10-29T19:47:45+00:00"
+  },
+  "way/404322369": {
+   "name": "Museum of Russian Art",
+   "reason": "no usable summary"
   }
  },
  "model": "muse-spark-1.3",
@@ -4957,5 +5168,5 @@
   "url": "https://creativecommons.org/licenses/by-sa/4.0/"
  },
  "note": "Rewritten by Meta Muse Spark from the English Wikipedia summary of each place, using only facts in that text, then fact-checked; intros that failed the check were dropped.",
- "generated_at": "2026-10-29T19:47:52+00:00"
+ "generated_at": "2026-10-30T03:41:18+00:00"
 }
