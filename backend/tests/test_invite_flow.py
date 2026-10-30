@@ -263,3 +263,35 @@ def test_start_outside_the_map_gets_a_clear_message(town):
     assert resp.status_code == 422 and "outside the area" in resp.json()["detail"]
     solo = client.post("/api/solo/plan", json={"intent": {"duration_min": 15}, "origin": far}).json()
     assert solo["status"] == "outside_area" and "outside the area" in solo["error"]
+
+
+def test_plan_shows_before_the_ranking_then_ranking_and_reasons_follow(town, monkeypatch):
+    """The plan is saved as soon as the planner is done; Muse Spark's order and reasons arrive later.
+    An option confirmed in between stays confirmed."""
+    from app.services import explain
+
+    body = create(town)
+    token, a_key = body["token"], body["a_key"]
+    seen = {}
+
+    def slow_rank(plan, a, b, joint, wishes=None):
+        v = client.get(f"/api/invites/{token}", headers={"X-Invite-Key": a_key}).json()
+        seen.update(status=v["status"], explaining=v["explaining"], reasons=v["reasons"],
+                    ids=[c["id"] for c in v["candidates"]], ranking=v["sources"]["ranking"])
+        client.post(f"/api/invites/{token}/confirm", json={"key": a_key, "candidate_id": plan.candidates[0].id})
+        order = list(reversed(plan.candidates))
+        return explain.Ranking(candidates=order, reasons={c.id: "ok" for c in order}, source="meta")
+
+    monkeypatch.setattr(explain, "rank_candidates", slow_rank)
+    client.post(f"/api/invites/{token}/accept", json={"b_origin": town["b"]})
+    assert seen["status"] == "proposed" and seen["explaining"] is True
+    assert seen["reasons"] == {} and seen["ranking"] == "pending" and seen["ids"]
+
+    v = client.get(f"/api/invites/{token}", headers={"X-Invite-Key": a_key}).json()
+    assert v["explaining"] is False and v["sources"]["ranking"] == "meta"
+    assert [c["id"] for c in v["candidates"]] == list(reversed(seen["ids"]))
+    assert set(v["reasons"]) == set(seen["ids"])
+    assert v["status"] == "confirmed" and v["selected_id"] == seen["ids"][0]  # the choice made meanwhile
+    if len(seen["ids"]) > 1:
+        assert v["top_changed"] == {"from": seen["ids"][0], "to": seen["ids"][-1]}
+    assert v["progress"]["step"] == "done"

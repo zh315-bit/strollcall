@@ -47,14 +47,19 @@ let key = new URLSearchParams(location.hash.slice(1)).get("key") || store.get(`s
 if (key) store.set(`strollcall:${token}`, key);
 const app = document.getElementById("app");
 let map = null, layers = [], pollTimer = null, chosen = 0, bOrigin = null, bMarker = null;
+// The plan arrives before Muse Spark's ranking: keep the person's page across that update, by id.
+let chosenId = null, moved = false, shown = "", switchedTo = null;
 
 async function load() {
   try {
     const v = await api(`/api/invites/${token}`, key ? { headers: { "X-Invite-Key": key } } : {});
     if (v.role === "a" || v.role === "b") rememberWalk(token, v.role);  // for My walks, on this device only
-    render(v);
+    // While the ranking is being written the page polls; redraw only when something visible changed,
+    // so a swipe in progress is not reset.
+    const sig = JSON.stringify([v.status, v.explaining, v.candidates.map((c) => c.id), v.reasons, v.selected_id]);
+    if (sig !== shown || !["proposed", "confirmed"].includes(v.status)) { shown = sig; render(v); }
     clearTimeout(pollTimer);
-    if (v.status === "planning") {
+    if (v.status === "planning" || v.explaining) {
       pollTimer = setTimeout(load, 1500); // show each planning step as it happens
     } else if (v.status === "pending" && v.role !== "guest") {
       pollTimer = setTimeout(load, 5000); // A waits for B
@@ -172,10 +177,25 @@ function problem(v) {
 function plan(v) {
   const label = (c, i) => `${i === 0 ? "Best" : `Option ${i + 1}`} · ${v.places[c.meeting_place_id].name}`;
   const pages = v.candidates.map((c, i) => planPage(v, c, v.candidates.length > 1 ? label(c, i) : null));
-  const deck = pages.length > 1 ? planDeck(pages, { start: Math.min(chosen, pages.length - 1), labels: v.candidates.map(label),
-    onChange: (i) => { chosen = i; drawPlan(v); } }) : null;
+  const at = chosenId ? v.candidates.findIndex((c) => c.id === chosenId) : -1;
+  chosen = moved && at >= 0 ? at : 0;
+  // Muse Spark put another option first: turn the deck from the planner's pick to it, once, unless the
+  // person has already turned the deck themselves; and say so.
+  const changed = v.top_changed && !v.explaining ? v.top_changed : null;
+  let start = chosen;
+  if (changed && switchedTo !== changed.to) {
+    switchedTo = changed.to;
+    const from = v.candidates.findIndex((c) => c.id === changed.from);
+    if (!moved && from > 0) start = from;
+  }
+  const deck = pages.length > 1 ? planDeck(pages, { start, labels: v.candidates.map(label),
+    onChange: (i) => { chosen = i; chosenId = v.candidates[i].id; moved = true; drawPlan(v); } }) : null;
+  if (deck && start !== chosen) setTimeout(() => deck.go(chosen), 450);
+  const top = v.candidates[0];
   return [
     el("section", { class: "card" },
+      changed ? el("p", { class: "muted", role: "status" }, el("span", { class: "i i-info", "aria-hidden": "true" }),
+        ` Muse Spark ranked meeting at ${v.places[top.meeting_place_id].name} and walking to ${v.places[top.endpoint_place_id].name} first, so it moved to the front.`) : null,
       deck ? deck.el : pages[0],
       v.tradeoff ? el("p", { class: "muted" }, v.tradeoff, sourceBadge(v.sources.negotiation)) : null,
       ...(v.notes || []).map((n) => el("p", { class: "muted" }, el("span", { class: "i i-info", "aria-hidden": "true" }), " ", n)),
@@ -196,7 +216,9 @@ function planPage(v, c, kicker) {
       el("div", {}, el("b", {}, Math.round(c.shared_leg.duration_min)), "min together")),
     el("p", {}, `Then walk together to ${dest.name} (${prettyType(dest.category)}). `,
       el("span", { class: "muted" }, `Arrival gap ${c.arrival_gap_min.toFixed(1)} min, ${Math.round(c.total_elapsed_min)} min in total.`)),
-    el("p", {}, why || c.rationale, why ? (sourceBadge(v.sources.ranking) || el("span", { class: "muted" }, " · Muse Spark")) : null),
+    v.explaining
+      ? el("p", { class: "muted", role: "status" }, el("span", { class: "spinner" }), " Writing the explanation…")
+      : el("p", {}, why || c.rationale, why ? (sourceBadge(v.sources.ranking) || el("span", { class: "muted" }, " · Muse Spark")) : null),
     el("p", { class: "muted" }, dest.opening_hours ? `Opening hours (OpenStreetMap, as of ${(dest.fetched_at || "").slice(0, 10)}): ${dest.opening_hours}` : "Opening hours unknown."),
     v.role !== "guest" ? el("button", { class: "primary start-walk", onclick: () => walkThePlan(v, c) }, el("span", { class: "i i-footprints", "aria-hidden": "true" }), " Start walking") : null,
     el("div", { class: "row" },

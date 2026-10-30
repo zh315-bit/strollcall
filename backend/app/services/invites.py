@@ -52,6 +52,8 @@ class InviteView(BaseModel):
     feedback_given: bool = False  # this person already answered the after-walk survey
     sources: dict[str, str] = {}  # what produced each part: meta / mock / default / local / snapshot ...
     demo_data: bool = False  # true if any visible part is mock or template data
+    explaining: bool = False  # the plan is shown; Muse Spark's ranking and reasons are still being written
+    top_changed: dict | None = None  # {"from": id, "to": id} when Muse Spark's ranking moved another option first
 
 
 def _now() -> datetime:
@@ -184,6 +186,7 @@ def view(token: str, key: str | None = None) -> InviteView | None:
         image_url=public.get("image_url"),
         feedback_given=role in ("a", "b") and role in feedback_roles(token),
         sources=sources, demo_data=any(v in ("mock", "default") for v in sources.values()),
+        explaining=bool(public.get("explaining")), top_changed=public.get("top_changed"),
     )
 
 
@@ -320,22 +323,37 @@ def run_planning(token: str) -> None:
         pass_by = [PassBy(**p) for p in public.get("pass_by", [])]
         plan = _timed(timings, "plan", plan_for_two, tuple(private["a_origin"]), tuple(private["b_origin"]),
                       a, b, neg.joint, places, routing, datetime.now(NYC), False, wishes, pass_by)
-        ranking = (_timed(timings, "rank", rank_candidates, plan, a, b, neg.joint, wishes)
-                   if plan.status == "proposed" else None)
     except ProviderError as e:
         invite.status, invite.error = "error", e.code
         _finish(token, invite, public, private, started, timings)
         return
 
     public["notes"] = plan.notes
-    if ranking is None:
+    if plan.status != "proposed":
         invite.status, invite.error = "error", plan.status
         public["failure"] = plan.failure.model_dump() if plan.failure else None
-    else:
-        sources["ranking"] = ranking.source
-        invite.status, invite.candidates = "proposed", ranking.candidates
-        public.update({"places": {k: v.model_dump(mode="json") for k, v in plan.places.items()},
-                       "tradeoff": neg.tradeoff, "reasons": ranking.reasons})
+        _finish(token, invite, public, private, started, timings)
+        return
+
+    # Show the plan now, in the planner's order; Muse Spark's ranking and reasons follow (both pages poll).
+    sources["ranking"] = "pending"
+    invite.status, invite.candidates = "proposed", plan.candidates
+    public.update({"places": {k: v.model_dump(mode="json") for k, v in plan.places.items()},
+                   "tradeoff": neg.tradeoff, "reasons": {}, "explaining": True})
+    public["progress"] = _progress(token, "explaining", started, timings)
+    _event(public, "planned")
+    save_invite(invite)
+    save_invite_extra(token, public, private)
+
+    ranking = _timed(timings, "rank", rank_candidates, plan, a, b, neg.joint, wishes)
+    # Someone may have confirmed an option meanwhile: keep that, only reorder and explain.
+    invite = load_invite(token) or invite
+    public, private = load_invite_extra(token)
+    invite.candidates = ranking.candidates
+    public.setdefault("sources", {})["ranking"] = ranking.source
+    public.update({"reasons": ranking.reasons, "explaining": False})
+    if ranking.candidates[0].id != plan.candidates[0].id:
+        public["top_changed"] = {"from": plan.candidates[0].id, "to": ranking.candidates[0].id}
     _finish(token, invite, public, private, started, timings)
 
 
