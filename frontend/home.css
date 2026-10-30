@@ -1,0 +1,149 @@
+/* Home (home.html): a painted hillside afternoon under white display type.
+   Desktop: one 1440x1280 frame (9:8, the plate's shape) that scales with the page width; every position
+   below is in frame units (--u = 1/1440 of the width). Phones (<= 820px): the copy and the steps stack in
+   flow, and the scene fills the hero's height with the boy and the dog kept in view.
+   The scene itself is only the plate and its looping video (home.js); nothing in it is drawn in code. */
+
+body.home { background: #8fc0ea; overflow-x: hidden; }
+body.home .sky { display: none; } /* common.js adds the site sky; Home has its own scene */
+
+.hero { position: relative; container-type: inline-size; aspect-ratio: 1440 / 1280; overflow: hidden; color: #fff;
+  --u: calc(100cqw / 1440); --green: #5b875c; font-family: "Inter", system-ui, sans-serif; }
+
+/* ---- The scene: the 9:8 plate, and the square video laid over it (mirror-padded 120/1920 top and bottom) ---- */
+.hero-scene { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+.scene-frame { position: absolute; inset: 0; }
+.hero-plate, .hero-video { position: absolute; display: block; pointer-events: none; user-select: none; }
+.hero-plate { inset: 0; width: 100%; height: 100%; }
+.hero-video { left: 0; top: -6.25%; width: 100%; height: 112.5%; object-fit: fill; opacity: 0; transition: opacity .6s; }
+.hero-video.playing { opacity: 1; }
+
+/* ---- Top bar (common.js siteChrome), restyled for Home: logo, a sage pill nav, and the way in ---- */
+body.home .site-bar { position: absolute; inset: 0 0 auto; z-index: 3; display: block; height: calc(80 * var(--u));
+  padding: 0; background: none; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none;
+  view-transition-name: none; }
+body.home .brand { position: absolute; left: calc(31 * var(--u)); top: calc(17 * var(--u)); gap: calc(10 * var(--u)); color: #fff; }
+body.home .brand-mascots { width: calc(50 * var(--u)); height: calc(38 * var(--u)); }
+body.home .brand-name { font: 900 calc(29.5 * var(--u))/1 "Grandstander", var(--display); color: #fff;
+  text-shadow: 0 calc(2 * var(--u)) calc(10 * var(--u)) rgba(28, 70, 120, .25); }
+body.home .topnav { position: absolute; left: 50%; top: calc(13 * var(--u)); transform: translateX(-50%); padding: 0;
+  background: none; border: 0; box-shadow: none; backdrop-filter: none; view-transition-name: none; }
+body.home .nav-track { height: calc(50 * var(--u)); align-items: center; gap: calc(54 * var(--u)); padding: 0 calc(49 * var(--u));
+  border-radius: calc(25 * var(--u)); background: rgba(173, 196, 174, .45);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+body.home .nav-pill { display: none; }
+body.home .topnav a { min-height: 0; padding: 0; font: 500 calc(19.5 * var(--u))/1 "Inter", system-ui, sans-serif; color: #fff;
+  view-transition-name: none; transition: opacity .2s; }
+body.home .topnav a:hover { color: #fff; opacity: .8; }
+.hero-join { position: absolute; right: calc(24 * var(--u)); top: calc(14 * var(--u)); height: calc(45 * var(--u));
+  padding: 0 calc(24 * var(--u)); font-size: calc(18.5 * var(--u)) !important; }
+
+/* ---- Pills ---- */
+.pill { display: inline-flex; align-items: center; justify-content: center; gap: calc(10 * var(--u)); border-radius: 999px;
+  font: 500 1em/1 "Inter", system-ui, sans-serif; text-decoration: none; white-space: nowrap;
+  transition: transform .2s ease, box-shadow .2s ease, background-color .2s; }
+.pill:hover { transform: translateY(calc(-2 * var(--u))); }
+.pill:active { transform: translateY(0); }
+.pill:focus-visible, .step:focus-visible, .steps-link:focus-visible, .hero-foot a:focus-visible, body.home .topnav a:focus-visible {
+  outline: 3px solid #fff; outline-offset: 3px; }
+.pill-white { background: #fff; color: var(--green); box-shadow: 0 calc(6 * var(--u)) calc(18 * var(--u)) rgba(28, 70, 120, .16); }
+.pill-white:hover { color: var(--green); box-shadow: 0 calc(10 * var(--u)) calc(24 * var(--u)) rgba(28, 70, 120, .22); }
+.pill-mint { background: rgba(204, 218, 173, .6); color: #fff; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+.pill-mint:hover { color: #fff; background: rgba(204, 218, 173, .72); }
+.pill-mint svg { width: calc(22 * var(--u)); height: calc(22 * var(--u)); flex: none; }
+
+/* ---- Copy, centred on the frame ---- */
+.hero-main { position: absolute; inset: 0; z-index: 2; max-width: none; margin: 0; padding: 0; view-transition-name: page; }
+.hero-copy { display: contents; }
+.hero-kicker, .hero-title, .steps-title { font-family: "Grandstander", var(--display); font-weight: 900; color: #fff; text-transform: uppercase; }
+.hero-kicker { position: absolute; left: 0; right: 0; top: calc(193 * var(--u)); margin: 0; text-align: center;
+  font-size: calc(40.5 * var(--u)); line-height: 1; letter-spacing: .02em; text-shadow: 0 calc(3 * var(--u)) calc(14 * var(--u)) rgba(28, 70, 120, .22); }
+.hero-title { position: absolute; left: 0; right: 0; top: calc(241 * var(--u)); margin: 0; text-align: center;
+  font-size: calc(143.5 * var(--u)); line-height: calc(118 * var(--u)); letter-spacing: -.005em;
+  text-shadow: 0 calc(4 * var(--u)) calc(18 * var(--u)) rgba(28, 70, 120, .28); }
+.hero-title span { display: block; }
+.hero-sub { position: absolute; left: 0; right: 0; top: calc(503 * var(--u)); margin: 0; text-align: center;
+  font: 400 calc(21.2 * var(--u))/calc(27 * var(--u)) "Inter", system-ui, sans-serif; color: #fff;
+  text-shadow: 0 calc(2 * var(--u)) calc(12 * var(--u)) rgba(28, 70, 120, .35); }
+.hero-actions { position: absolute; left: 0; right: 0; top: calc(617 * var(--u)); display: flex; justify-content: center;
+  align-items: center; gap: calc(13 * var(--u)); }
+.hero-actions .pill-white { height: calc(59 * var(--u)); padding: 0 calc(30 * var(--u)); font-size: calc(22 * var(--u)); }
+.hero-actions .pill-mint { height: calc(58 * var(--u)); padding: 0 calc(28 * var(--u)) 0 calc(24 * var(--u)); font-size: calc(19.5 * var(--u)); }
+
+/* ---- The three steps, as the row of cards ---- */
+.steps { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+.steps > * { pointer-events: auto; }
+.steps-title { position: absolute; left: calc(137 * var(--u)); top: calc(858 * var(--u)); margin: 0; display: block;
+  font-size: calc(36 * var(--u)); line-height: 1; letter-spacing: .02em; text-shadow: 0 calc(2 * var(--u)) calc(12 * var(--u)) rgba(30, 60, 30, .3); }
+.steps-link { position: absolute; right: calc(1440 * var(--u) - 1308 * var(--u)); top: calc(864 * var(--u));
+  font: 400 calc(22 * var(--u))/1 "Inter", system-ui, sans-serif; color: #fff; text-decoration: none;
+  text-shadow: 0 calc(2 * var(--u)) calc(10 * var(--u)) rgba(30, 60, 30, .35); }
+.steps-link:hover { color: #fff; }
+.steps-link .chev { display: inline-block; margin-left: .15em; transition: transform .2s ease; }
+.steps-link:hover .chev { transform: translateX(calc(4 * var(--u))); }
+.steps-row { position: absolute; left: calc(133 * var(--u)); top: calc(913 * var(--u)); display: flex; gap: calc(20 * var(--u)); }
+.step { position: relative; display: block; width: calc(378 * var(--u)); height: calc(273 * var(--u)); flex: none;
+  border-radius: calc(15 * var(--u)); overflow: hidden; color: #fff; text-decoration: none; isolation: isolate;
+  box-shadow: 0 calc(12 * var(--u)) calc(30 * var(--u)) rgba(20, 50, 20, .22); transition: transform .3s ease, box-shadow .3s ease; }
+.step img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; transition: transform .5s ease; }
+.step::after { content: ""; position: absolute; inset: 0; z-index: -1;
+  background: linear-gradient(180deg, transparent 38%, rgba(18, 36, 22, .7)); }
+.step:hover { color: #fff; transform: translateY(calc(-8 * var(--u))); box-shadow: 0 calc(20 * var(--u)) calc(38 * var(--u)) rgba(20, 50, 20, .28); }
+.step:hover img { transform: scale(1.05); }
+.step-text { position: absolute; left: calc(20 * var(--u)); right: calc(20 * var(--u)); bottom: calc(18 * var(--u));
+  font: 400 calc(15.5 * var(--u))/1.4 "Inter", system-ui, sans-serif; }
+.step-text b { display: flex; align-items: center; gap: calc(10 * var(--u)); margin-bottom: calc(4 * var(--u));
+  font: 900 calc(24 * var(--u))/1.1 "Grandstander", var(--display); }
+.step-text i { display: inline-grid; place-items: center; width: calc(30 * var(--u)); height: calc(30 * var(--u)); flex: none;
+  border-radius: 50%; background: #fff; color: var(--green); font: 900 calc(17 * var(--u))/1 "Grandstander", var(--display); font-style: normal; }
+
+.hero-foot { position: absolute; left: 0; right: 0; bottom: calc(26 * var(--u)); z-index: 2; margin: 0; display: flex;
+  flex-wrap: wrap; justify-content: center; gap: calc(6 * var(--u)) calc(16 * var(--u)); font: 400 max(12px, calc(13.5 * var(--u)))/1.4 "Inter", system-ui, sans-serif;
+  color: rgba(255, 255, 255, .92); text-shadow: 0 1px 6px rgba(20, 50, 20, .5); }
+.hero-foot a { color: #fff; font-weight: 500; }
+
+/* ---- Phones: compact bar, copy in flow, a swipeable row of steps ---- */
+@media (max-width: 820px) {
+  .hero { aspect-ratio: auto; min-height: 100svh; display: flex; flex-direction: column; container-type: normal;
+    --u: 1px; }
+  /* The 9:8 plate (and the video over it) in one box as tall as the hero, slid so the boy and the dog stay in view */
+  .scene-frame { inset: auto; top: 0; left: 18%; height: 100%; width: auto; aspect-ratio: 9 / 8; transform: translateX(-18%); }
+  body.home .site-bar { position: relative; height: auto; display: flex; align-items: center; justify-content: space-between;
+    padding: max(14px, env(safe-area-inset-top)) 16px 0; }
+  body.home .brand { position: static; padding: 0; gap: 8px; }
+  body.home .brand-mascots { width: 42px; height: 32px; }
+  body.home .brand-name { font-size: 24px; }
+  body.home .topnav { display: none; }
+  .hero-join { position: static; height: 40px; padding: 0 18px; font-size: 16px !important; }
+  .hero-main { position: relative; inset: auto; flex: 1; display: flex; flex-direction: column; align-items: center;
+    padding: 44px 0 0; text-align: center; }
+  .hero-copy { display: flex; flex-direction: column; align-items: center; }
+  .hero-kicker, .hero-title, .hero-sub, .hero-actions { position: static; }
+  .hero-kicker { font-size: 22px; padding: 0 16px; }
+  .hero-title { margin-top: 10px; padding: 0 12px; font-size: min(51px, 10.6vw); line-height: .92; } /* each line fits one row down to 320 px */
+  .hero-sub { margin-top: 16px; padding: 0 22px; max-width: 30em; font-size: 16.5px; line-height: 1.5; }
+  .wide-only { display: none; }
+  .hero-actions { margin-top: 24px; flex-wrap: wrap; padding: 0 16px; gap: 10px; }
+  .hero-actions .pill-white { height: 52px; padding: 0 26px; font-size: 18px; }
+  .hero-actions .pill-mint { height: 52px; padding: 0 24px 0 20px; font-size: 16.5px; }
+  .pill-mint svg { width: 19px; height: 19px; }
+  .steps { position: relative; height: auto; width: 100%; margin-top: auto; padding: 48px 0 0; display: grid;
+    grid-template-columns: 1fr auto; align-items: end; pointer-events: auto; }
+  .steps-title, .steps-link, .steps-row { position: static; }
+  .steps-title { justify-self: start; padding-left: 16px; font-size: 24px; }
+  .steps-link { padding-right: 16px; font-size: 15px; }
+  .steps-row { grid-column: 1 / -1; margin-top: 14px; gap: 12px; padding: 4px 16px 18px; overflow-x: auto;
+    scroll-snap-type: x mandatory; scroll-padding: 0 16px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .steps-row::-webkit-scrollbar { display: none; }
+  .step { width: min(78vw, 300px); height: auto; aspect-ratio: 378 / 273; scroll-snap-align: start; border-radius: 14px; }
+  .step-text { left: 14px; right: 14px; bottom: 12px; font-size: 13.5px; text-align: left; }
+  .step-text b { font-size: 19px; gap: 8px; }
+  .step-text i { width: 26px; height: 26px; font-size: 15px; }
+  .hero-foot { position: relative; bottom: auto; padding: 4px 16px 22px; font-size: 12px; }
+}
+
+/* ---- Reduced motion: the still plate only (home.js adds no video), and nothing moves ---- */
+@media (prefers-reduced-motion: reduce) {
+  .hero *, .hero *::after { transition: none !important; }
+  .pill:hover, .step:hover, .step:hover img, .steps-link:hover .chev { transform: none; }
+}

@@ -6,53 +6,70 @@
   <title>StrollCall</title>
   <meta name="description" content="Say the walk you want. Your friend taps one link. StrollCall finds a meeting point that's fair for both of you, then a short walk somewhere worth arriving.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Grandstander:wght@900&family=Inter:wght@400;500&family=Nunito:wght@400;500;600;700;800&display=swap">
+  <link rel="preload" as="image" href="https://d2ol7oe51mr4n9.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/3ca5d10d-ea2f-4907-876f-33bde169469e.jpg">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/bits.css">
-  <!-- Hold the first render until the top bar, header and sky are built, so a page switch never
-       shows the bare page. Browsers without rel="expect" ignore it. -->
+  <link rel="stylesheet" href="/static/home.css">
+  <!-- Hold the first render until the top bar is built, so a page switch never shows the bare page.
+       Browsers without rel="expect" ignore it. -->
   <link rel="expect" href="#chrome-ready" blocking="render">
 </head>
 <body class="home">
-<!-- Home (design: design/Home · start screen): one centred card, the three steps, and the way in. -->
-<main class="home-main">
-  <section class="home-hero">
-    <p class="home-badge"><span>For two friends</span> · <span>20–30 minutes</span> · <span>New York</span></p>
-    <h1 class="home-title">Less planning.<br>More meeting.</h1>
-    <p class="home-lead">Say the walk you want. Your friend taps one link. We find a meeting point that's fair for both
-      of you, then a short walk somewhere worth arriving.</p>
-    <div class="home-actions">
-      <a class="home-start" href="/new">Start a walk
-        <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-      <a class="home-more" href="/how">See how it works</a>
+<!-- Home: a painted hillside afternoon (one 9:8 plate plus a looping video of the same plate) under the
+     headline, the way in, and the three steps. Laid out on a 1440x1280 frame that scales with the width
+     (home.css); on phones the copy and the steps stack in flow over the same scene. -->
+<div class="hero">
+  <div class="hero-scene" aria-hidden="true"><div class="scene-frame">
+    <img class="hero-plate" alt="" decoding="async"
+      src="https://d2ol7oe51mr4n9.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/3ca5d10d-ea2f-4907-876f-33bde169469e.jpg">
+  </div></div>
+  <main class="hero-main">
+    <div class="hero-copy"> <!-- not a direct child h1: common.js decorate() leaves it in place -->
+    <p class="hero-kicker">For two friends</p>
+    <h1 class="hero-title"><span>Less planning.</span> <span>More meeting.</span></h1>
+    <p class="hero-sub">Say the walk you want. Your friend taps one link.
+      <br class="wide-only">We find a meeting point that's fair for both of you,
+      <br class="wide-only">then a short walk somewhere worth arriving.</p>
+    <div class="hero-actions">
+      <a class="pill pill-white" href="/new">Start a walk</a>
+      <a class="pill pill-mint" href="/new?mode=solo">
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4.5" r="2"/><path d="M9 21l2.5-6 2.5 2v4M8 12l2-4 4 1 2 3 2 1M11.5 15L10 9"/></svg>
+        Walk on my own</a>
     </div>
-    <p class="home-fine">No app to download. No account.</p>
-  </section>
+    </div>
 
-  <section class="home-steps" aria-label="How StrollCall works">
-    <div class="home-step">
-      <div class="home-step-icon say"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
-      <div><h2>Say your walk</h2><p>Type or speak it: "25 minutes, quiet streets, coffee at the end."</p></div>
-    </div>
-    <div class="home-step">
-      <div class="home-step-icon link"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg></div>
-      <div><h2>Send one link</h2><p>Your friend taps "I'm in" and adds what they'd like.</p></div>
-    </div>
-    <div class="home-step">
-      <div class="home-step-icon meet"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg></div>
-      <div><h2>Meet halfway</h2><p>Fair by walking time, then walk together to the end.</p></div>
-    </div>
-  </section>
-</main>
-<footer class="home-footer">
-  <a href="/privacy">Privacy</a>
-  <span>Map data © OpenStreetMap contributors (ODbL) · Language features by Meta Muse models</span>
-</footer>
+    <section class="steps" aria-labelledby="steps-title">
+      <h2 class="steps-title" id="steps-title">How it works</h2>
+      <a class="steps-link" href="/how">read the details <span class="chev" aria-hidden="true">›</span></a>
+      <div class="steps-row">
+        <a class="step" href="/how">
+          <img src="/static/illustrations/quiet-cafe.jpg" alt="" loading="lazy" decoding="async">
+          <span class="step-text"><b><i>1</i> Say your walk</b>Type or speak it: "25 minutes, quiet streets, coffee at the end."</span>
+        </a>
+        <a class="step" href="/how">
+          <img src="/static/illustrations/lively-park.jpg" alt="" loading="lazy" decoding="async">
+          <span class="step-text"><b><i>2</i> Send one link</b>Your friend taps "I'm in" and adds what they'd like.</span>
+        </a>
+        <a class="step" href="/how">
+          <img src="/static/illustrations/park-landmark.jpg" alt="" loading="lazy" decoding="async">
+          <span class="step-text"><b><i>3</i> Meet halfway</b>Fair by walking time, then walk together to the end.</span>
+        </a>
+      </div>
+    </section>
+  </main>
+  <footer class="hero-foot">
+    <a href="/privacy">Privacy</a>
+    <span>Map data © OpenStreetMap contributors (ODbL) · Language features by Meta Muse models</span>
+  </footer>
+</div>
 <script src="/static/js/common.js"></script>
-<script src="/static/js/bits.js"></script>
-<script src="/static/js/specular.js"></script>
-<script src="/static/js/gridmotion.js"></script>
-<script src="/static/js/backdrop.js"></script>
+<script>
+// The top bar on Home also carries the way in, top right (home.css places it).
+document.querySelector(".site-bar")?.append(el("a", { class: "pill pill-white hero-join", href: "/new" }, "Start a walk"));
+</script>
 <div id="chrome-ready" hidden></div> <!-- first render waits for the scripts above (see <head>) -->
+<script src="/static/js/bits.js"></script>
+<script src="/static/js/home.js"></script>
 </body>
 </html>

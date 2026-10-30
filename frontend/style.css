@@ -15,13 +15,9 @@
   --cloud: #ffffff; --star: transparent;
   --rays: #ffe2a3; --rays-opacity: .85; --mote: #fffbea; /* js/backdrop.js: sunbeams and pollen */
   --map-filter: saturate(.45) brightness(1.04) contrast(.92);
-  /* Home (design: Home · start screen) */
+  /* Top bar and secondary text (design: Home · start screen) */
   --text-2: #5a5170; --text-3: #6e6585; --bar: rgba(255, 252, 245, .85); --bar-line: rgba(43, 35, 64, .08);
-  --chip: rgba(43, 35, 64, .05); --badge: #fff1c7; --badge-ink: #6b4a00;
-  --start: #ffd970; --start-line: #e9b53a; --start-ink: #3a2a00; --start-glow: rgba(233, 181, 58, .35);
-  --hero: rgba(255, 253, 248, .94); --tile: rgba(255, 253, 248, .92); --hero-shadow: 0 24px 60px rgba(90, 60, 20, .14);
-  --icon-say: #fff1c7; --icon-say-ink: #8a5a00; --icon-link: #e3eeff; --icon-link-ink: #2f5da8;
-  --icon-meet: #ffe4d6; --icon-meet-ink: #b5532e;
+  --chip: rgba(43, 35, 64, .05);
   --font: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
   --display: "Fredoka", "Nunito", system-ui, sans-serif; /* headings; Nunito for body text (design: Home · start screen) */
 }
@@ -39,11 +35,7 @@
     --rays: #c9d4ff; --rays-opacity: .32; --mote: #ffe98a; /* moonlight and fireflies */
     --map-filter: invert(1) hue-rotate(180deg) saturate(.35) brightness(.9) contrast(.9);
     --text-2: #c9c1e6; --text-3: #b3aad3; --bar: rgba(35, 30, 68, .85); --bar-line: rgba(255, 255, 255, .08);
-    --chip: rgba(255, 255, 255, .07); --badge: #3a3216; --badge-ink: #ffe08a;
-    --start: #ffd970; --start-line: #e9b53a; --start-ink: #3a2a00; --start-glow: rgba(233, 181, 58, .25);
-    --hero: rgba(35, 30, 68, .94); --tile: rgba(35, 30, 68, .9); --hero-shadow: 0 24px 60px rgba(0, 0, 0, .35);
-    --icon-say: #3a3216; --icon-say-ink: #ffd970; --icon-link: #1e2c4d; --icon-link-ink: #9cc0ff;
-    --icon-meet: #3d2419; --icon-meet-ink: #ffab85;
+    --chip: rgba(255, 255, 255, .07);
   }
 }
 
@@ -352,53 +344,6 @@ body.walking { overflow: hidden; }
 @media (max-width: 360px) { .topnav a { padding: 0 12px; font-size: .9rem; } }
 @media (prefers-reduced-motion: reduce) { .brand .bob-a, .brand .bob-b { animation: none; } }
 .footer-links { display: block; margin-top: 6px; }
-
-/* ---- Home (home.html; design: design/Home · start screen) ---- */
-body.home { font-size: 17px; }
-main.home-main { max-width: 1240px; width: 100%; padding: 72px 32px 48px; display: flex; flex-direction: column;
-  align-items: center; gap: 40px; }
-.home-hero { width: 100%; max-width: 780px; padding: 56px 48px; border-radius: 36px; background: var(--hero);
-  box-shadow: var(--hero-shadow); display: flex; flex-direction: column; align-items: center; gap: 22px; text-align: center; }
-.home-badge { margin: 0; font-size: 14px; font-weight: 700; padding: 8px 16px; border-radius: 999px; background: var(--badge); color: var(--badge-ink); }
-.home-badge span { white-space: nowrap; } /* on a narrow phone it wraps between the parts, never inside one */
-.home-title { margin: 0; font: 700 68px/1.02 var(--display); letter-spacing: -.01em; color: var(--ink); }
-.home-lead { margin: 0; max-width: 560px; font-size: 19px; line-height: 1.55; color: var(--text-2); }
-.home-actions { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin-top: 8px; }
-.home-start, .home-more { display: inline-flex; align-items: center; justify-content: center; min-height: 64px;
-  border-radius: 999px; text-decoration: none; transition: transform .15s, box-shadow .15s; }
-.home-start { gap: 12px; padding: 0 40px; font: 600 22px/1 var(--display); background: var(--start);
-  border: 2px solid var(--start-line); color: var(--start-ink); box-shadow: 0 10px 24px var(--start-glow); }
-.home-start:hover { color: var(--start-ink); transform: translateY(-2px); box-shadow: 0 14px 28px var(--start-glow); }
-.home-more { padding: 0 24px; font-size: 17px; font-weight: 700; color: var(--ink); background: var(--card);
-  border: 2px solid var(--bar-line); }
-.home-more:hover { color: var(--accent-deep); transform: translateY(-2px); }
-.home-start:active, .home-more:active { transform: translateY(1px); }
-.home-start:focus-visible, .home-more:focus-visible { outline: 3px solid var(--accent-line); outline-offset: 3px; }
-.home-fine { margin: 0; font-size: 14px; color: var(--text-3); }
-.home-steps { width: 100%; max-width: 1040px; display: flex; flex-wrap: wrap; gap: 18px; }
-.home-step { flex: 1 1 280px; display: flex; gap: 16px; align-items: flex-start; padding: 24px; border-radius: 24px;
-  background: var(--tile); }
-.home-step h2 { display: block; margin: 0 0 4px; font: 600 20px/1.3 var(--display); }
-.home-step p { margin: 0; font-size: 15px; line-height: 1.5; color: var(--text-2); }
-.home-step-icon { width: 48px; height: 48px; flex: none; border-radius: 16px; display: flex; align-items: center; justify-content: center; }
-.home-step-icon.say { background: var(--icon-say); color: var(--icon-say-ink); }
-.home-step-icon.link { background: var(--icon-link); color: var(--icon-link-ink); }
-.home-step-icon.meet { background: var(--icon-meet); color: var(--icon-meet-ink); }
-footer.home-footer { position: relative; z-index: 1; max-width: 1240px; margin: 0 auto; padding: 0 32px 28px;
-  display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; font-size: 13px; color: var(--text-2); }
-.home-footer a { color: var(--text-2); }
-@media (max-width: 600px) {
-  main.home-main { padding: 28px 16px 32px; gap: 24px; }
-  .home-hero { padding: 36px 22px; border-radius: 28px; gap: 18px; }
-  .home-title { font-size: clamp(34px, 11vw, 46px); }
-  .home-badge { font-size: 13px; padding: 7px 14px; border-radius: 18px; }
-  .home-lead { font-size: 17px; }
-  .home-actions { width: 100%; flex-direction: column; align-items: stretch; }
-  .home-start { padding: 0 28px; }
-  .home-steps { gap: 12px; }
-  .home-step { flex-basis: 100%; padding: 18px; }
-  footer.home-footer { padding: 0 16px 24px; gap: 6px 16px; }
-}
 
 /* New walk: the way back home, above the page title */
 .back-home { display: inline-flex; align-items: center; gap: 6px; margin: 18px 0 -6px; font-weight: 700; font-size: .95rem;
