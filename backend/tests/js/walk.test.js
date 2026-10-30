@@ -5,7 +5,7 @@ const assert = require("node:assert");
 const path = require("node:path");
 const fs = require("node:fs");
 
-const { WALK, WalkFollower, projectOnRoute, distanceM, formatRemaining, stepInfo, formatStep, promptFor, spokenText, settle } =
+const { WALK, WalkFollower, projectOnRoute, distanceM, formatRemaining, stepInfo, formatStep, promptFor, spokenText, settle, bearingDeg, HeadingTracker, compassFrom } =
   require(path.join(__dirname, "../../../frontend/js/walk.js"));
 const fx = JSON.parse(fs.readFileSync(path.join(__dirname, "../../../fixtures/walk_track_p1.json"), "utf8"));
 
@@ -202,4 +202,31 @@ test("the open/close transition settles even if the animation clock stops (hidde
   const t1 = Date.now();
   await settle(done, 5000);
   assert.ok(Date.now() - t1 < 1000, "a normal animation settles as soon as it finishes");
+});
+
+test("heading: unknown until measured, then GPS movement, compass wins while fresh", () => {
+  const h = new HeadingTracker();
+  const north = [40.7300, -73.9970];
+  const up = (m) => [north[0] + m / 111320, north[1]];
+  assert.strictEqual(h.heading(0), null);  // never the route's direction as a guess
+  h.onFix({ lat: north[0], lon: north[1], accuracy: 10, heading: null, speed: null, t: 0 });
+  h.onFix({ lat: up(3)[0], lon: up(3)[1], accuracy: 10, heading: null, speed: null, t: 2 });
+  assert.strictEqual(h.heading(2), null);  // 3 m is within GPS noise
+  h.onFix({ lat: up(12)[0], lon: up(12)[1], accuracy: 10, heading: null, speed: null, t: 8 });
+  assert.ok(Math.abs(h.heading(8)) < 1 || Math.abs(h.heading(8) - 360) < 1);  // walked north
+  h.onFix({ lat: up(20)[0], lon: up(20)[1], accuracy: 10, heading: 90, speed: 1.3, t: 12 });
+  assert.strictEqual(h.heading(12), 90);  // the phone's own GPS heading while moving
+  h.onCompass(200, 13);
+  assert.strictEqual(h.heading(14), 200);
+  assert.strictEqual(h.heading(20), 90);  // compass went quiet: back to the walked direction
+});
+
+test("bearing and compass readings", () => {
+  const a = [40.73, -73.99];
+  assert.ok(Math.abs(bearingDeg(a, [40.73, -73.98]) - 90) < 0.5);
+  assert.ok(Math.abs(bearingDeg(a, [40.72, -73.99]) - 180) < 0.5);
+  assert.strictEqual(compassFrom({ webkitCompassHeading: 45 }), 45);
+  assert.strictEqual(compassFrom({ absolute: true, alpha: 90 }), 270);  // alpha counts counter-clockwise
+  assert.strictEqual(compassFrom({ absolute: true, alpha: 90 }, 90), 0);  // phone turned sideways
+  assert.strictEqual(compassFrom({ absolute: false, alpha: 90 }), null);  // relative only: not a compass
 });

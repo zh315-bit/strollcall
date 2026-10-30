@@ -244,6 +244,15 @@ body.walking { overflow: hidden; }
 .walk-actions { justify-content: space-between; align-items: center; }
 .walk-actions button { min-height: 44px; }
 .walk-note { margin: 0; text-align: center; }
+/* You on the walking map: a dot until a direction is known, then an arrow turned to --heading. */
+.walk-me { background: none; border: 0; }
+.walk-me svg { width: 36px; height: 36px; overflow: visible; display: block;
+  transform: rotate(var(--heading, 0deg)); transition: transform .3s ease-out; }
+.walk-me .walk-me-dot, .walk-me .walk-me-arrow { fill: #2f7bf6; stroke: #fff; stroke-width: 3; stroke-linejoin: round;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .45)); }
+.walk-me .walk-me-arrow { display: none; }
+.walk-me.has-heading .walk-me-arrow { display: inline; }
+.walk-me.has-heading .walk-me-dot { display: none; }
 .start-walk { width: 100%; min-height: 52px; font-size: 1.1rem; }
 
 .walk-poi:empty { display: none; }

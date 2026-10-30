@@ -192,9 +192,57 @@ function formatRemaining(m) {
   return { min, dist };
 }
 
+// Compass bearing (degrees clockwise from north) from a to b.
+function bearingDeg(a, b) {
+  const [ax, ay] = _xy(a[0], a[1], a[0]), [bx, by] = _xy(b[0], b[1], a[0]);
+  return (Math.atan2(bx - ax, by - ay) * 180 / Math.PI + 360) % 360;
+}
+
+// Which way the walker faces, for the arrow. Only measured directions, never the route's:
+// 1. the phone's compass while it reports (fresh within COMPASS_FRESH_S),
+// 2. the GPS heading while moving,
+// 3. the direction between fixes once the walker has moved clearly more than the GPS error.
+// heading() is null until one of these is known; the map then shows a plain dot.
+class HeadingTracker {
+  constructor() {
+    this.compass = null; this.compassT = -Infinity;
+    this.moved = null; this.anchor = null;
+  }
+  onCompass(deg, t) {
+    if (!Number.isFinite(deg)) return;
+    this.compass = ((deg % 360) + 360) % 360; this.compassT = t;
+  }
+  onFix(fix) {
+    const { lat, lon, accuracy, heading, speed, t } = fix;
+    if (Number.isFinite(heading) && Number.isFinite(speed) && speed >= HeadingTracker.MOVING_MPS) {
+      this.moved = heading; this.anchor = { p: [lat, lon], t };
+      return;
+    }
+    if (!this.anchor) { this.anchor = { p: [lat, lon], t }; return; }
+    const d = distanceM(this.anchor.p, [lat, lon]);
+    if (d >= Math.max(HeadingTracker.MOVE_M, (accuracy || 0) / 2)) {
+      this.moved = bearingDeg(this.anchor.p, [lat, lon]); this.anchor = { p: [lat, lon], t };
+    }
+  }
+  heading(t) {
+    if (this.compass !== null && t - this.compassT <= HeadingTracker.COMPASS_FRESH_S) return this.compass;
+    return this.moved;
+  }
+}
+HeadingTracker.MOVING_MPS = 0.5;     // GPS heading is noise when standing still
+HeadingTracker.MOVE_M = 8;           // ... and so is the step between two close fixes
+HeadingTracker.COMPASS_FRESH_S = 3;
+
+// A compass reading from a deviceorientation event, corrected for screen rotation; null if none.
+function compassFrom(e, screenAngle = 0) {
+  if (Number.isFinite(e.webkitCompassHeading)) return (e.webkitCompassHeading + screenAngle) % 360;  // iPhone
+  if (e.absolute && Number.isFinite(e.alpha)) return ((360 - e.alpha + screenAngle) % 360 + 360) % 360;
+  return null;
+}
+
 if (typeof module !== "undefined") {
   module.exports = { WALK, WalkFollower, projectOnRoute, distanceM, formatRemaining, stepInfo, formatStep,
-                     promptFor, spokenText, settle };
+                     promptFor, spokenText, settle, bearingDeg, HeadingTracker, compassFrom };
 }
 
 // ---- The walking view (browser only) ----
@@ -284,6 +332,30 @@ function startWalk(legs, opts = {}) {
   const follower = new WalkFollower(legs);
   const color = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   let watchId = null, wakeLock = null, routeLine = null, me = null, meCircle = null, targetMarker = null;
+  // Facing direction for the arrow: the compass if the phone shares it, else the direction walked.
+  const facing = new HeadingTracker();
+  const compassEvent = "ondeviceorientationabsolute" in window ? "deviceorientationabsolute" : "deviceorientation";
+  const onCompass = (e) => {
+    const so = window.screen.orientation;  // window.screen: `screen` below is the walking view
+    const deg = compassFrom(e, (so && so.angle) || window.orientation || 0);
+    if (deg !== null) { facing.onCompass(deg, Date.now() / 1000); pointArrow(); }
+  };
+  const listenCompass = () => window.addEventListener(compassEvent, onCompass);
+  if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
+    // iPhone asks once, and only from inside a tap: startWalk runs in the Start walking tap.
+    DeviceOrientationEvent.requestPermission().then((s) => { if (s === "granted") listenCompass(); }).catch(() => {});
+  } else if (typeof DeviceOrientationEvent !== "undefined") listenCompass();
+  function pointArrow() {
+    if (!me) return;
+    const deg = facing.heading(Date.now() / 1000), node = me.getElement();
+    if (!node) return;
+    node.classList.toggle("has-heading", deg !== null);
+    if (deg === null) return;
+    // Turn the short way round (350° -> 10° is +20°, not -340°) so the rotation animates sensibly.
+    shown = shown === null ? deg : shown + ((deg - shown % 360 + 540) % 360 - 180);
+    node.style.setProperty("--heading", `${Math.round(shown)}deg`);
+  }
+  let shown = null;
 
   const stepEl = el("div", { class: "walk-step", role: "status", "aria-live": "polite" });
   const statsEl = el("div", { class: "walk-stats" });
@@ -394,10 +466,16 @@ function startWalk(legs, opts = {}) {
   function onFix(pos) {
     const fix = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy, t: pos.timestamp / 1000 };
     const ll = [fix.lat, fix.lon];
+    facing.onFix({ ...fix, heading: pos.coords.heading, speed: pos.coords.speed });
     if (!me) {
-      me = L.circleMarker(ll, { radius: 8, color: "#fff", weight: 3, fillColor: color("--accent-2") || "#4aa8ff", fillOpacity: 1 }).addTo(map);
       meCircle = L.circle(ll, { radius: fix.accuracy, weight: 1, opacity: .4, fillOpacity: .1 }).addTo(map);
+      // A dot until a direction is known, then an arrow pointing the way you face (the map stays north-up).
+      me = L.marker(ll, { interactive: false, keyboard: false, zIndexOffset: 1000, icon: L.divIcon({
+        className: "walk-me", iconSize: [36, 36], iconAnchor: [18, 18],
+        html: '<svg viewBox="-18 -18 36 36" aria-hidden="true"><path class="walk-me-arrow" d="M0 -15 L10 10 L0 4 L-10 10 Z"/>'
+            + '<circle class="walk-me-dot" r="8"/></svg>' }) }).addTo(map);
     } else { me.setLatLng(ll); meCircle.setLatLng(ll).setRadius(fix.accuracy); }
+    pointArrow();
     if (follow) map.panTo(ll);
     const ev = follower.update(fix);
     say(promptFor(ev, said));
@@ -443,6 +521,7 @@ function startWalk(legs, opts = {}) {
     if (wakeLock) wakeLock.release().catch(() => {});
     wakeLock = null;
     document.removeEventListener("visibilitychange", onVisible);
+    window.removeEventListener(compassEvent, onCompass);
     if (resize) resize.disconnect();
     closing = true;
     document.body.classList.remove("walking");  // the page comes back under the shrinking circle
