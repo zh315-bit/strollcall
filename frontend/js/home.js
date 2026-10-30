@@ -40,7 +40,6 @@
 
     run($(".brand"), drop, 0, 650);
     run($(".topnav"), drop, 80, 650);
-    run($(".hero-join"), drop, 160, 650);
     run($(".hero-kicker"), [{ opacity: 0, filter: "blur(12px)" }, { opacity: 1, filter: "blur(0)" }], 240, 800);
     document.querySelectorAll(".hero-title span").forEach((line, i) =>
       run(line, [{ opacity: 0, translate: "0 48px", scale: ".94", filter: "blur(14px)" },
