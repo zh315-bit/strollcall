@@ -4,7 +4,7 @@ from fastapi import APIRouter, Response
 
 router = APIRouter(prefix="/api", tags=["coverage"])
 
-AREA_LABEL = "Manhattan, northern Brooklyn and Long Island City"
+AREA_LABEL = "Manhattan, northern Brooklyn, Long Island City, and Jersey City, Hoboken and their neighbors in New Jersey"
 
 
 @router.get("/coverage")
@@ -18,5 +18,5 @@ def coverage(response: Response) -> dict:
         return {"bbox": None, "label": None}
     if not hasattr(routing, "graph"):
         return {"bbox": None, "label": None}  # mock or ORS: no fixed area
-    response.headers["Cache-Control"] = "max-age=86400"
+    response.headers["Cache-Control"] = "max-age=3600"
     return {**routing.graph.coverage(), "label": AREA_LABEL}

@@ -1,6 +1,7 @@
 # Map data for the deployed app
 
-- `nyc_graph.npz`: walking graph (Manhattan, northern Brooklyn, Long Island City), built by
+- `nyc_graph.npz`: walking graph (Manhattan, northern Brooklyn, Long Island City, and Jersey City,
+  Hoboken and their neighbors in New Jersey), built by
   `scripts/build_graph.py` from OpenStreetMap via OSMnx.
 - `nyc_places.json.gz`: places snapshot from the same build, with `fetched_at`.
 - `nyc_pois.json.gz`: parks, historic sites, artworks, memorials and landmarks for walking

@@ -27,8 +27,9 @@ from app.providers.overpass import DESTINATION_TYPES, KEPT_TAGS, destination_typ
 WALK_M_PER_MIN = 80.0
 STREET_NAME_RADIUS_M = 20.0  # a walk node takes the names of drive streets this close
 GATE_TO_PARK_M = 15.0
-# (south, west, north, east): Manhattan, northern Brooklyn (to Bed-Stuy/Bushwick) and Long Island City.
-DEFAULT_BBOX = (40.675, -74.025, 40.882, -73.905)
+# (south, west, north, east): Manhattan, northern Brooklyn (to Bed-Stuy/Bushwick), Long Island City and, across
+# the Hudson, Jersey City, Hoboken, Weehawken, Union City, West New York and Edgewater.
+DEFAULT_BBOX = (40.675, -74.10, 40.882, -73.905)
 POI_TAGS = {
     "leisure": ["park"],
     "place": ["square"],

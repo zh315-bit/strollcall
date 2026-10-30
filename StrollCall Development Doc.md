@@ -91,7 +91,7 @@ A mobile web frontend talks to one FastAPI backend; planner.py decides what is f
 
 | Measure | Value |
 | --- | --- |
-| Coverage | Manhattan, northern Brooklyn, Long Island City |
+| Coverage | Manhattan, northern Brooklyn, Long Island City; Jersey City, Hoboken and neighbors (NJ) |
 | Walking graph | 93,735 nodes, 286,654 edges, 4.2 MB |
 | Place snapshot | 2,295 meetup points, 4,072 destinations, 0.19 MB |
 | Build time (one-off) | about 3.5 minutes |

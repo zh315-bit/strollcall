@@ -138,7 +138,8 @@ function makeMap(id, center = [40.7308, -73.9973], zoom = 14) {
 let coverageData = null;
 async function loadCoverage() {
   if (coverageData === null) {
-    try { coverageData = await api("/api/coverage"); } catch (e) { coverageData = { bbox: null }; }
+    // ?area=: change it when the map grows, so browsers skip their cached copy of the old area.
+    try { coverageData = await api("/api/coverage?area=2"); } catch (e) { coverageData = { bbox: null }; }
   }
   return coverageData;
 }

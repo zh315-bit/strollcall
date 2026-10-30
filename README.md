@@ -49,7 +49,8 @@ uv pip install --python .venv/bin/python -r requirements-build.txt
 ```
 
 This writes `data/nyc_graph.npz` (walking graph) and `data/nyc_places.json.gz` (places) for
-Manhattan, northern Brooklyn and Long Island City. `data/` is not committed.
+Manhattan, northern Brooklyn, Long Island City and the New Jersey side of the Hudson (Jersey City,
+Hoboken and their neighbors). `data/` is not committed.
 
 **Walking speed.** Walking times assume **80 m/min (4.8 km/h)**, deliberately a little slower than
 typical routing engines (openrouteservice uses about 5 km/h), to leave room for street crossings and
