@@ -5,14 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>How StrollCall works</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Grandstander:wght@900&family=Inter:wght@400;500&family=Nunito:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/bits.css">
+  <link rel="stylesheet" href="/static/home.css">
+  <link rel="preload" as="image" href="/static/media/hero-plate.jpg">
   <!-- Hold the first render until the top bar, header and sky are built, so a page switch never
        shows the bare page. Browsers without rel="expect" ignore it. -->
   <link rel="expect" href="#chrome-ready" blocking="render">
 </head>
-<body>
+<body class="scene"> <!-- on Home's hillside scene, with Home's top bar (home.css, js/scene.js) -->
 <main class="prose">
   <h1>How it works</h1>
   <p class="tagline">A fair place to meet, a short walk together, and what's behind it.</p>
@@ -95,10 +97,9 @@
   <footer>Map data © OpenStreetMap contributors (ODbL). Language features by Meta Muse models.</footer>
 </main>
 <script src="/static/js/common.js"></script>
+<script src="/static/js/scene.js"></script>
 <script src="/static/js/bits.js"></script>
 <script src="/static/js/specular.js"></script>
-<script src="/static/js/gridmotion.js"></script>
-<script src="/static/js/backdrop.js"></script>
 <div id="chrome-ready" hidden></div> <!-- first render waits for the scripts above (see <head>) -->
 </body>
 </html>
