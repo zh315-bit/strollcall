@@ -382,9 +382,9 @@ html:active-view-transition-type(fade)::view-transition-new(page) { animation: 2
 @keyframes page-fade-in { from { opacity: 0; } }
 /* Home -> New walk ("Start a walk"): the whole screen is one picture, and the new page opens from the
    middle as a growing circle, settling from a slight zoom, while Home behind it leans in and softens. */
-html:active-view-transition-type(reveal) * { view-transition-name: none !important; }
-html:active-view-transition-type(reveal)::view-transition-old(root),
-html:active-view-transition-type(reveal)::view-transition-new(root) { mix-blend-mode: normal; }
+html:active-view-transition-type(reveal, conceal) * { view-transition-name: none !important; }
+html:active-view-transition-type(reveal, conceal)::view-transition-old(root),
+html:active-view-transition-type(reveal, conceal)::view-transition-new(root) { mix-blend-mode: normal; }
 /* Starts at full speed the moment you click and eases out, so the circle never seems to wait */
 html:active-view-transition-type(reveal)::view-transition-old(root) { animation: 800ms cubic-bezier(.2, .7, .2, 1) both reveal-under; }
 html:active-view-transition-type(reveal)::view-transition-new(root) { animation: 800ms cubic-bezier(.2, .7, .2, 1) both reveal-open; }
@@ -393,9 +393,19 @@ html:active-view-transition-type(reveal)::view-transition-new(root) { animation:
   to { clip-path: circle(75% at 50% 50%); transform: scale(1); }
 }
 @keyframes reveal-under { to { transform: scale(1.1); filter: blur(6px) saturate(1.1); } }
+/* New walk -> Home: the reverse. New walk (on top) closes into the middle of the screen, shrinking a
+   little, while Home settles back from the lean and the blur. Starts from just past the corners
+   (71%), so it is visibly closing from the first frame. */
+html:active-view-transition-type(conceal)::view-transition-old(root) { z-index: 1; animation: 700ms cubic-bezier(.45, .05, .25, 1) both conceal-close; }
+html:active-view-transition-type(conceal)::view-transition-new(root) { animation: 700ms cubic-bezier(.45, .05, .25, 1) both conceal-under; }
+@keyframes conceal-close {
+  from { clip-path: circle(71% at 50% 50%); transform: scale(1); }
+  to { clip-path: circle(0% at 50% 50%); transform: scale(.9); }
+}
+@keyframes conceal-under { from { transform: scale(1.1); filter: blur(6px) saturate(1.1); } }
 @media (prefers-reduced-motion: reduce) {
-  html:active-view-transition-type(reveal)::view-transition-old(root) { animation: 120ms both page-fade-out; }
-  html:active-view-transition-type(reveal)::view-transition-new(root) { animation: 120ms both page-fade-in; }
+  html:active-view-transition-type(reveal, conceal)::view-transition-old(root) { animation: 120ms both page-fade-out; }
+  html:active-view-transition-type(reveal, conceal)::view-transition-new(root) { animation: 120ms both page-fade-in; }
   ::view-transition-group(*) { animation-duration: 120ms; }
   html:active-view-transition-type(forward, back, fade)::view-transition-old(page) { animation: 120ms both page-fade-out; }
   html:active-view-transition-type(forward, back, fade)::view-transition-new(page) { animation: 120ms both page-fade-in; }

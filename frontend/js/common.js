@@ -255,7 +255,8 @@ if (ARRIVED_IN_SITE) document.documentElement.classList.add("in-site"); // style
 addEventListener("pageswap", (ev) => {
   quietSkip(ev.viewTransition);
   const to = ev.activation?.entry?.url;
-  if (ev.viewTransition && to && isReveal(location.pathname, new URL(to).pathname)) ev.viewTransition.types.add("reveal");
+  const special = ev.viewTransition && to && openOrClose(location.pathname, new URL(to).pathname);
+  if (special) ev.viewTransition.types.add(special);
   try { sessionStorage.setItem("strollcall:from", JSON.stringify({ path: location.pathname, at: Date.now() })); } catch (err) { /* fine */ }
 });
 // A transition the browser skips (tab hidden, a quick second click) rejects its `ready` promise: the page
@@ -263,9 +264,13 @@ addEventListener("pageswap", (ev) => {
 const quietSkip = (vt) => vt?.ready.catch(() => {});
 const PAGES = ["/", "/new", "/walks", "/how"];
 const pageIndex = (path) => (path === "/" ? 0 : PAGES.findIndex((p, i) => i > 0 && path.startsWith(p)));
-// Home -> New walk ("Start a walk") opens the new page from the middle of the screen (style.css: reveal).
-// Both documents tag the switch, so both capture the whole screen as one picture.
-const isReveal = (from, to) => pageIndex(from) === 0 && pageIndex(to) === 1;
+// Home -> New walk ("Start a walk") opens the new page from the middle of the screen (style.css: reveal);
+// New walk -> Home closes it back into the middle (conceal). Both documents tag the switch, so both
+// capture the whole screen as one picture.
+const openOrClose = (from, to) => {
+  const a = pageIndex(from), b = pageIndex(to);
+  return a === 0 && b === 1 ? "reveal" : a === 1 && b === 0 ? "conceal" : null;
+};
 addEventListener("pagereveal", (ev) => {
   if (!ev.viewTransition) return;
   quietSkip(ev.viewTransition);
@@ -274,7 +279,8 @@ addEventListener("pagereveal", (ev) => {
   const fromUrl = window.navigation?.activation?.from?.url;
   const fromPath = fromUrl ? new URL(fromUrl).pathname : ARRIVED_IN_SITE?.path;
   const a = fromPath ? pageIndex(fromPath) : -1, b = pageIndex(location.pathname);
-  ev.viewTransition.types.add(a === 0 && b === 1 ? "reveal" : a < 0 || b < 0 || a === b ? "fade" : b > a ? "forward" : "back");
+  ev.viewTransition.types.add((fromPath && openOrClose(fromPath, location.pathname))
+    || (a < 0 || b < 0 || a === b ? "fade" : b > a ? "forward" : "back"));
 });
 
 // ---- This device's walks: invite tokens and what happened, in browser storage only ----

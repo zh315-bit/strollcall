@@ -7,6 +7,11 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;500;600;700;800&display=swap">
+  <!-- "← Home" and the logo close New walk back into Home (style.css: conceal): prerender Home when one of
+       them is hovered or pressed, so the animation starts at once. A prerendered Home loads no video. -->
+  <script type="speculationrules">
+  { "prerender": [{ "where": { "href_matches": "/" }, "eagerness": "moderate" }] }
+  </script>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/bits.css">
   <!-- Hold the first render until the top bar, header and sky are built, so a page switch never
