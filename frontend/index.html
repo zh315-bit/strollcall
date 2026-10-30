@@ -53,7 +53,9 @@
   <div class="pane-left">
   <section class="card">
     <h2><span class="step-no">1</span>What kind of walk?</h2>
-    <textarea id="text" placeholder="e.g. 25 minutes, quiet streets, coffee at the end"></textarea>
+    <textarea id="text" placeholder="e.g. 25 minutes, quiet streets, coffee at the end" aria-describedby="text-hint"></textarea>
+    <p class="muted" id="text-hint">What you type or say goes to Meta's models, which may use it to improve their
+      products. Please leave out names, addresses and other personal details.</p>
     <div class="row" id="text-row">
       <button class="primary" id="parse">Read my wish</button>
       <span id="voice-source"></span>

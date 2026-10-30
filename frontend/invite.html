@@ -114,7 +114,8 @@ function waitingForB(v) {
 }
 
 function acceptForm(v) {
-  const text = el("textarea", { placeholder: "Optional: anything you'd like? e.g. somewhere green, I'm bringing my dog" });
+  const text = el("textarea", { placeholder: "Optional: anything you'd like? e.g. somewhere green, I'm bringing my dog",
+    "aria-describedby": "text-hint" });
   const status = el("p", { class: "muted" }, "Tap “Use my location” or tap the map to set where you start.");
   const go = el("button", { class: "primary", disabled: "" }, "I'm in");
   const showMap = () => {
@@ -154,6 +155,7 @@ function acceptForm(v) {
       () => alert("Location not available. Tap the map instead."), { enableHighAccuracy: true, timeout: 10000 }) }, "Use my location")),
     status,
     el("div", { class: "row" }, micButton(text)), text,
+    el("p", { class: "muted", id: "text-hint" }, "What you type or say goes to Meta's models, which may use it to improve their products. Please leave out names, addresses and other personal details."),
     el("div", { class: "row" }, go));
 }
 

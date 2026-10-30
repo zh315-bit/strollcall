@@ -23,6 +23,22 @@ log = logging.getLogger(__name__)
 MAX_REASON_CHARS = 280
 NUMBER_RE = re.compile(r"\d+(?:\.\d+)?")
 LABEL_RE = re.compile(r"\bc\d\b")  # candidate labels are not facts
+ORDINAL_RE = re.compile(r"\b\d+(?:st|nd|rd|th)\b", re.I)  # "5th" in "5th Ave & E 12th St"
+
+
+def _without_names(text: str, names: list[str]) -> str:
+    """The text with the candidates' place names taken out, longest first: a name is a fact,
+    not a claim, also when shortened ("the 5th Ave plan" for "5th Ave & E 12th St")."""
+    for name in names:
+        text = text.replace(name, " ")
+    ordinals = {o.lower() for name in names for o in ORDINAL_RE.findall(name)}
+    return ORDINAL_RE.sub(lambda m: " " if m.group(0).lower() in ordinals else m.group(0), text)
+
+
+def _place_names(result: PlanResult) -> list[str]:
+    names = {result.places[c.meeting_place_id].name for c in result.candidates}
+    names |= {result.places[c.endpoint_place_id].name for c in result.candidates}
+    return sorted(names, key=len, reverse=True)
 
 RANKING_PROMPT = """You rank walk plans for two friends, A and B, for StrollCall.
 
@@ -177,10 +193,7 @@ def _check(data: dict, labelled: dict, facts: list[dict], a: WalkIntent, b: Walk
             return "reason_length"
         if LABEL_RE.search(reason):
             return "internal_label_in_reason"  # users never see c1 / c2 / c3
-        unnamed = reason
-        for name in names:
-            unnamed = unnamed.replace(name, " ")
-        for n in NUMBER_RE.findall(unnamed):
+        for n in NUMBER_RE.findall(_without_names(reason, names)):
             if float(n) not in allowed:
                 log.warning("ranking reason has a number not in the facts: %s in %r", n, reason[:160])
                 return "invented_number"
@@ -195,12 +208,15 @@ def _grounded(data: dict, labelled: dict, result: PlanResult, a: WalkIntent, b: 
     from app.services.wishes import REQUIREMENTS
 
     prefs = preference_text(a, b)
+    # Reasons compare with the other options by name; "Dominique Ansel Bakery" named as another
+    # option is not a bakery claim about this one. Features are checked on the rest of the text.
+    names = _place_names(result)
     if wishes is not None:
         prefs += " " + " ".join(REQUIREMENTS[w.requirement].description for w in wishes.items)
     for item in data["ranking"]:
         c = labelled[item["id"]]
         evidence = place_evidence([result.places[c.meeting_place_id], result.places[c.endpoint_place_id]])
-        problems = unsupported(item["reason"], evidence, prefs)
+        problems = unsupported(_without_names(item["reason"], names), evidence, prefs)
         if problems:
             log.warning("ranking reason for %s rejected: %s", item["id"], "; ".join(problems))
             return "unsupported_feature"

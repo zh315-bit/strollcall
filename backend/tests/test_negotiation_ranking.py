@@ -216,3 +216,31 @@ def test_digits_in_place_names_are_not_numbers(use_meta, p1_plan):
         **{**p1_plan.places[p1_plan.candidates[0].endpoint_place_id].model_dump(), "name": "787 Coffee Co."})
     use_meta(FakeMeta(ranking(("c1", "Ends at 787 Coffee Co. for A."), ("c2", "ok"), ("c3", "ok"))))
     assert explain.rank_candidates(p1_plan, A, B, JOINT).source == "meta"
+
+
+def test_other_options_named_in_a_reason_are_not_claims_about_this_one(use_meta, p1_plan):
+    from app.models.schemas import Place
+
+    c1, c2 = p1_plan.candidates[0], p1_plan.candidates[1]
+    assert c1.meeting_place_id != c2.meeting_place_id
+    other = p1_plan.places[c2.meeting_place_id]
+    p1_plan.places[c2.meeting_place_id] = Place(**{**other.model_dump(), "name": "Dominique Ansel Bakery"})
+    assert "bakery" not in {p1_plan.places[c1.meeting_place_id].category, p1_plan.places[c1.endpoint_place_id].category}
+    use_meta(FakeMeta(ranking(("c1", "Shorter than the Dominique Ansel Bakery plan, same start for both."),
+                              ("c2", "ok"), ("c3", "ok"))))
+    assert explain.rank_candidates(p1_plan, A, B, JOINT).source == "meta"
+    # Saying this option itself is a bakery is still a claim the data must back.
+    use_meta(FakeMeta(ranking(("c1", "Ends at a bakery for A."), ("c2", "ok"), ("c3", "ok"))))
+    assert explain.rank_candidates(p1_plan, A, B, JOINT).note == "unsupported_feature"
+
+
+def test_shortened_street_names_are_not_numbers(use_meta, p1_plan):
+    from app.models.schemas import Place
+
+    m = p1_plan.candidates[1].meeting_place_id
+    p1_plan.places[m] = Place(**{**p1_plan.places[m].model_dump(), "name": "5th Ave & E 12th St"})
+    use_meta(FakeMeta(ranking(("c1", "Same start for both, unlike the 5th Ave plan."), ("c2", "ok"), ("c3", "ok"))))
+    assert explain.rank_candidates(p1_plan, A, B, JOINT).source == "meta"
+    # An ordinal that is in no place name is still checked.
+    use_meta(FakeMeta(ranking(("c1", "Same start for both, unlike the 9th Ave plan."), ("c2", "ok"), ("c3", "ok"))))
+    assert explain.rank_candidates(p1_plan, A, B, JOINT).note == "invented_number"
