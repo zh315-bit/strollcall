@@ -261,3 +261,24 @@ def test_other_options_described_by_their_features_are_not_claims_about_this_one
     for reason in ("Shorter than the bookstore plan, same start for both.", "Ends at a bakery, unlike the other plans."):
         use_meta(FakeMeta(ranking(("c1", reason), ("c2", "ok"), ("c3", "ok"))))
         assert explain.rank_candidates(p1_plan, A, B, JOINT).note == "unsupported_feature", reason
+
+
+def test_another_option_named_with_its_meeting_feature_is_not_a_claim(use_meta, p1_plan):
+    """Pre-registered case w3, 2026-10-30: "...better than Dun-Well Doughnuts from park" for an option
+    whose own places have no park; the option meant meets at one. Here with a fountain, which no p1 place has."""
+    from app.models.schemas import Place
+    from app.services.grounding import place_evidence
+
+    c1, c2 = p1_plan.candidates[0], p1_plan.candidates[1]
+    assert all("fountain" not in place_evidence([p1_plan.places[c.meeting_place_id], p1_plan.places[c.endpoint_place_id]])
+               for c in p1_plan.candidates)
+    m = p1_plan.places[c2.meeting_place_id]
+    p1_plan.places[c2.meeting_place_id] = Place(**{**m.model_dump(), "name": "Cooper Fountain"})
+    dest = p1_plan.places[c2.endpoint_place_id].name
+    reason = f"Shorter than {dest} from fountain, same start for both."
+    use_meta(FakeMeta(ranking(("c1", reason), ("c2", "ok"), ("c3", "ok"))))
+    assert explain.rank_candidates(p1_plan, A, B, JOINT).source == "meta"
+    # The same words when no option meets at a fountain are still a claim.
+    p1_plan.places[c2.meeting_place_id] = m
+    use_meta(FakeMeta(ranking(("c1", reason), ("c2", "ok"), ("c3", "ok"))))
+    assert explain.rank_candidates(p1_plan, A, B, JOINT).note == "unsupported_feature"

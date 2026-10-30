@@ -39,12 +39,18 @@ def _without_names(text: str, names: list[str]) -> str:
 OTHER_OPTION_RE = re.compile(r"(?:\b[\w'&.-]+\s+){1,5}(?:plans?|options?)\b", re.I)
 
 
-def _without_other_options(text: str, other_evidence: set[str]) -> str:
-    """The text without phrases that describe other options by a feature those options have.
-    A phrase whose features no other option has stays in, so it is still checked."""
+def _without_other_options(text: str, other_evidence: set[str], other_names: list[str] = ()) -> str:
+    """The text without phrases that describe other options by a feature those options have:
+    "the Broadway bakery plan", "Dun-Well Doughnuts from park". A phrase whose features no other
+    option has stays in, so it is still checked."""
     from app.services.grounding import features_in
 
-    return OTHER_OPTION_RE.sub(lambda m: " " if features_in(m.group(0)) <= other_evidence else m.group(0), text)
+    def drop(m):
+        return " " if features_in(m.group(0)) <= other_evidence else m.group(0)
+
+    for name in other_names:
+        text = re.sub(rf"{re.escape(name)}\s+(?:from|via|near|by)\s+(?:the\s+|a\s+)?[\w'-]+(?:\s+[\w'-]+)?", drop, text)
+    return OTHER_OPTION_RE.sub(drop, text)
 
 
 def _place_names(result: PlanResult) -> list[str]:
@@ -233,8 +239,11 @@ def _grounded(data: dict, labelled: dict, result: PlanResult, a: WalkIntent, b: 
 
     for item in data["ranking"]:
         c = labelled[item["id"]]
-        others = set().union(*(evidence_of(o) for o in result.candidates if o.id != c.id))
-        text = _without_other_options(_without_names(item["reason"], names), others)
+        rest = [o for o in result.candidates if o.id != c.id]
+        others = set().union(*(evidence_of(o) for o in rest))
+        other_names = sorted({result.places[o.endpoint_place_id].name for o in rest}
+                             | {result.places[o.meeting_place_id].name for o in rest}, key=len, reverse=True)
+        text = _without_names(_without_other_options(item["reason"], others, other_names), names)
         problems = unsupported(text, evidence_of(c), prefs)
         if problems:
             log.warning("ranking reason for %s rejected: %s in %r", item["id"], "; ".join(problems), item["reason"][:200])

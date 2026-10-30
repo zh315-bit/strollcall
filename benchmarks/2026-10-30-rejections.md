@@ -21,6 +21,7 @@ today the warnings did not record the rejected text. Where it is missing, the ro
 | 8 | 10-30 14:46 live | ranking | feature 'bakery' for c4 | not logged | as #5 |
 | 9 | 10-30 repro run 4 | ranking | feature 'bakery' for c3 | "…same as Dominique Ansel Bakery from 5th Ave but shorter than Broadway bakery plan, end at Think Coffee for A" | **checker false positive**: "Broadway bakery plan" is another option (Broadway & E 9th St → Dominique Ansel Bakery) |
 | 10 | 10-30 repro run 7 | ranking | feature 'bakery' for c3 | "…end at Think Coffee for A, same time as bakery via 5th Ave plan" | **checker false positive**: another option described by its own feature |
+| 11 | 10-30 pre-registered after-run, w3 | ranking | feature 'park' for c5 | "14 min together and 30 min total matches target better than Dun-Well Doughnuts from park, end at Dun-Well Doughnuts for A: cafe" | **checker false positive**: "Dun-Well Doughnuts from park" is the other option that meets at a park (fixed after that run, see 2026-10-30-prompt-change.md) |
 
 Fixes for the false positives (each with tests in backend/tests/test_negotiation_ranking.py):
 - 21eaf89: other options' full names, and shortened street ordinals that appear in them, are not claims or numbers.
