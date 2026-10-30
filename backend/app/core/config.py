@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     spark_open_json_mode: str = "json_schema"  # or "prompt" if the provider rejects json_schema
     # Cap on output tokens per Spark call, reasoning included. Truncation is logged.
     meta_max_output_tokens: int = 4096  # 2048 truncated 3 of 10 live intent calls (2026-10-28)
+    # Intent parsing at minimal effort used 561-884 output tokens (2026-10-30); room for about twice that.
+    parse_max_output_tokens: int = 1536
 
     # Routing and places run on local OSM data by default (no daily quota); see build_graph.py.
     routing_provider: str = "local"  # local / ors / mock
@@ -97,3 +99,5 @@ def forbid_live_client_in_tests(what: str) -> None:
 
 # Set for a block of work (e.g. planning after B accepts) to override Settings.reasoning_effort.
 reasoning_override: ContextVar[str | None] = ContextVar("reasoning_override", default=None)
+# Set around one kind of call to override Settings.meta_max_output_tokens (e.g. intent parsing).
+output_cap_override: ContextVar[int | None] = ContextVar("output_cap_override", default=None)

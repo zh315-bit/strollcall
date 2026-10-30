@@ -25,7 +25,9 @@ import openai
 from openai import OpenAI
 
 from app.core.budget import SpendGuard, token_cost
-from app.core.config import Settings, forbid_live_client_in_tests, get_settings, reasoning_override
+from app.core.config import (
+    Settings, forbid_live_client_in_tests, get_settings, output_cap_override, reasoning_override,
+)
 from app.core.errors import ProviderError
 from app.providers.meta import TRANSIENT_ERRORS, _create_logged, _describe
 
@@ -78,7 +80,7 @@ class SparkOpenProvider:
 
     def structured_json(self, system: str, user: str, schema: dict, name: str = "result") -> dict:
         s = self.settings
-        model, max_tokens = s.spark_open_model, s.meta_max_output_tokens
+        model, max_tokens = s.spark_open_model, output_cap_override.get() or s.meta_max_output_tokens
         request = {
             "model": model,
             "reasoning_effort": map_effort(reasoning_override.get() or s.reasoning_effort),

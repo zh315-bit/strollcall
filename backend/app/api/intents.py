@@ -12,4 +12,7 @@ class ParseRequest(BaseModel):
 
 @router.post("/parse")
 def parse(req: ParseRequest) -> ParsedIntent:
+    from app.core.config import get_settings, reasoning_override
+
+    reasoning_override.set(get_settings().accept_reasoning_effort)  # the person is waiting to see it
     return parse_intent(req.text)

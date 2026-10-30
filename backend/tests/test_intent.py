@@ -64,3 +64,27 @@ def test_schema_violation_falls_back_to_default(use_meta, caplog):
 def test_empty_text_skips_the_model(use_meta):
     use_meta(FakeMeta(error=AssertionError("should not be called")))
     assert parse_intent("   ").source == "default"
+
+
+def test_parse_endpoint_runs_at_minimal_effort_with_a_tight_output_cap(monkeypatch):
+    """Reading A's wish is on the critical path (2026-10-30: 6.4 s at low effort, about 3 s at minimal)."""
+    from fastapi.testclient import TestClient
+
+    from app.core.config import get_settings, output_cap_override, reasoning_override
+    from app.main import app
+    from app.providers.mock import MockMeta
+
+    seen = {}
+
+    class Recording(MockMeta):
+        name = "meta"
+
+        def structured_json(self, system, user, schema, name="result"):
+            seen.update(effort=reasoning_override.get(), cap=output_cap_override.get())
+            return super().structured_json(system, user, schema, name)
+
+    monkeypatch.setattr("app.providers.get_meta", lambda kind="text": Recording())
+    assert TestClient(app).post("/api/intents/parse", json={"text": "25 minutes, coffee"}).status_code == 200
+    assert seen == {"effort": get_settings().accept_reasoning_effort, "cap": get_settings().parse_max_output_tokens}
+    assert seen["effort"] == "minimal" and seen["cap"] < get_settings().meta_max_output_tokens
+    assert output_cap_override.get() is None  # reset after the call

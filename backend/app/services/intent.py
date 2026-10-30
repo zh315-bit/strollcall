@@ -8,6 +8,7 @@ import logging
 
 from pydantic import BaseModel, ValidationError
 
+from app.core.config import get_settings, output_cap_override
 from app.core.errors import ProviderError
 from app.models.schemas import JointPreference, WalkIntent
 from app.providers import meta_or_mock
@@ -80,6 +81,7 @@ def parse_intent(text: str) -> ParsedIntent:
         return default_intent("empty text")
 
     user = f"Walk description:\n{text}"
+    cap = output_cap_override.set(get_settings().parse_max_output_tokens)  # a short JSON answer
     try:
         data, source = meta_or_mock(
             lambda meta: meta.structured_json(SYSTEM_PROMPT, user, INTENT_SCHEMA, name="walk_intent")
@@ -87,6 +89,8 @@ def parse_intent(text: str) -> ParsedIntent:
     except ProviderError as e:
         log.warning("intent parse fell back to default: %s (%s)", e.code, e.message)
         return default_intent(e.code)
+    finally:
+        output_cap_override.reset(cap)
 
     try:
         intent = WalkIntent.model_validate(data)

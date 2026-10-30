@@ -21,7 +21,9 @@ import openai
 from openai import OpenAI
 
 from app.core.budget import SpendGuard, image_cost, text_cost, voice_cost
-from app.core.config import Settings, forbid_live_client_in_tests, get_settings, reasoning_override
+from app.core.config import (
+    Settings, forbid_live_client_in_tests, get_settings, output_cap_override, reasoning_override,
+)
 from app.core.errors import ProviderError
 
 log = logging.getLogger(__name__)
@@ -99,7 +101,7 @@ class MetaProvider:
 
     def structured_json(self, system: str, user: str, schema: dict, name: str = "result") -> dict:
         model = self.settings.model_id
-        max_tokens = self.settings.meta_max_output_tokens
+        max_tokens = output_cap_override.get() or self.settings.meta_max_output_tokens
         # Upper bound: ~3 chars per input token, and the full output allowance.
         est_input = (len(system) + len(user) + len(json.dumps(schema))) // 3 + 50
         estimate = text_cost(est_input, max_tokens)
