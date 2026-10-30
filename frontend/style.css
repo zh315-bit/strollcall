@@ -385,10 +385,11 @@ html:active-view-transition-type(fade)::view-transition-new(page) { animation: 2
 html:active-view-transition-type(reveal) * { view-transition-name: none !important; }
 html:active-view-transition-type(reveal)::view-transition-old(root),
 html:active-view-transition-type(reveal)::view-transition-new(root) { mix-blend-mode: normal; }
-html:active-view-transition-type(reveal)::view-transition-old(root) { animation: 950ms cubic-bezier(.65, 0, .35, 1) both reveal-under; }
-html:active-view-transition-type(reveal)::view-transition-new(root) { animation: 950ms cubic-bezier(.65, 0, .35, 1) both reveal-open; }
+/* Starts at full speed the moment you click and eases out, so the circle never seems to wait */
+html:active-view-transition-type(reveal)::view-transition-old(root) { animation: 800ms cubic-bezier(.2, .7, .2, 1) both reveal-under; }
+html:active-view-transition-type(reveal)::view-transition-new(root) { animation: 800ms cubic-bezier(.2, .7, .2, 1) both reveal-open; }
 @keyframes reveal-open {
-  from { clip-path: circle(0% at 50% 50%); transform: scale(.88); }
+  from { clip-path: circle(3% at 50% 50%); transform: scale(.9); }
   to { clip-path: circle(75% at 50% 50%); transform: scale(1); }
 }
 @keyframes reveal-under { to { transform: scale(1.1); filter: blur(6px) saturate(1.1); } }

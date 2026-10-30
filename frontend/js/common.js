@@ -269,7 +269,11 @@ const isReveal = (from, to) => pageIndex(from) === 0 && pageIndex(to) === 1;
 addEventListener("pagereveal", (ev) => {
   if (!ev.viewTransition) return;
   quietSkip(ev.viewTransition);
-  const a = ARRIVED_IN_SITE ? pageIndex(ARRIVED_IN_SITE.path) : -1, b = pageIndex(location.pathname);
+  // Where we came from: the Navigation API knows even for a page prerendered before the click (Home
+  // prerenders New walk), whose ARRIVED_IN_SITE was worked out too early; older browsers use the latter.
+  const fromUrl = window.navigation?.activation?.from?.url;
+  const fromPath = fromUrl ? new URL(fromUrl).pathname : ARRIVED_IN_SITE?.path;
+  const a = fromPath ? pageIndex(fromPath) : -1, b = pageIndex(location.pathname);
   ev.viewTransition.types.add(a === 0 && b === 1 ? "reveal" : a < 0 || b < 0 || a === b ? "fade" : b > a ? "forward" : "back");
 });
 
