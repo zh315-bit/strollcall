@@ -2,7 +2,7 @@
 // Under prefers-reduced-motion there is no video (the still plate stays) and nothing animates.
 
 (() => {
-  const VIDEO = "https://d2ol7oe51mr4n9.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/d2cb5bef-f92b-4e91-ae93-8dc6555e56ac.mp4";
+  const VIDEO = "/static/media/hero-loop.mp4"; // 1920², the boy and the dog from the sharp still (frontend/media/README.md)
   const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const $ = (sel) => document.querySelector(sel);
   if (reduce) return;
