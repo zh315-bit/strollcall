@@ -222,8 +222,8 @@ function siteChrome() {
   mascots.innerHTML = MASCOTS_SVG;
   const brand = el("a", { class: "brand", href: "/" }, mascots, el("span", { class: "brand-name" }, "StrollCall"));
   const main = document.querySelector("main");
-  if (main) main.before(el("header", { class: "site-bar" }, brand, nav));
-  placePill(track, pill);
+  // <body data-bar="none"> (New walk): no top bar at all; its "← Home" link is the way out.
+  if (main && document.body.dataset.bar !== "none") { main.before(el("header", { class: "site-bar" }, brand, nav)); placePill(track, pill); }
   const footer = document.querySelector("footer");
   if (footer && !footer.querySelector('a[href="/privacy"]')) {
     footer.append(el("span", { class: "footer-links" }, el("a", { href: "/privacy" }, "Privacy"), " · ",

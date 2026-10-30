@@ -18,7 +18,7 @@
        shows the bare page. Browsers without rel="expect" ignore it. -->
   <link rel="expect" href="#chrome-ready" blocking="render">
 </head>
-<body>
+<body data-bar="none"> <!-- no top bar: Home carries the logo and the nav; "← Home" leads back -->
 <main>
   <a class="back-home" href="/"><span aria-hidden="true">←</span> Home</a>
   <h1>StrollCall</h1>

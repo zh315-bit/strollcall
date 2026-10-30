@@ -349,6 +349,7 @@ body.walking { overflow: hidden; }
 .back-home { display: inline-flex; align-items: center; gap: 6px; margin: 18px 0 -6px; font-weight: 700; font-size: .95rem;
   color: var(--text-2); text-decoration: none; }
 .back-home:hover { color: var(--accent-deep); }
+body[data-bar="none"] main { padding-top: max(12px, env(safe-area-inset-top)); }
 .footer-links a { color: inherit; font-weight: 700; }
 body.walking .topnav, body.walking .site-bar, body.walking .brand { display: none; }
 
