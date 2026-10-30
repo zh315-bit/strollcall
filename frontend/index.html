@@ -103,6 +103,7 @@
 <script src="/static/js/specular.js"></script>
 <script src="/static/js/gridmotion.js"></script>
 <script src="/static/js/backdrop.js"></script>
+<script src="/static/js/circulargallery.js"></script>
 <div id="chrome-ready" hidden></div> <!-- first render waits for the scripts above (see <head>) -->
 <script src="/static/js/walk.js"></script>
 <script>
@@ -341,6 +342,13 @@ async function refreshNear(btn) {
 
 // ---- Solo mode: results on this page ----
 
+// Several walks: a swipeable row of cards (circulargallery.js). One walk, or no WebGL2: the plain tabs.
+function optionPicker(plans, chosen, choose) {
+  const gallery = plans.length > 1 ? planCarousel(plans, chosen, choose) : null;
+  return gallery || el("div", { class: "tabs" }, plans.map((p, i) => el("button", { class: i === chosen ? "active" : "",
+    onclick: () => choose(i) }, i === 0 ? "Best" : `Option ${i + 1}`)));
+}
+
 function clearSolo() {
   state.solo = null;
   showNear();
@@ -362,8 +370,9 @@ function renderSolo() {
   const dest = v.places[c.destination_place_id];
   parts.push(el("section", { class: "card" },
     el("h2", {}, el("span", { class: "step-no" }, "3"), "Your walk"),
-    el("div", { class: "tabs" }, v.candidates.map((x, i) => el("button", { class: i === state.chosen ? "active" : "",
-      onclick: () => { state.chosen = i; renderSolo(); } }, i === 0 ? "Best" : `Option ${i + 1}`))),
+    optionPicker(v.candidates.map((x, i) => ({ id: x.id, category: v.places[x.destination_place_id].category,
+      title: `${i === 0 ? "Best" : `Option ${i + 1}`} · ${Math.round(x.total_min)} min` })), state.chosen,
+      (i) => { state.chosen = i; renderSolo(); }),
     el("h2", {}, dest.name),
     el("div", { class: "times" }, el("div", {}, el("b", {}, Math.round(c.total_min)), "min walk"),
       el("div", {}, el("b", {}, (c.leg.distance_m / 1000).toFixed(1)), "km"),

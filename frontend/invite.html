@@ -36,6 +36,7 @@
 <script src="/static/js/specular.js"></script>
 <script src="/static/js/gridmotion.js"></script>
 <script src="/static/js/backdrop.js"></script>
+<script src="/static/js/circulargallery.js"></script>
 <div id="chrome-ready" hidden></div> <!-- first render waits for the scripts above (see <head>) -->
 <script src="/static/js/walk.js"></script>
 <script>
@@ -165,6 +166,13 @@ function problem(v) {
     v.error === "routing_unavailable" ? el("p", { class: "muted" }, "Open a map app to plan the walk yourselves.") : null);
 }
 
+// Several plans: a swipeable row of cards (circulargallery.js). One plan, or no WebGL2: the plain tabs.
+function optionPicker(plans, current, choose) {
+  const gallery = plans.length > 1 ? planCarousel(plans, current, choose) : null;
+  return gallery || el("div", { class: "tabs" }, plans.map((p, i) => el("button", { class: i === current ? "active" : "",
+    onclick: () => choose(i) }, i === 0 ? "Best" : `Option ${i + 1}`)));
+}
+
 function plan(v) {
   const c = v.candidates[Math.min(chosen, v.candidates.length - 1)];
   const meet = v.places[c.meeting_place_id], dest = v.places[c.endpoint_place_id];
@@ -172,8 +180,9 @@ function plan(v) {
   const why = v.reasons[c.id];
   return [
     el("section", { class: "card" },
-      el("div", { class: "tabs" }, v.candidates.map((x, i) => el("button", { class: i === chosen ? "active" : "",
-        onclick: () => { chosen = i; render(v); } }, i === 0 ? "Best" : `Option ${i + 1}`))),
+      optionPicker(v.candidates.map((x, i) => ({ id: x.id, category: v.places[x.endpoint_place_id].category,
+        title: `${i === 0 ? "Best" : `Option ${i + 1}`} · ${v.places[x.meeting_place_id].name}` })), chosen,
+        (i) => { chosen = i; render(v); }),
       el("h2", {}, `Meet at ${meet.name}`),
       el("div", { class: "times" },
         el("div", {}, el("b", {}, Math.round(c.a_leg.duration_min)), "min for A"),
