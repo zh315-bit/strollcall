@@ -35,6 +35,18 @@ def _without_names(text: str, names: list[str]) -> str:
     return ORDINAL_RE.sub(lambda m: " " if m.group(0).lower() in ordinals else m.group(0), text)
 
 
+# "the Broadway bakery plan", "bakery via 5th Ave plan": a short phrase naming another option.
+OTHER_OPTION_RE = re.compile(r"(?:\b[\w'&.-]+\s+){1,5}(?:plans?|options?)\b", re.I)
+
+
+def _without_other_options(text: str, other_evidence: set[str]) -> str:
+    """The text without phrases that describe other options by a feature those options have.
+    A phrase whose features no other option has stays in, so it is still checked."""
+    from app.services.grounding import features_in
+
+    return OTHER_OPTION_RE.sub(lambda m: " " if features_in(m.group(0)) <= other_evidence else m.group(0), text)
+
+
 def _place_names(result: PlanResult) -> list[str]:
     names = {result.places[c.meeting_place_id].name for c in result.candidates}
     names |= {result.places[c.endpoint_place_id].name for c in result.candidates}
@@ -213,10 +225,14 @@ def _grounded(data: dict, labelled: dict, result: PlanResult, a: WalkIntent, b: 
     names = _place_names(result)
     if wishes is not None:
         prefs += " " + " ".join(REQUIREMENTS[w.requirement].description for w in wishes.items)
+    def evidence_of(c):
+        return place_evidence([result.places[c.meeting_place_id], result.places[c.endpoint_place_id]])
+
     for item in data["ranking"]:
         c = labelled[item["id"]]
-        evidence = place_evidence([result.places[c.meeting_place_id], result.places[c.endpoint_place_id]])
-        problems = unsupported(_without_names(item["reason"], names), evidence, prefs)
+        others = set().union(*(evidence_of(o) for o in result.candidates if o.id != c.id))
+        text = _without_other_options(_without_names(item["reason"], names), others)
+        problems = unsupported(text, evidence_of(c), prefs)
         if problems:
             log.warning("ranking reason for %s rejected: %s in %r", item["id"], "; ".join(problems), item["reason"][:200])
             return "unsupported_feature"

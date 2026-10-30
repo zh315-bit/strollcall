@@ -208,7 +208,8 @@ def negotiate(a: WalkIntent, b: WalkIntent) -> Negotiation:
     problems = [p for text in joint.compromises + [tradeoff]
                 for p in unsupported(text, set(), preference_text(a, b))]
     if problems:
-        log.warning("negotiation text discarded (%s); using the deterministic one", "; ".join(problems))
+        log.warning("negotiation text discarded (%s) in %r; using the deterministic one", "; ".join(problems),
+                    " | ".join(joint.compromises + [tradeoff])[:400])
         return default_negotiation(a, b, "unsupported_feature")
     return Negotiation(joint=joint, tradeoff=tradeoff, source=source)
 

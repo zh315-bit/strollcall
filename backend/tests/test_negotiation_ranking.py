@@ -244,3 +244,20 @@ def test_shortened_street_names_are_not_numbers(use_meta, p1_plan):
     # An ordinal that is in no place name is still checked.
     use_meta(FakeMeta(ranking(("c1", "Same start for both, unlike the 9th Ave plan."), ("c2", "ok"), ("c3", "ok"))))
     assert explain.rank_candidates(p1_plan, A, B, JOINT).note == "invented_number"
+
+
+def test_other_options_described_by_their_features_are_not_claims_about_this_one(use_meta, p1_plan):
+    """Live 2026-10-30: "same time as bakery via 5th Ave plan" for an option ending at Think Coffee."""
+    from app.models.schemas import Place
+
+    c1, c2 = p1_plan.candidates[0], p1_plan.candidates[1]
+    other = p1_plan.places[c2.meeting_place_id]
+    p1_plan.places[c2.meeting_place_id] = Place(**{**other.model_dump(), "name": "Dominique Ansel Bakery"})
+    for reason in ("Same time as bakery via Broadway plan, ends at a cafe for A.",
+                   "Shorter than the Broadway bakery plan, same start for both."):
+        use_meta(FakeMeta(ranking(("c1", reason), ("c2", "ok"), ("c3", "ok"))))
+        assert explain.rank_candidates(p1_plan, A, B, JOINT).source == "meta", reason
+    # A feature no option has stays a claim, plan phrase or not; so does this option's own.
+    for reason in ("Shorter than the bookstore plan, same start for both.", "Ends at a bakery, unlike the other plans."):
+        use_meta(FakeMeta(ranking(("c1", reason), ("c2", "ok"), ("c3", "ok"))))
+        assert explain.rank_candidates(p1_plan, A, B, JOINT).note == "unsupported_feature", reason
