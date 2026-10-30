@@ -6,7 +6,7 @@ Both have deterministic fallbacks, and every result says where it came from
 
 import logging
 
-from app.core.config import ROOT_DIR
+from app.core.config import ROOT_DIR, get_settings, output_cap_override
 from app.core.errors import ProviderError
 from app.models.schemas import WalkIntent
 from app.providers import meta_or_mock
@@ -44,12 +44,15 @@ def invite_text(intent: WalkIntent, a_text: str = "") -> tuple[str, str]:
     import json
 
     user = json.dumps({"walk": intent.model_dump(), "A_wrote": a_text[:300]})
+    cap = output_cap_override.set(get_settings().card_max_output_tokens)  # one or two sentences
     try:
         data, source = meta_or_mock(lambda m: m.structured_json(TEXT_PROMPT, user, TEXT_SCHEMA, name="invite_text"))
         text = str(data.get("text", "")).strip()
     except ProviderError as e:
         log.warning("invite text fell back to template: %s", e.code)
         return template_text(intent), "default"
+    finally:
+        output_cap_override.reset(cap)
     if not text or len(text) > MAX_TEXT_CHARS:
         return template_text(intent), "default"
     problems = unsupported(text, set(), preference_text(intent) + " " + a_text, speaker_is_the_person=True)

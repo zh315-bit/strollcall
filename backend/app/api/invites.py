@@ -55,6 +55,9 @@ def _raise(e: invites.InviteError):
 def create_invite(req: CreateInviteRequest) -> CreateInviteResponse:
     if msg := outside_message((req.a_origin.lat, req.a_origin.lon)):
         raise HTTPException(status_code=422, detail=msg)
+    from app.core.config import get_settings, reasoning_override
+
+    reasoning_override.set(get_settings().accept_reasoning_effort)  # A is waiting for the link
     invite, a_key = invites.create(req.a_intent, (req.a_origin.lat, req.a_origin.lon), req.a_text, req.pass_by_ids)
     return CreateInviteResponse(token=invite.token, invite_path=f"/i/{invite.token}", a_key=a_key,
                                 expires_at=invite.expires_at, view=invites.view(invite.token, a_key))

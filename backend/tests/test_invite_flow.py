@@ -295,3 +295,24 @@ def test_plan_shows_before_the_ranking_then_ranking_and_reasons_follow(town, mon
     if len(seen["ids"]) > 1:
         assert v["top_changed"] == {"from": seen["ids"][0], "to": seen["ids"][-1]}
     assert v["progress"]["step"] == "done"
+
+
+def test_invite_line_runs_at_minimal_effort_with_a_tight_output_cap(town, monkeypatch):
+    """Creating the invite waits on the invite line (2026-10-30: about 8 s live at low effort)."""
+    from app.core.config import get_settings, output_cap_override, reasoning_override
+    from app.providers.mock import MockMeta
+
+    seen = {}
+
+    class Recording(MockMeta):
+        name = "meta"
+
+        def structured_json(self, system, user, schema, name="result"):
+            if name == "invite_text":
+                seen.update(effort=reasoning_override.get(), cap=output_cap_override.get())
+            return super().structured_json(system, user, schema, name)
+
+    monkeypatch.setattr("app.providers.get_meta", lambda kind="text": Recording())
+    create(town)
+    assert seen == {"effort": "minimal", "cap": get_settings().card_max_output_tokens}
+    assert output_cap_override.get() is None
