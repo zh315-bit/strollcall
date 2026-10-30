@@ -36,7 +36,7 @@
 <script src="/static/js/specular.js"></script>
 <script src="/static/js/gridmotion.js"></script>
 <script src="/static/js/backdrop.js"></script>
-<script src="/static/js/circulargallery.js"></script>
+<script src="/static/js/plandeck.js"></script>
 <div id="chrome-ready" hidden></div> <!-- first render waits for the scripts above (see <head>) -->
 <script src="/static/js/walk.js"></script>
 <script>
@@ -166,45 +166,44 @@ function problem(v) {
     v.error === "routing_unavailable" ? el("p", { class: "muted" }, "Open a map app to plan the walk yourselves.") : null);
 }
 
-// Several plans: a swipeable row of cards (circulargallery.js). One plan, or no WebGL2: the plain tabs.
-function optionPicker(plans, current, choose) {
-  const gallery = plans.length > 1 ? planCarousel(plans, current, choose) : null;
-  return gallery || el("div", { class: "tabs" }, plans.map((p, i) => el("button", { class: i === current ? "active" : "",
-    onclick: () => choose(i) }, i === 0 ? "Best" : `Option ${i + 1}`)));
-}
-
+// Several plans: each whole option is a page of a swipeable deck (plandeck.js); one plan: just that page.
 function plan(v) {
-  const c = v.candidates[Math.min(chosen, v.candidates.length - 1)];
-  const meet = v.places[c.meeting_place_id], dest = v.places[c.endpoint_place_id];
-  const mine = v.role === "b" ? c.b_leg : c.a_leg;
-  const why = v.reasons[c.id];
+  const label = (c, i) => `${i === 0 ? "Best" : `Option ${i + 1}`} · ${v.places[c.meeting_place_id].name}`;
+  const pages = v.candidates.map((c, i) => planPage(v, c, v.candidates.length > 1 ? label(c, i) : null));
+  const deck = pages.length > 1 ? planDeck(pages, { start: Math.min(chosen, pages.length - 1), labels: v.candidates.map(label),
+    onChange: (i) => { chosen = i; drawPlan(v); } }) : null;
   return [
     el("section", { class: "card" },
-      optionPicker(v.candidates.map((x, i) => ({ id: x.id, category: v.places[x.endpoint_place_id].category,
-        title: `${i === 0 ? "Best" : `Option ${i + 1}`} · ${v.places[x.meeting_place_id].name}` })), chosen,
-        (i) => { chosen = i; render(v); }),
-      el("h2", {}, `Meet at ${meet.name}`),
-      el("div", { class: "times" },
-        el("div", {}, el("b", {}, Math.round(c.a_leg.duration_min)), "min for A"),
-        el("div", {}, el("b", {}, Math.round(c.b_leg.duration_min)), "min for B"),
-        el("div", {}, el("b", {}, Math.round(c.shared_leg.duration_min)), "min together")),
-      el("p", {}, `Then walk together to ${dest.name} (${prettyType(dest.category)}). `,
-        el("span", { class: "muted" }, `Arrival gap ${c.arrival_gap_min.toFixed(1)} min, ${Math.round(c.total_elapsed_min)} min in total.`)),
-      el("p", {}, why || c.rationale, why ? (sourceBadge(v.sources.ranking) || el("span", { class: "muted" }, " · Muse Spark")) : null),
+      deck ? deck.el : pages[0],
       v.tradeoff ? el("p", { class: "muted" }, v.tradeoff, sourceBadge(v.sources.negotiation)) : null,
       ...(v.notes || []).map((n) => el("p", { class: "muted" }, el("span", { class: "i i-info", "aria-hidden": "true" }), " ", n)),
-      el("p", { class: "muted" }, dest.opening_hours ? `Opening hours (OpenStreetMap, as of ${(dest.fetched_at || "").slice(0, 10)}): ${dest.opening_hours}` : "Opening hours unknown."),
-      v.role !== "guest" ? el("button", { class: "primary start-walk", onclick: () => walkThePlan(v, c) }, el("span", { class: "i i-footprints", "aria-hidden": "true" }), " Start walking") : null,
-      el("div", { class: "row" },
-        el("a", { href: mapsLink(meet.lat, meet.lon), target: "_blank", rel: "noopener" }, el("button", {}, "Map app: to the meeting point")),
-        el("a", { href: mapsLink(dest.lat, dest.lon), target: "_blank", rel: "noopener" }, el("button", {}, "Map app: on to the destination"))),
-      v.status === "confirmed"
-        ? el("p", {}, v.selected_id === c.id ? [el("span", { class: "i i-check", "aria-hidden": "true" }), " Confirmed. See you there!"] : "Another option was confirmed.")
-        : (v.role !== "guest" ? el("div", { class: "row" }, el("button", { class: "primary", onclick: async () => {
-            await api(`/api/invites/${token}/confirm`, { method: "POST", body: { key, candidate_id: c.id } }); load(); } }, "Confirm this plan")) : null),
       el("p", { class: "legend muted" }, el("span", { style: "background:var(--a)" }), "A", el("span", { style: "background:var(--b)" }), "B",
         el("span", { style: "background:var(--shared)" }), "together")),
   ];
+}
+
+function planPage(v, c, kicker) {
+  const meet = v.places[c.meeting_place_id], dest = v.places[c.endpoint_place_id];
+  const why = v.reasons[c.id];
+  return el("div", {},
+    kicker ? el("p", { class: "plan-kicker" }, kicker) : null,
+    el("h2", {}, `Meet at ${meet.name}`),
+    el("div", { class: "times" },
+      el("div", {}, el("b", {}, Math.round(c.a_leg.duration_min)), "min for A"),
+      el("div", {}, el("b", {}, Math.round(c.b_leg.duration_min)), "min for B"),
+      el("div", {}, el("b", {}, Math.round(c.shared_leg.duration_min)), "min together")),
+    el("p", {}, `Then walk together to ${dest.name} (${prettyType(dest.category)}). `,
+      el("span", { class: "muted" }, `Arrival gap ${c.arrival_gap_min.toFixed(1)} min, ${Math.round(c.total_elapsed_min)} min in total.`)),
+    el("p", {}, why || c.rationale, why ? (sourceBadge(v.sources.ranking) || el("span", { class: "muted" }, " · Muse Spark")) : null),
+    el("p", { class: "muted" }, dest.opening_hours ? `Opening hours (OpenStreetMap, as of ${(dest.fetched_at || "").slice(0, 10)}): ${dest.opening_hours}` : "Opening hours unknown."),
+    v.role !== "guest" ? el("button", { class: "primary start-walk", onclick: () => walkThePlan(v, c) }, el("span", { class: "i i-footprints", "aria-hidden": "true" }), " Start walking") : null,
+    el("div", { class: "row" },
+      el("a", { href: mapsLink(meet.lat, meet.lon), target: "_blank", rel: "noopener" }, el("button", {}, "Map app: to the meeting point")),
+      el("a", { href: mapsLink(dest.lat, dest.lon), target: "_blank", rel: "noopener" }, el("button", {}, "Map app: on to the destination"))),
+    v.status === "confirmed"
+      ? el("p", {}, v.selected_id === c.id ? [el("span", { class: "i i-check", "aria-hidden": "true" }), " Confirmed. See you there!"] : "Another option was confirmed.")
+      : (v.role !== "guest" ? el("div", { class: "row" }, el("button", { class: "primary", onclick: async () => {
+          await api(`/api/invites/${token}/confirm`, { method: "POST", body: { key, candidate_id: c.id } }); load(); } }, "Confirm this plan")) : null));
 }
 
 // ---- After the walk: three questions, stored only with consent (user test, DEV_DOC section 9) ----

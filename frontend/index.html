@@ -103,7 +103,7 @@
 <script src="/static/js/specular.js"></script>
 <script src="/static/js/gridmotion.js"></script>
 <script src="/static/js/backdrop.js"></script>
-<script src="/static/js/circulargallery.js"></script>
+<script src="/static/js/plandeck.js"></script>
 <div id="chrome-ready" hidden></div> <!-- first render waits for the scripts above (see <head>) -->
 <script src="/static/js/walk.js"></script>
 <script>
@@ -342,13 +342,6 @@ async function refreshNear(btn) {
 
 // ---- Solo mode: results on this page ----
 
-// Several walks: a swipeable row of cards (circulargallery.js). One walk, or no WebGL2: the plain tabs.
-function optionPicker(plans, chosen, choose) {
-  const gallery = plans.length > 1 ? planCarousel(plans, chosen, choose) : null;
-  return gallery || el("div", { class: "tabs" }, plans.map((p, i) => el("button", { class: i === chosen ? "active" : "",
-    onclick: () => choose(i) }, i === 0 ? "Best" : `Option ${i + 1}`)));
-}
-
 function clearSolo() {
   state.solo = null;
   showNear();
@@ -366,13 +359,24 @@ function renderSolo() {
     $("solo-result").replaceChildren(...parts);
     return;
   }
-  const c = v.candidates[state.chosen];
-  const dest = v.places[c.destination_place_id];
+  // Several walks: each whole option is a page of a swipeable deck (plandeck.js); one walk: just that page.
+  const label = (c, i) => `${i === 0 ? "Best" : `Option ${i + 1}`} · ${Math.round(c.total_min)} min`;
+  const pages = v.candidates.map((c, i) => soloPage(v, c, v.candidates.length > 1 ? label(c, i) : null));
+  const deck = pages.length > 1 ? planDeck(pages, { start: state.chosen, labels: v.candidates.map(label),
+    onChange: (i) => { state.chosen = i; drawSoloRoute(); } }) : null;
   parts.push(el("section", { class: "card" },
-    el("h2", {}, el("span", { class: "step-no" }, "3"), "Your walk"),
-    optionPicker(v.candidates.map((x, i) => ({ id: x.id, category: v.places[x.destination_place_id].category,
-      title: `${i === 0 ? "Best" : `Option ${i + 1}`} · ${Math.round(x.total_min)} min` })), state.chosen,
-      (i) => { state.chosen = i; renderSolo(); }),
+    el("h2", {}, el("span", { class: "step-no" }, "3"), pages.length > 1 ? `${pages.length} walks for you` : "Your walk"),
+    deck ? deck.el : pages[0],
+    ...(v.notes || []).map((n) => el("p", { class: "muted" }, el("span", { class: "i i-info", "aria-hidden": "true" }), " ", n)),
+    el("p", { class: "muted" }, "Walking times assume 80 m/min. We never claim a route or place is safe, quiet or open beyond what the data says.")));
+  $("solo-result").replaceChildren(...parts.filter(Boolean));
+  drawSoloRoute();
+}
+
+function soloPage(v, c, kicker) {
+  const dest = v.places[c.destination_place_id];
+  return el("div", {},
+    kicker ? el("p", { class: "plan-kicker" }, kicker) : null,
     el("h2", {}, dest.name),
     el("div", { class: "times" }, el("div", {}, el("b", {}, Math.round(c.total_min)), "min walk"),
       el("div", {}, el("b", {}, (c.leg.distance_m / 1000).toFixed(1)), "km"),
@@ -380,13 +384,16 @@ function renderSolo() {
     el("p", {}, c.rationale, sourceBadge(v.sources.wishes)),
     ...state.passBy.filter((p) => !c.rationale.includes(`Passes ${p.name}.`)).map((p) =>
       el("p", { class: "muted small" }, `This walk doesn't pass ${p.name}: it was a wish, not a must.`)),
-    ...(v.notes || []).map((n) => el("p", { class: "muted" }, el("span", { class: "i i-info", "aria-hidden": "true" }), " ", n)),
     el("p", { class: "muted" }, dest.opening_hours ? `Opening hours (OpenStreetMap, as of ${(dest.fetched_at || "").slice(0, 10)}): ${dest.opening_hours}` : "Opening hours unknown."),
     el("button", { class: "primary start-walk", onclick: () => startWalk([{ id: dest.id, name: dest.name, kind: "destination",
       target: [dest.lat, dest.lon], geometry: c.leg.geometry, steps: c.leg.steps, pois: c.leg.pois }]) }, el("span", { class: "i i-footprints", "aria-hidden": "true" }), " Start walking"),
-    el("div", { class: "row" }, el("a", { href: mapsLink(dest.lat, dest.lon), target: "_blank", rel: "noopener" }, el("button", {}, "Open in a map app"))),
-    el("p", { class: "muted" }, "Walking times assume 80 m/min. We never claim a route or place is safe, quiet or open beyond what the data says.")));
-  $("solo-result").replaceChildren(...parts.filter(Boolean));
+    el("div", { class: "row" }, el("a", { href: mapsLink(dest.lat, dest.lon), target: "_blank", rel: "noopener" }, el("button", {}, "Open in a map app"))));
+}
+
+// The map shows the option in front.
+function drawSoloRoute() {
+  const v = state.solo, c = v.candidates[state.chosen];
+  const dest = v.places[c.destination_place_id];
   routeLayers.forEach((l) => l.remove());
   const color = getComputedStyle(document.documentElement).getPropertyValue("--a").trim();
   routeLayers = [L.polyline(c.leg.geometry, { color, weight: 5, opacity: .85 }).addTo(map),
