@@ -574,7 +574,12 @@ function startWalk(legs, opts = {}) {
   async function startBuddy() {
     if (!buddy) return;
     let off = false;
-    try { off = localStorage.getItem("strollcall:buddy") === "off" || /[?&]buddy=off\b/.test(location.search); } catch (e) { /* on */ }
+    // ?buddy=off (or =on) in the page address switches it for this phone, remembered here.
+    try {
+      const asked = /[?&]buddy=(on|off)\b/.exec(location.search);
+      if (asked) localStorage.setItem("strollcall:buddy", asked[1]);
+      off = localStorage.getItem("strollcall:buddy") === "off";
+    } catch (e) { off = /[?&]buddy=off\b/.test(location.search); }
     let status = { enabled: false, voice: false };
     if (!off) { try { status = await api("/api/companion"); } catch (e) { /* unreachable: leave it hidden */ } }
     if (closing || !status.enabled || typeof startCompanion !== "function") return;

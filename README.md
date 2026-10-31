@@ -97,6 +97,14 @@ off it, an arrival card within 40 m, and cards for parks, historic sites, artwor
 landmarks within ~40 m of the route. The track stays in the phone; only a re-plan sends the
 current position, which the server neither stores nor logs. The map-app link stays as a fallback.
 
+**Walking buddy.** The blue character on the walking screen (`frontend/js/buddy.js`,
+`backend/app/services/companion.py`). Hold the mic (Muse Voice Transcribe) or tap a chip ("I have
+10 min", "What's nearby?"). For spoken requests Muse Spark picks one tool from the words and the
+minutes left only: `add_stop`, `set_time_left`, `whats_nearby`, `identify_landmark`,
+`reroute_avoid`; chips run the tool directly. Tools run on our own map data, route changes go
+through the planner's walking graph and can be undone, and every reply is built from the tool's
+result. `COMPANION_ENABLED=false` hides it everywhere; `?buddy=off` (or `=on`) on a page switches it for one phone.
+
 ### Run
 
 ```bash
