@@ -78,6 +78,8 @@ async function recordPcm(stopSignal) {
     proc.onaudioprocess = (e) => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
     src.connect(proc);
     proc.connect(ctx.destination);  // a processor only runs while connected; it outputs silence
+    // iPhone can leave the context suspended (or "interrupted") once the microphone opens: wake it.
+    if (ctx.state !== "running") await ctx.resume().catch(() => {});
     await stopSignal;
   } finally {
     if (proc) proc.disconnect();
@@ -93,7 +95,7 @@ async function recordPcm(stopSignal) {
     const x = i * rate / out, j = Math.floor(x), f = x - j;
     pcm[i] = (all[j] || 0) * (1 - f) + (all[j + 1] || 0) * f;
   }
-  return { wav: encodeWav(pcm, out), seconds: len / out };
+  return { wav: encodeWav(pcm, out), seconds: len / out, state: ctx.state };
 }
 
 // ---- The companion: chips and hold-to-talk -> /api/companion/ask -> a reply, maybe a new route ----
@@ -174,8 +176,11 @@ function startCompanion(buddy, walk) {
     mic.classList.add("held");
     settle("listening");
     buddy.say("Listening… let go when you're done.");
+    const pressed = Date.now();
     try {
       const { wav, seconds } = await recordPcm(signal);
+      // No audio after a real press: the browser opened the microphone but gave us no samples.
+      if (seconds < 0.5 && Date.now() - pressed > 1500) throw new Error("no audio from the microphone");
       // Under half a second: a tap, or the first press that only brought up the microphone question.
       if (seconds < 0.5) throw new Error("short");
       settle("thinking");
