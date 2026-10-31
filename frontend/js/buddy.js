@@ -63,6 +63,39 @@ function makeBuddy() {
   };
 }
 
+// Hold to talk records raw samples with Web Audio instead of MediaRecorder: there is no compressed
+// recording to decode afterwards, a step iPhone Safari failed on ("Decoding failed"). The audio
+// context starts inside the press, so iPhone lets it run. Returns a 16 kHz mono WAV and its length.
+async function recordPcm(stopSignal) {
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const chunks = [];
+  let stream = null, src = null, proc = null;
+  try {
+    ctx.resume().catch(() => {});
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+    src = ctx.createMediaStreamSource(stream);
+    proc = ctx.createScriptProcessor(4096, 1, 1);
+    proc.onaudioprocess = (e) => chunks.push(new Float32Array(e.inputBuffer.getChannelData(0)));
+    src.connect(proc);
+    proc.connect(ctx.destination);  // a processor only runs while connected; it outputs silence
+    await stopSignal;
+  } finally {
+    if (proc) proc.disconnect();
+    if (src) src.disconnect();
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+  }
+  const rate = ctx.sampleRate;
+  ctx.close().catch(() => {});
+  const all = new Float32Array(chunks.reduce((n, c) => n + c.length, 0));
+  chunks.reduce((o, c) => (all.set(c, o), o + c.length), 0);
+  const out = 16000, len = Math.floor(all.length * out / rate), pcm = new Float32Array(len);
+  for (let i = 0; i < len; i++) {  // linear resampling is plenty for speech
+    const x = i * rate / out, j = Math.floor(x), f = x - j;
+    pcm[i] = (all[j] || 0) * (1 - f) + (all[j + 1] || 0) * f;
+  }
+  return { wav: encodeWav(pcm, out), seconds: len / out };
+}
+
 // ---- The companion: chips and hold-to-talk -> /api/companion/ask -> a reply, maybe a new route ----
 // walk: what the walking screen offers it:
 //   state()          -> the WalkState the server expects (position, current leg, minutes left...)
@@ -73,7 +106,7 @@ function makeBuddy() {
 // Returns { stop() } for when the walk ends. Nothing here is stored.
 function startCompanion(buddy, walk) {
   let undo = null, busy = false, rest = null, stopped = false;
-  const canRecord = !!(navigator.mediaDevices && window.MediaRecorder && window.AudioContext);
+  const canRecord = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && (window.AudioContext || window.webkitAudioContext));
   const textOf = (parts) => parts.map((p) => (p && p.b ? p.b : String(p))).join("");
 
   function settle(state, ms = 5000) {
@@ -132,19 +165,19 @@ function startCompanion(buddy, walk) {
   mic.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" '
     + 'stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/>'
     + '<path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
-  let release = null, pressedAt = 0;
+  let release = null;
   async function hold() {
     if (release || busy || stopped) return;
     let done;
     const signal = new Promise((r) => (done = r));
     release = done;
-    pressedAt = Date.now();
     mic.classList.add("held");
     settle("listening");
     buddy.say("Listening… let go when you're done.");
     try {
-      const wav = await recordToWav(signal);
-      if (Date.now() - pressedAt < 500) throw new Error("short");
+      const { wav, seconds } = await recordPcm(signal);
+      // Under half a second: a tap, or the first press that only brought up the microphone question.
+      if (seconds < 0.5) throw new Error("short");
       settle("thinking");
       buddy.say("Let me check…");
       const form = new FormData();
