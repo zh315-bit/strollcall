@@ -86,6 +86,11 @@ CREATE TABLE IF NOT EXISTS invites (
     expires_at TEXT NOT NULL,
     data TEXT NOT NULL              -- Invite JSON
 );
+
+CREATE TABLE IF NOT EXISTS open_weights_window (
+    id INTEGER PRIMARY KEY,         -- always 1: one window at a time
+    until_at TEXT NOT NULL          -- UTC ISO time the warm window ends
+);
 """
 SQLITE_DDL = _TABLES.format(serial="INTEGER PRIMARY KEY AUTOINCREMENT", float="REAL")
 POSTGRES_DDL = _TABLES.format(serial="BIGSERIAL PRIMARY KEY", float="DOUBLE PRECISION")

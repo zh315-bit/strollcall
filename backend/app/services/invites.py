@@ -52,6 +52,7 @@ class InviteView(BaseModel):
     feedback_given: bool = False  # this person already answered the after-walk survey
     sources: dict[str, str] = {}  # what produced each part: meta / mock / default / local / snapshot ...
     demo_data: bool = False  # true if any visible part is mock or template data
+    read_by: dict = {}  # a / b: which model read each wish (glimmer: model, precision, GPU, endpoint)
     explaining: bool = False  # the plan is shown; Muse Spark's ranking and reasons are still being written
     top_changed: dict | None = None  # {"from": id, "to": id} when Muse Spark's ranking moved another option first
 
@@ -81,13 +82,15 @@ def create(a_intent: WalkIntent, a_origin: tuple[float, float], a_text: str = ""
     a_intent = with_options(a_intent, a_options)  # "Destination must be open" joins A's hard constraints
     text, text_source = invite_text(a_intent, a_text)
     image_url, image_source = pick_illustration(a_intent)
+    a_read = _read_record(a_text)
     invite = Invite(token=secrets.token_urlsafe(16), status="pending", expires_at=_now() + INVITE_TTL,
                     invite_text=text, a_intent=a_intent)
     a_key = secrets.token_urlsafe(16)
     save_invite(invite)
     save_invite_extra(
         invite.token,
-        {"sources": {"invite_text": text_source, "image": image_source}, "image_url": image_url,
+        {"sources": {"invite_text": text_source, "image": image_source, **({"a_intent": a_read["source"]} if a_read else {})},
+         "read_by": {"a": a_read} if a_read else {}, "image_url": image_url,
          # Places A asked to pass by (known places, public): a soft preference for the planner.
          "pass_by": [vars(p) for p in resolve_pass_by(pass_by_ids or [])],
          "events": {"created": _now().isoformat()}},
@@ -95,6 +98,26 @@ def create(a_intent: WalkIntent, a_origin: tuple[float, float], a_text: str = ""
          "a_options": a_options.model_dump()},
     )
     return invite, a_key
+
+
+def _read_entry(parsed) -> dict:
+    """Which model read a wish, for the invite record: no text."""
+    return {"source": parsed.source, "fallback_from": parsed.fallback_from, **(parsed.read_by or {})}
+
+
+def _read_record(text: str) -> dict | None:
+    """A's wish was read on the New walk page a moment ago: that parse, from the cache."""
+    from app.core.config import get_settings, reasoning_override
+    from app.services.intent import cached_parse
+
+    if not text.strip():
+        return None
+    token = reasoning_override.set(get_settings().accept_reasoning_effort)  # as /api/intents/parse read it
+    try:
+        parsed = cached_parse(text)
+    finally:
+        reasoning_override.reset(token)
+    return _read_entry(parsed) if parsed else None
 
 
 def _strip_routes(invite: Invite) -> bool:
@@ -189,7 +212,7 @@ def view(token: str, key: str | None = None) -> InviteView | None:
         progress=_live.get(token) or public.get("progress"),
         image_url=public.get("image_url"),
         feedback_given=role in ("a", "b") and role in feedback_roles(token),
-        sources=sources, demo_data=any(v in ("mock", "default") for v in sources.values()),
+        sources=sources, read_by=public.get("read_by", {}), demo_data=any(v in ("mock", "default") for v in sources.values()),
         explaining=bool(public.get("explaining")), top_changed=public.get("top_changed"),
     )
 
@@ -334,6 +357,7 @@ def run_planning(token: str) -> None:
                 # Usually already parsed while B was typing (the page asks /api/intents/parse): a cache hit.
                 parsed = _timed(timings, "parse_b", parse_intent, b_text)
                 b, sources["b_intent"] = parsed.intent, parsed.source
+                public.setdefault("read_by", {})["b"] = _read_entry(parsed)
                 _progress(token, "balancing", started, timings)
                 # Balancing runs alongside reading the wishes, not after it.
                 neg = _timed(timings, "negotiate", negotiate, a, b)

@@ -62,10 +62,16 @@
         come from our data. If it doesn't, rule-based text is used instead, and the page says so.</td></tr>
       <tr><th>Muse Image</th><td>The 24 illustrations, made ahead of time and picked by the kind of walk.</td></tr>
       <tr><th>Muse Voice Transcribe</th><td>The Speak button: your words become text you can edit before it's read.</td></tr>
+      <tr><th>Muse Glimmer</th><td>Meta's open-weights model (meta-models/Muse-Glimmer-30B, full BF16 weights), on our
+        own server at Modal (one H200 GPU). When it is running, it reads your wish instead of Muse Spark, with the
+        same instructions and the same checks; the page then says "Read by Muse Glimmer (open weights, on Modal)".
+        It starts only for set windows (a GPU costs by the hour), and if it doesn't answer within 3 seconds, Muse
+        Spark reads the wish and the page says so. Every other job stays on the Meta API.</td></tr>
       <tr><th>Muse Spark Open</th><td>Built as a backup for the text jobs (Meta's open-weight model on a hosted
         provider). It is switched off and not used today.</td></tr>
     </table>
-    <p>What Meta receives: the text you type or speak, place names and features, walking minutes and option
+    <p>When Muse Glimmer reads your wish, the words go to our own server at Modal and not to Meta's API.
+      What Meta receives: the text you type or speak, place names and features, walking minutes and option
       labels. Never your start point or any coordinates; a test checks every request for them. StrollCall runs on
       Meta's free credits, so Meta may use what you type or say to improve its products. Please don't include
       personal details.</p>

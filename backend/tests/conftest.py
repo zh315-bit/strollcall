@@ -13,6 +13,8 @@ def offline_settings(monkeypatch, tmp_path):
     monkeypatch.setenv("ORS_API_KEY", "")
     monkeypatch.setenv("SPARK_OPEN_API_KEY", "")
     monkeypatch.setenv("TEXT_PROVIDER", "meta")
+    monkeypatch.setenv("TEXT_PROVIDER_PARSE", "meta")
+    monkeypatch.setenv("OPEN_WEIGHTS_API_KEY", "")
     monkeypatch.setenv("DB_PATH", str(tmp_path / "test.db"))
     monkeypatch.setenv("DATABASE_URL", "")  # tests never touch a real database
     monkeypatch.setenv("CACHE_DIR", str(tmp_path / "cache"))

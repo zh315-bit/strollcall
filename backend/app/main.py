@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import coverage, dev, intents, invites, nearby, solo, voice, walk
+from app.api import coverage, dev, intents, invites, nearby, open_weights, solo, voice, walk
 from app.core.budget import SpendGuard
 from app.core.config import ROOT_DIR, get_settings
 from app.models.db import health as db_health
@@ -31,6 +31,7 @@ app.include_router(invites.recaps)
 app.include_router(solo.router)
 app.include_router(voice.router)
 app.include_router(walk.router)
+app.include_router(open_weights.router)
 app.include_router(dev.router)  # answers 404 unless DEBUG=true
 
 @app.on_event("startup")
@@ -149,6 +150,22 @@ def meta_check(s) -> dict:
     return out
 
 
+def open_weights_status(s) -> dict:
+    """Wish reading on Muse Glimmer (our Modal endpoint): configuration and the warm window."""
+    from app.providers.glimmer import deployment
+    from app.services import open_weights
+
+    until = open_weights.window_until() if open_weights.enabled() else None
+    return {"parse_provider": s.text_provider_parse,
+            "key": keyed_state(s, bool(s.open_weights_api_key.get_secret_value())),
+            **deployment(s), "timeout_s": s.open_weights_timeout_s,
+            "warm_window_until": until.isoformat() if until else None}
+
+
+def keyed_state(s, has_key: bool) -> str:
+    return "mock" if s.use_mocks else ("configured" if has_key else "missing_key")
+
+
 @app.get("/health")
 def health(check_meta: bool = False) -> dict:
     """Provider configuration and today's Meta spend. Makes no external calls."""
@@ -177,6 +194,7 @@ def health(check_meta: bool = False) -> dict:
             "places": "mock" if s.use_mocks else s.places_provider,
         },
         "meta_models": {"text": s.model_id, "image": s.image_model_id, "voice": s.voice_model_id},
+        "open_weights": open_weights_status(s),
         "meta_base_url": s.model_base_url,  # not secret; a wrong base URL shows up as 404s
         "meta_key_fingerprint": key_fingerprint(s.model_api_key.get_secret_value()),
         # Diagnostics (env var names, platform, request shape) only on a DEBUG deployment.

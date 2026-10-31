@@ -57,8 +57,12 @@ INTENT_SCHEMA = {
 class ParsedIntent(BaseModel):
     intent: WalkIntent
     inferred_fields: list[str] = []  # fields not stated by the user, shown differently in the UI
-    source: str  # meta (live) / mock (USE_MOCKS or budget cap) / default (provider failed) / none (nothing typed)
+    # glimmer (open weights, our Modal endpoint) / meta (live) / mock (USE_MOCKS or budget cap) /
+    # default (provider failed) / none (nothing typed)
+    source: str
     note: str | None = None
+    read_by: dict | None = None  # the model and deployment that read it (glimmer: model, precision, GPU, endpoint)
+    fallback_from: str | None = None  # "glimmer" when it was tried and the Meta API answered instead
 
 
 def default_intent(reason: str) -> ParsedIntent:
@@ -110,38 +114,86 @@ def parse_intent(text: str) -> ParsedIntent:
             _parsed.pop(key, None)
         mine.set_exception(e)
         raise
-    if result.source not in ("meta", "spark_open"):
+    if result.source not in ("glimmer", "meta", "spark_open"):
         with _parsed_lock:
             _parsed.pop(key, None)
     mine.set_result(result)
     return result
 
 
+def _validated(data: dict, source: str) -> ParsedIntent | None:
+    try:
+        intent = WalkIntent.model_validate(data)
+    except ValidationError as e:
+        fields = ",".join(str(err["loc"][0]) for err in e.errors() if err["loc"])
+        log.warning("intent parse (%s): model JSON failed validation on %s", source, fields)
+        return None
+    intent.vibes = _clean(intent.vibes)
+    intent.avoid = _clean(intent.avoid)
+    intent.hard_constraints = _clean(intent.hard_constraints)
+    inferred = [f for f in data.get("inferred_fields", []) if f in INTENT_FIELDS]
+    return ParsedIntent(intent=intent, inferred_fields=inferred, source=source, read_by=_read_by(source))
+
+
+def _read_by(source: str) -> dict | None:
+    if source == "glimmer":
+        from app.providers.glimmer import deployment
+
+        return deployment()
+    if source == "meta":
+        return {"model": get_settings().model_id, "host": "Meta Model API"}
+    return None
+
+
+def _try_glimmer(user: str) -> tuple[ParsedIntent | None, str]:
+    """Muse Glimmer on our Modal endpoint, inside a warm window only; (None, why) if it failed."""
+    from app.core.budget import BudgetExceeded
+    from app.providers.glimmer import GlimmerProvider
+
+    try:
+        data = GlimmerProvider().structured_json(SYSTEM_PROMPT, user, INTENT_SCHEMA, name="walk_intent")
+    except (ProviderError, BudgetExceeded) as e:
+        return None, getattr(e, "message", str(e))
+    parsed = _validated(data, "glimmer")
+    return parsed, "" if parsed else "invalid_model_output"
+
+
+def cached_parse(text: str) -> ParsedIntent | None:
+    """The recent parse of this text if there is one (no model call): what read A's wish."""
+    key = hashlib.sha256(f"{reasoning_override.get()}\n{text.strip()}".encode()).hexdigest()
+    with _parsed_lock:
+        hit = _parsed.get(key)
+    if hit is None or not hit[1].done() or hit[1].exception():
+        return None
+    return hit[1].result()
+
+
 def _parse_now(text: str) -> ParsedIntent:
+    from app.services.open_weights import use_glimmer
+
     user = f"Walk description:\n{text}"
     cap = output_cap_override.set(get_settings().parse_max_output_tokens)  # a short JSON answer
+    tried_glimmer = False
     try:
+        if use_glimmer():
+            tried_glimmer = True
+            parsed, why = _try_glimmer(user)
+            if parsed:
+                return parsed
+            log.warning("wish reading: Muse Glimmer fell back to the Meta API (%s)", why)
         data, source = meta_or_mock(
             lambda meta: meta.structured_json(SYSTEM_PROMPT, user, INTENT_SCHEMA, name="walk_intent")
         )
     except ProviderError as e:
         log.warning("intent parse fell back to default: %s (%s)", e.code, e.message)
-        return default_intent(e.code)
+        return default_intent(e.code).model_copy(update={"fallback_from": "glimmer" if tried_glimmer else None})
     finally:
         output_cap_override.reset(cap)
 
-    try:
-        intent = WalkIntent.model_validate(data)
-    except ValidationError as e:
-        fields = ",".join(str(err["loc"][0]) for err in e.errors() if err["loc"])
-        log.warning("intent parse fell back to default: model JSON failed validation on %s", fields)
-        return default_intent("invalid_model_output")
-
-    intent.vibes = _clean(intent.vibes)
-    intent.avoid = _clean(intent.avoid)
-    intent.hard_constraints = _clean(intent.hard_constraints)
-    inferred = [f for f in data.get("inferred_fields", []) if f in INTENT_FIELDS]
-    return ParsedIntent(intent=intent, inferred_fields=inferred, source=source)
+    parsed = _validated(data, source) or default_intent("invalid_model_output")
+    if tried_glimmer:
+        parsed.fallback_from = "glimmer"
+    return parsed
 
 
 # --- Two-person negotiation (DEV_DOC section 5, P0) ---

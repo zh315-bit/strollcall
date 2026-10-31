@@ -167,9 +167,10 @@ $("parse").addEventListener("click", async () => {
     $("strict").checked = !!r.intent.duration_strict;
     renderChips();
     options.fromWish(r.intent, state.text);
-    const understood = { meta: "Understood by Muse Spark", spark_open: "Understood by Muse Spark Open",
-                         none: "Nothing typed, so these are the defaults. Change them below." }[r.source];
-    $("intent-source").replaceChildren(understood ? el("span", { class: "muted" }, understood)
+    const understood = r.source === "none" ? "Nothing typed, so these are the defaults. Change them below."
+      : readByLabel(r.source, r.fallback_from);
+    const where = r.read_by && r.source === "glimmer" ? `${r.read_by.repo}@${r.read_by.revision}, ${r.read_by.precision}, 1x ${r.read_by.gpu}, endpoint ${r.read_by.deployment}` : null;
+    $("intent-source").replaceChildren(understood ? el("span", { class: "muted", title: where }, understood)
       : sourceBadge(r.source === "default" ? "default" : "mock"));
     $("intent").hidden = false;
   } catch (e) { alert(e.message); }

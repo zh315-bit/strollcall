@@ -58,6 +58,23 @@ def ping(client: httpx.Client, s) -> float:
     return time.monotonic() - t
 
 
+def compile_grammar() -> str:
+    """One wish read with the app's own schema (a made-up wish), so SGLang compiles the JSON grammar
+    now (about 1.3 s, once per schema) and not on the first real wish."""
+    from app.core.config import output_cap_override
+    from app.providers.glimmer import GlimmerProvider
+    from app.services.intent import INTENT_SCHEMA, SYSTEM_PROMPT
+
+    output_cap_override.set(get_settings().parse_max_output_tokens)
+    p = GlimmerProvider(timeout_s=30)
+    try:
+        p.structured_json(SYSTEM_PROMPT, "Walk description:\nA 30 minute walk to a cafe", INTENT_SCHEMA,
+                          name="walk_intent")
+    except Exception as e:  # noqa: BLE001 - reported, the window still opens
+        return f"wish-reading check failed: {e}"
+    return f"wish-reading check: valid JSON in {p.last_call['latency_s']:.2f} s, reasoning off"
+
+
 def set_site_window(site: str, key: str, minutes: float) -> str:
     try:
         r = httpx.post(f"{site}/api/open-weights/window", json={"minutes": minutes},
@@ -115,6 +132,7 @@ def main() -> int:
             time.sleep(5)
     ready = time.monotonic() - started
     print(f"{datetime.now():%H:%M:%S}  READY in {ready:.0f} s (last answer {took:.2f} s) - {label}")
+    print(f"{datetime.now():%H:%M:%S}  {compile_grammar()}")
 
     if not args.no_site:
         print(f"{datetime.now():%H:%M:%S}  live site: {set_site_window(args.site, key, args.minutes)}")

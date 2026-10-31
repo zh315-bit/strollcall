@@ -2,8 +2,18 @@
 
 const SOURCE_LABELS = {
   mock: "demo data", default: "rule-based", meta: null, local: null, snapshot: null,
-  pending: null, keywords: "keywords", ors: null, overpass: null, spark_open: "Muse Spark Open",
+  pending: null, keywords: "keywords", ors: null, overpass: null, spark_open: "Muse Spark Open", glimmer: null,
 };
+
+// Who read a wish: our open-weights model on Modal, or Muse Spark on the Meta API (and why).
+const GLIMMER_LABEL = "Read by Muse Glimmer (open weights, on Modal)";
+function readByLabel(source, fallbackFrom) {
+  if (source === "glimmer") return GLIMMER_LABEL;
+  const tried = fallbackFrom === "glimmer" ? " (our open-weights model didn't answer in 3 s)" : "";
+  if (source === "meta") return "Understood by Muse Spark" + tried;
+  if (source === "spark_open") return "Understood by Muse Spark Open";
+  return null;
+}
 
 async function api(path, options = {}) {
   const resp = await fetch(path, {
@@ -35,6 +45,15 @@ function el(tag, attrs = {}, ...children) {
 function sourceBadge(source) {
   const label = SOURCE_LABELS[source];
   return label ? el("span", { class: "badge", title: `source: ${source}` }, label) : null;
+}
+
+// On a plan: which model read each person's wish, when it is recorded.
+function readByLine(readBy) {
+  const parts = [["a", "A's wish"], ["b", "B's wish"]].map(([k, who]) => {
+    const r = (readBy || {})[k], label = r && readByLabel(r.source, r.fallback_from);
+    return label ? `${who}: ${label.replace(/^(Read|Understood) by /, "")}` : null;
+  }).filter(Boolean);
+  return parts.length ? el("p", { class: "muted small" }, "Wishes read by: " + parts.join("; ") + ".") : null;
 }
 
 // Banner listing every part that is mock or template data. Never present it as live.

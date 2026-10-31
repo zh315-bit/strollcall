@@ -215,6 +215,7 @@ function plan(v) {
         ` Muse Spark ranked meeting at ${v.places[top.meeting_place_id].name} and walking to ${v.places[top.endpoint_place_id].name} first, so it moved to the front.`) : null,
       deck ? deck.el : pages[0],
       v.tradeoff ? el("p", { class: "muted" }, v.tradeoff, sourceBadge(v.sources.negotiation)) : null,
+      readByLine(v.read_by),
       ...(v.notes || []).map((n) => el("p", { class: "muted" }, el("span", { class: "i i-info", "aria-hidden": "true" }), " ", n)),
       el("p", { class: "legend muted" }, el("span", { style: "background:var(--a)" }), "A", el("span", { style: "background:var(--b)" }), "B",
         el("span", { style: "background:var(--shared)" }), "together")),
