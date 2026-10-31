@@ -6,7 +6,7 @@ from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Response
 from pydantic import BaseModel, Field
 
 from app.api.coverage import outside_message
-from app.models.schemas import WalkIntent
+from app.models.schemas import WalkIntent, WalkOptions
 from app.services import invites
 
 router = APIRouter(prefix="/api/invites", tags=["invites"])
@@ -22,6 +22,7 @@ class CreateInviteRequest(BaseModel):
     a_origin: LatLon
     a_text: str = Field(default="", max_length=500)
     pass_by_ids: list[str] = Field(default=[], max_length=3)  # "Add to my wish" from Near you: soft
+    a_options: WalkOptions = WalkOptions()  # "More options", for A's side (no route shape for two)
 
 
 class CreateInviteResponse(BaseModel):
@@ -58,7 +59,8 @@ def create_invite(req: CreateInviteRequest) -> CreateInviteResponse:
     from app.core.config import get_settings, reasoning_override
 
     reasoning_override.set(get_settings().accept_reasoning_effort)  # A is waiting for the link
-    invite, a_key = invites.create(req.a_intent, (req.a_origin.lat, req.a_origin.lon), req.a_text, req.pass_by_ids)
+    invite, a_key = invites.create(req.a_intent, (req.a_origin.lat, req.a_origin.lon), req.a_text, req.pass_by_ids,
+                                   req.a_options)
     return CreateInviteResponse(token=invite.token, invite_path=f"/i/{invite.token}", a_key=a_key,
                                 expires_at=invite.expires_at, view=invites.view(invite.token, a_key))
 

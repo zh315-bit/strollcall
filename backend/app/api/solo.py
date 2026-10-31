@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from app.api.coverage import outside_message
 from app.api.invites import LatLon
 from app.core.errors import ProviderError
-from app.models.schemas import WalkIntent
+from app.models.schemas import WalkIntent, WalkOptions
 from app.services.solo import SoloPlan, plan_solo
 
 router = APIRouter(prefix="/api/solo", tags=["solo"])
@@ -21,6 +21,7 @@ class SoloRequest(BaseModel):
     origin: LatLon
     text: str = Field(default="", max_length=500)  # what they typed: Muse Spark reads wishes from it
     pass_by_ids: list[str] = Field(default=[], max_length=3)  # "Add to my wish" from Near you: soft
+    options: WalkOptions = WalkOptions()  # "More options" (services/options.py)
 
 
 class SoloResponse(SoloPlan):
@@ -49,6 +50,6 @@ def solo_plan(req: SoloRequest) -> SoloResponse:
         wishes = interpret_wishes(req.text, "")
         sources["wishes"] = wishes.source
     plan = plan_solo((req.origin.lat, req.origin.lon), req.intent, places, routing, datetime.now(NYC), wishes,
-                     pass_by=resolve_pass_by(req.pass_by_ids))
+                     pass_by=resolve_pass_by(req.pass_by_ids), options=req.options)
     return SoloResponse(**plan.model_dump(), sources=sources,
                         demo_data=any(v in ("mock", "default") for v in sources.values()))

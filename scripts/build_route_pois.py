@@ -1,14 +1,15 @@
 """Points of interest for walking guidance: parks and gardens, historic sites, artworks, memorials,
-notable buildings, viewpoints, fountains, bridges, squares and landmarks.
+notable buildings, viewpoints, fountains, bridges, squares, markets and landmarks; and the shoreline.
 
     python scripts/build_route_pois.py            # writes deploy/data/nyc_pois.json.gz
 
 Reads the OpenStreetMap responses cached by scripts/build_graph.py (cache/osmnx) and, if the
 public Overpass server answers (at most 3 tries with exponential backoff), adds what the original
 build did not ask for: artworks, historic sites, notable buildings (those with a Wikipedia or
-Wikidata link, so not every named building), viewpoints, fountains, bridges, gardens and squares. Each POI keeps its name, category, a
-representative point, sample points along its outline (every ~25 m, so a route passing a park's
-edge finds it), and its wikipedia / wikidata tags for scripts/make_poi_intros.py.
+Wikidata link, so not every named building), viewpoints, fountains, bridges, gardens, squares and
+markets; a second query reads the shoreline. Each POI keeps its name, category, a representative
+point, sample points along its outline (every ~25 m, so a route passing a park's edge finds it),
+and its wikipedia / wikidata tags for scripts/make_poi_intros.py.
 Map data © OpenStreetMap contributors, ODbL.
 """
 
@@ -32,8 +33,11 @@ EXTRA_QUERY = """[out:json][timeout:180];
  nwr["amenity"~"^(place_of_worship|theatre|library|townhall|arts_centre)$"]["name"]["wikidata"]({b});
  nwr["tourism"="viewpoint"]["name"]({b}); nwr["amenity"="fountain"]["name"]({b});
  nwr["man_made"="bridge"]["name"]({b}); nwr["leisure"="garden"]["name"]({b});
- nwr["place"="square"]["name"]({b}););
+ nwr["place"="square"]["name"]({b}); nwr["amenity"="marketplace"]["name"]({b}););
 out body; >; out skel qt;"""
+SHORE_QUERY = """[out:json][timeout:180];
+way["natural"="coastline"]({b});
+out geom;"""
 NOTABLE_AMENITIES = ("place_of_worship", "theatre", "library", "townhall", "arts_centre")
 USER_AGENT = "StrollCall/0.1 (Meta AI hackathon prototype; one-off POI build)"
 
@@ -57,6 +61,8 @@ def category(tags: dict) -> str | None:
         return "bridge"
     if tags.get("place") == "square":
         return "square"
+    if tags.get("amenity") == "marketplace":
+        return "market"
     if tags.get("tourism") in ("museum", "attraction"):
         return "landmark"
     notable = tags.get("wikidata") or tags.get("wikipedia")
@@ -77,9 +83,9 @@ def cached_elements() -> list[dict]:
     return out
 
 
-def extra_elements(bbox) -> list[dict]:
+def extra_elements(bbox, template=EXTRA_QUERY) -> list[dict]:
     s, w, n, e = bbox
-    query = EXTRA_QUERY.format(b=f"{s},{w},{n},{e}")
+    query = template.format(b=f"{s},{w},{n},{e}")
     for attempt in range(3):
         try:
             r = httpx.post(OVERPASS, data={"data": query}, headers={"User-Agent": USER_AGENT}, timeout=240)
@@ -140,8 +146,17 @@ def main() -> int:
             "id": pid, "name": tags["name"], "category": cat, "lat": round(lat, 6), "lon": round(lon, 6),
             "pts": pts, "wikipedia": tags.get("wikipedia"), "wikidata": tags.get("wikidata"),
         }
+    # The shoreline (OSM natural=coastline, which in New York runs up the Hudson and East rivers),
+    # sampled every SAMPLE_M: for the "Pass by: Waterfront" preference.
+    shore = []
+    for e in extra_elements(bbox, SHORE_QUERY):
+        if e["type"] == "way" and e.get("geometry"):
+            shore += densify([(g["lat"], g["lon"]) for g in e["geometry"]])
+    s, w, n, east = bbox
+    shore = [q for q in shore if s <= q[0] <= n and w <= q[1] <= east]
     data = {
         "built_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "shore": shore,
         "attribution": "© OpenStreetMap contributors, ODbL",
         "pois": sorted(pois.values(), key=lambda p: p["id"]),
     }
@@ -151,6 +166,7 @@ def main() -> int:
     for p in pois.values():
         counts[p["category"]] = counts.get(p["category"], 0) + 1
     wiki = sum(bool(p["wikipedia"] or p["wikidata"]) for p in pois.values())
+    print(f"shoreline: {len(shore)} sample points")
     print(f"{n_cached} cached + {len(elements) - n_cached} fetched elements -> {len(pois)} POIs {counts}, "
           f"{wiki} with wikipedia/wikidata; {OUT.relative_to(ROOT)} {OUT.stat().st_size / 1e3:.0f} kB")
     return 0

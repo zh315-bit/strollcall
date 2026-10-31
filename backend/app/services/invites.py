@@ -19,7 +19,7 @@ from app.core.geo import haversine_m
 from app.models.db import (
     feedback_roles, load_invite, load_invite_extra, save_feedback, save_invite, save_invite_extra,
 )
-from app.models.schemas import Invite, MeetupCandidate, Place, RouteLeg, WalkIntent
+from app.models.schemas import Invite, MeetupCandidate, Place, RouteLeg, WalkIntent, WalkOptions
 
 log = logging.getLogger(__name__)
 
@@ -71,11 +71,14 @@ def _event(public: dict, name: str) -> bool:
 
 
 def create(a_intent: WalkIntent, a_origin: tuple[float, float], a_text: str = "",
-           pass_by_ids: list[str] | None = None) -> tuple[Invite, str]:
+           pass_by_ids: list[str] | None = None, a_options: WalkOptions | None = None) -> tuple[Invite, str]:
     from app.services.invite_card import invite_text, pick_illustration
     from app.services.nearby import resolve_pass_by
+    from app.services.options import with_options
 
     sweep_expired()
+    a_options = (a_options or WalkOptions()).model_copy(update={"shape": "one_way"})  # no loop for two
+    a_intent = with_options(a_intent, a_options)  # "Destination must be open" joins A's hard constraints
     text, text_source = invite_text(a_intent, a_text)
     image_url, image_source = pick_illustration(a_intent)
     invite = Invite(token=secrets.token_urlsafe(16), status="pending", expires_at=_now() + INVITE_TTL,
@@ -88,7 +91,8 @@ def create(a_intent: WalkIntent, a_origin: tuple[float, float], a_text: str = ""
          # Places A asked to pass by (known places, public): a soft preference for the planner.
          "pass_by": [vars(p) for p in resolve_pass_by(pass_by_ids or [])],
          "events": {"created": _now().isoformat()}},
-        {"a_origin": list(a_origin), "a_key": a_key, "a_text": a_text[:500]},
+        {"a_origin": list(a_origin), "a_key": a_key, "a_text": a_text[:500],
+         "a_options": a_options.model_dump()},
     )
     return invite, a_key
 
@@ -248,6 +252,29 @@ def _timed(timings: dict, name: str, fn, *args):
         timings[name] = round(time.perf_counter() - t, 3)
 
 
+def apply_a_options(plan, options: WalkOptions, routing, places) -> None:
+    """A's "Pass by" (a soft rescoring of the routed options by what A's legs really pass) and "Stops
+    on the way" (places on A's legs, no detour, so the meeting times do not change)."""
+    from app.services.options import describe, kinds_passed, mark_stops
+
+    if plan.status != "proposed" or not (options.pass_kinds or options.stops):
+        return
+    from app.services.planner import Weights
+
+    w = Weights.from_settings().pass_by
+    for i, c in enumerate(plan.candidates):
+        legs = [c.a_leg, c.shared_leg]
+        passes = kinds_passed(legs, options.pass_kinds, getattr(routing, "pois", None), places)
+        stops = mark_stops(legs, options.stops, options.pass_kinds)
+        extra = describe(passes, stops, options.stops)
+        score = c.score + (w * len(passes) / len(options.pass_kinds) if options.pass_kinds else 0.0)
+        plan.candidates[i] = c.model_copy(update={
+            "a_leg": legs[0], "shared_leg": legs[1], "stops": stops, "passes": passes, "score": round(score, 6),
+            "rationale": c.rationale + (f" For A: {extra}" if extra else "")})
+    if options.pass_kinds:
+        plan.candidates.sort(key=lambda c: -c.score)
+
+
 def _warm_routing(routing, a_origin, b_origin, duration_min: int) -> None:
     """Run the two Dijkstra searches while Muse Spark reads the preferences (local engine only),
     bounded like the planner's meetup search."""
@@ -276,6 +303,7 @@ def run_planning(token: str) -> None:
     from app.providers import get_places, get_routing
     from app.services.explain import rank_candidates
     from app.services.intent import default_negotiation, negotiate, parse_intent
+    from app.services.options import sided
     from app.services.planner import plan_for_two
     from app.services.wishes import interpret_wishes
 
@@ -292,6 +320,7 @@ def run_planning(token: str) -> None:
     try:
         places, routing = get_places(), get_routing()
         sources["routing"], sources["places"] = routing.name, places.name
+        a_options = WalkOptions(**private.get("a_options", {}))
 
         def submit(ex, fn, *args):
             return ex.submit(contextvars.copy_context().run, fn, *args)
@@ -323,8 +352,10 @@ def run_planning(token: str) -> None:
         from app.services.nearby import PassBy
 
         pass_by = [PassBy(**p) for p in public.get("pass_by", [])]
+        a_routing = sided(routing, tuple(private["a_origin"]), a_options)  # A's pace and avoid on A's leg
         plan = _timed(timings, "plan", plan_for_two, tuple(private["a_origin"]), tuple(private["b_origin"]),
-                      a, b, neg.joint, places, routing, datetime.now(NYC), False, wishes, pass_by)
+                      a, b, neg.joint, places, a_routing, datetime.now(NYC), False, wishes, pass_by)
+        apply_a_options(plan, a_options, routing, places)
     except ProviderError as e:
         invite.status, invite.error = "error", e.code
         _finish(token, invite, public, private, started, timings)

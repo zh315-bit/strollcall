@@ -63,7 +63,7 @@ def test_schema_violation_falls_back_to_default(use_meta, caplog):
 
 def test_empty_text_skips_the_model(use_meta):
     use_meta(FakeMeta(error=AssertionError("should not be called")))
-    assert parse_intent("   ").source == "default"
+    assert parse_intent("   ").source == "none"  # nothing typed: not shown as a rule-based fallback
 
 
 def test_parse_endpoint_runs_at_minimal_effort_with_a_tight_output_cap(monkeypatch):

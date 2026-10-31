@@ -43,12 +43,12 @@ class RoutePois:
         self.owner = np.array(owner, dtype=np.int32)
         self.pts = np.array([pt for p in self.pois for pt in p["pts"]])
         self.tree = cKDTree(np.array(xy)) if xy else None
+        shore = data.get("shore", [])
+        self.shore = cKDTree(np.array([(lo * M_PER_DEG * self.cos, la * M_PER_DEG) for la, lo in shore])) \
+            if shore else None
 
-    def along(self, geometry: list[tuple[float, float]], near_m: float = NEAR_M) -> list[dict]:
-        """POIs within near_m of the line, in the order the walker reaches them:
-        {id, name, category, lat, lon (the POI's point nearest the route), along_m}."""
-        if self.tree is None or len(geometry) < 2:
-            return []
+    def _samples(self, geometry: list[tuple[float, float]]) -> tuple[list[tuple[float, float]], list[float]]:
+        """Points every STEP_M along the line, and how far along each is."""
         samples, along, walked = [], [], 0.0
         for a, b in zip(geometry, geometry[1:]):
             seg = haversine_m(*a, *b)
@@ -59,6 +59,27 @@ class RoutePois:
             walked += seg
         samples.append(geometry[-1])
         along.append(walked)
+        return samples, along
+
+    def shore_m(self, geometry: list[tuple[float, float]], near_m: float = 75.0) -> float:
+        """Meters of the line within near_m of the shoreline (OSM natural=coastline)."""
+        if self.shore is None or len(geometry) < 2:
+            return 0.0
+        samples, _ = self._samples(geometry)
+        xy = np.array([(lo * M_PER_DEG * self.cos, la * M_PER_DEG) for la, lo in samples])
+        near = self.shore.query(xy, distance_upper_bound=near_m)[0] < near_m
+        return float(np.count_nonzero(near)) * STEP_M
+
+    def categories_along(self, geometry: list[tuple[float, float]], near_m: float = NEAR_M) -> set[str]:
+        """Every kind of POI within near_m of the line (not only the varied few `along` keeps)."""
+        return {p["category"] for p in self.along(geometry, near_m, varied=False)}
+
+    def along(self, geometry: list[tuple[float, float]], near_m: float = NEAR_M, varied: bool = True) -> list[dict]:
+        """POIs within near_m of the line, in the order the walker reaches them:
+        {id, name, category, lat, lon (the POI's point nearest the route), along_m}."""
+        if self.tree is None or len(geometry) < 2:
+            return []
+        samples, along = self._samples(geometry)
         xy = np.array([(lo * M_PER_DEG * self.cos, la * M_PER_DEG) for la, lo in samples])
         best: dict[int, tuple[float, float, int]] = {}  # poi -> (along, distance, sample point)
         for i, hits in enumerate(self.tree.query_ball_point(xy, near_m)):
@@ -66,7 +87,7 @@ class RoutePois:
                 k = int(self.owner[h])
                 if k not in best:
                     best[k] = (along[i], 0.0, h)
-        kept = _varied([(k, at) for k, (at, _, h) in best.items()], self.pois)
+        kept = _varied([(k, at) for k, (at, _, h) in best.items()], self.pois) if varied else set(best)
         out = []
         for k, (at, _, h) in sorted(best.items(), key=lambda kv: kv[1][0]):
             if k not in kept:

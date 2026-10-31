@@ -3,6 +3,8 @@
 The same rules as the two-person planner, minus the meetup step: destinations of the wanted type,
 known-closed places dropped, the crowd proxies when asked, the time budget (no tolerance when
 strict), wishes read by Muse Spark in the fit, real walking legs only. Nothing is stored.
+"More options" (services/options.py): pace and avoid through the routing view, a loop back to the
+start, places of the kinds asked for passed (soft), stops on the route, an open destination.
 """
 
 import logging
@@ -13,7 +15,7 @@ from pydantic import BaseModel
 from app.core.errors import ProviderError
 from app.core.geo import haversine_m
 from app.core.hours import is_open
-from app.models.schemas import Place, RouteLeg, WalkIntent
+from app.models.schemas import Place, RouteLeg, WalkIntent, WalkOptions
 from app.services.planner import (
     CATEGORY_LABELS, CROWD_NOTE, CROWD_NOTE_NO_DATA, DETOUR_FACTOR, VIBE_TESTS, WALK_M_PER_MIN,
     PlanFailure, Weights, avoids_crowds, destination_types, drop_crowded, explain_failure, pass_by_term,
@@ -34,6 +36,9 @@ class SoloCandidate(BaseModel):
     id: str  # the destination's place id
     destination_place_id: str
     leg: RouteLeg
+    return_leg: RouteLeg | None = None  # a loop: from the destination back to the start
+    stops: list[dict] = []  # places on the route the walker asked to stop at, in order
+    passes: list[str] = []  # "Pass by" kinds this walk really passes (map data)
     total_min: float
     score: float
     rationale: str
@@ -81,10 +86,16 @@ def solo_fit(dest: Place, intent: WalkIntent, wishes=None) -> tuple[float, list[
 
 
 def _plan(origin: Point, intent: WalkIntent, places, routing, depart_at: datetime, wishes, weights,
-          pass_by=None) -> SoloPlan:
+          pass_by=None, options: WalkOptions | None = None) -> SoloPlan:
+    from app.services.options import GRAPH_M_PER_MIN, describe, kinds_passed, mark_stops, pace_m_per_min
+
+    options = options or WalkOptions()
+    loop = options.shape == "loop"
+    legs_per_walk = 2 if loop else 1
+    speed = WALK_M_PER_MIN * pace_m_per_min(options) / GRAPH_M_PER_MIN  # straight-line estimates
     stats: dict[str, int] = {}
     slack = time_slack(intent)
-    reach_m = (intent.duration_min + slack) * WALK_M_PER_MIN / DETOUR_FACTOR * 1.1
+    reach_m = (intent.duration_min + slack) / legs_per_walk * speed / DETOUR_FACTOR * 1.1
     radius = int(min(max(reach_m, 400), 2000))
     fetched = places.destination_candidates(*origin, radius, destination_types(intent))
     _count(stats, "destination_fetched", len(fetched))
@@ -92,38 +103,40 @@ def _plan(origin: Point, intent: WalkIntent, places, routing, depart_at: datetim
         fetched = drop_crowded(places, fetched, stats, "destination_excluded_crowd_proxy")
     arrive_at = depart_at + timedelta(minutes=intent.duration_min)
 
-    options = []
+    ranked = []
     for p in fetched:
         if is_open(p.opening_hours, arrive_at) is False:
             _count(stats, "destination_known_closed")
             continue
-        est = haversine_m(*origin, p.lat, p.lon) * DETOUR_FACTOR / WALK_M_PER_MIN
+        est = haversine_m(*origin, p.lat, p.lon) * DETOUR_FACTOR / speed * legs_per_walk
         if est > intent.duration_min + slack + 2:
             _count(stats, "destination_too_far_estimate")
             continue
         fit, _ = solo_fit(p, intent, wishes)
         target = 0.9 * intent.duration_min
-        options.append((abs(est - target) > WISH_WINDOW_MIN, -fit, abs(est - target), p.id, p))
-    options.sort(key=lambda o: o[:4])
-    shortlist = [o[-1] for o in options[:SHORTLIST]]
+        ranked.append((abs(est - target) > WISH_WINDOW_MIN, -fit, abs(est - target), p.id, p))
+    ranked.sort(key=lambda o: o[:4])
+    shortlist = [o[-1] for o in ranked[:SHORTLIST]]
     stats["destination_shortlisted"] = len(shortlist)
     if not shortlist:
         return SoloPlan(status="no_feasible_plan", stats=stats)
 
-    times = routing.matrix([origin], [(p.lat, p.lon) for p in shortlist], limit_min=intent.duration_min + slack)
+    times = routing.matrix([origin], [(p.lat, p.lon) for p in shortlist],
+                           limit_min=(intent.duration_min + slack) / legs_per_walk)
     need_open = requires_open(intent)
     scored = []
-    for p, t in zip(shortlist, times.durations_min[0]):
-        if t is None:
+    for p, t_out in zip(shortlist, times.durations_min[0]):
+        if t_out is None:
             _count(stats, "no_route")
             continue
+        t = t_out * legs_per_walk  # a loop: about as long back as out
         if t > intent.duration_min + slack:
             _count(stats, "elapsed_over_budget")
             continue
         if t < MIN_SHARE * intent.duration_min:
             _count(stats, "too_short")
             continue
-        open_now = is_open(p.opening_hours, depart_at + timedelta(minutes=t))
+        open_now = is_open(p.opening_hours, depart_at + timedelta(minutes=t_out))
         if open_now is False:
             _count(stats, "destination_known_closed")
             continue
@@ -140,20 +153,41 @@ def _plan(origin: Point, intent: WalkIntent, places, routing, depart_at: datetim
 
     candidates = []
     for score, pid, p, met, open_now in scored[:MAX_DIRECTIONS_TRIES]:
-        if len(candidates) == TOP_N:
+        # Without "Pass by" kinds the planner's order stands; with them, every walk tried is routed
+        # and rescored by what it really passes.
+        if len(candidates) == TOP_N and not options.pass_kinds:
             break
-        leg = routing.walk(origin, (p.lat, p.lon))
-        if leg.duration_min > intent.duration_min + slack:
+        dest = (p.lat, p.lon)
+        leg = routing.walk(origin, dest)
+        back = None
+        if loop:
+            back = (routing.walk_back(dest, origin, origin, dest) if hasattr(routing, "walk_back")
+                    else routing.walk(dest, origin))
+        total = leg.duration_min + (back.duration_min if back else 0.0)
+        if total > intent.duration_min + slack:
             _count(stats, "directions_broke_constraint")
             continue
+        legs = [leg] + ([back] if back else [])
+        passes = kinds_passed(legs, options.pass_kinds, getattr(routing, "pois", None), places)
+        if options.pass_kinds:
+            score = round(score + weights.pass_by * len(passes) / len(options.pass_kinds), 6)
+        stops = mark_stops(legs, options.stops, options.pass_kinds)
+        leg, back = legs[0], (legs[1] if back else None)
         hours = "open when you arrive, per OSM" if open_now else "opening hours unknown"
         suits = f", for you: {', '.join(met)}" if met else ""
+        walk = (f"Walk about {leg.duration_min:.0f} min to {p.name}" if not back else
+                f"Walk about {leg.duration_min:.0f} min to {p.name} and {back.duration_min:.0f} min back to your start,")
+        extra = describe(passes, stops, options.stops)
         candidates.append(SoloCandidate(
-            id=pid, destination_place_id=pid, leg=leg, total_min=round(leg.duration_min, 2), score=score,
-            rationale=(f"Walk about {leg.duration_min:.0f} min to {p.name} "
-                       f"({CATEGORY_LABELS.get(p.category, p.category)}{suits}, {hours})."
-                       + "".join(f" Passes {n}." for n in passed_on([leg], pass_by))),
+            id=pid, destination_place_id=pid, leg=leg, return_leg=back, stops=stops, passes=passes,
+            total_min=round(total, 2), score=score,
+            rationale=(f"{walk} ({CATEGORY_LABELS.get(p.category, p.category)}{suits}, {hours})."
+                       + "".join(f" Passes {n}." for n in passed_on(legs, pass_by))
+                       + (f" {extra}" if extra else "")),
         ))
+    if options.pass_kinds:
+        candidates.sort(key=lambda c: (-c.score, c.id))
+    candidates = candidates[:TOP_N]
     if not candidates:
         return SoloPlan(status="no_feasible_plan", stats=stats)
     return SoloPlan(status="proposed", candidates=candidates,
@@ -177,21 +211,29 @@ def _solo_failure(stats: dict, intent: WalkIntent, replan) -> PlanFailure:
 
 
 def plan_solo(origin: Point, intent: WalkIntent, places, routing, depart_at: datetime, wishes=None,
-              weights: Weights | None = None, pass_by=None) -> SoloPlan:
+              weights: Weights | None = None, pass_by=None, options: WalkOptions | None = None) -> SoloPlan:
+    from app.services.options import honored, routing_view, with_options
+
     weights = weights or Weights.from_settings()
+    intent = with_options(intent, options)
+    plain = routing
+    routing = routing_view(routing, options)
     try:
-        plan = _plan(origin, intent, places, routing, depart_at, wishes, weights, pass_by)
+        plan = _plan(origin, intent, places, routing, depart_at, wishes, weights, pass_by, options)
     except ProviderError as e:
         status = "places_unavailable" if e.code == "places_unavailable" else "routing_unavailable"
         return SoloPlan(status=status, error=e.message)
     if avoids_crowds(intent):
         plan.notes.append(CROWD_NOTE if hasattr(places, "crowd_risk") else CROWD_NOTE_NO_DATA)
+    if not honored(plain, options):
+        plan.notes.append("Pace and Avoid apply only on our own walking map; this start uses another routing engine.")
     if plan.status == "no_feasible_plan":
         replan = None
         if getattr(routing, "name", "") == "local":  # cheap to replan only on the local graph
             def replan(i):
                 try:
-                    return _plan(origin, i, places, routing, depart_at, wishes, weights, pass_by).status == "proposed"
+                    return _plan(origin, i, places, routing, depart_at, wishes, weights, pass_by,
+                                 options).status == "proposed"
                 except ProviderError:
                     return False
         plan.failure = _solo_failure(plan.stats, intent, replan)

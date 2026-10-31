@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -14,6 +15,18 @@ class WalkIntent(BaseModel):
     hard_constraints: list[str] = []
 
 
+class WalkOptions(BaseModel):
+    """"More options" on the New walk page: only what the planner can honor with map data
+    (services/options.py). The defaults change nothing."""
+    shape: Literal["one_way", "loop"] = "one_way"  # walking alone only
+    pace: Literal["relaxed", "normal", "brisk"] = "normal"
+    pass_kinds: list[Literal["parks", "waterfront", "landmarks", "public_art", "bookstores", "markets"]] = \
+        Field(default=[], max_length=6)
+    avoid: list[Literal["stairs", "busy_avenues", "transit_hubs"]] = Field(default=[], max_length=3)
+    stops: int = Field(default=0, ge=0, le=3)
+    must_be_open: bool = False
+
+
 class JointPreference(BaseModel):
     shared_vibes: list[str]
     a_priorities: list[str]
@@ -26,7 +39,8 @@ class RouteLeg(BaseModel):
     distance_m: float
     duration_min: float
     steps: list[dict] = []  # turn instructions (local graph only), see services/directions.py
-    pois: list[dict] = []  # parks, historic sites, artworks... within ~40 m (providers/route_pois.py)
+    pois: list[dict] = []  # parks, historic sites, artworks... within ~40 m (providers/route_pois.py);
+    # a POI with "stop": k is the k-th stop the walker asked for (services/options.py)
 
 
 class MeetupCandidate(BaseModel):
@@ -40,6 +54,8 @@ class MeetupCandidate(BaseModel):
     total_elapsed_min: float
     score: float
     rationale: str
+    stops: list[dict] = []  # A's "Stops on the way": places on A's legs, no detour (services/options.py)
+    passes: list[str] = []  # A's "Pass by" kinds that A's legs really pass
 
 
 class Invite(BaseModel):

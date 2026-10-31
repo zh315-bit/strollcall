@@ -32,6 +32,14 @@ MIN_LIMIT_MIN = 10.0  # smallest bound used for a caller-supplied limit
 M_PER_DEG_LAT = 111_320.0
 CACHE_MAX = 20_000
 DIJKSTRA_CACHE = 64  # recent single-source results kept for directions
+# Edge flags from map data (scripts/add_edge_flags.py), for the "Avoid" options.
+EDGE_STAIRS, EDGE_BUSY, EDGE_HUB = 1, 2, 4
+AVOID_FLAGS = {"stairs": EDGE_STAIRS, "busy_avenues": EDGE_BUSY, "transit_hubs": EDGE_HUB}
+# Penalties, not exclusions: a route still exists when the only way is up the stairs or along the
+# avenue, it is just the last choice. Times shown are always the real walking times.
+AVOID_PENALTY = {"stairs": 20.0, "busy_avenues": 3.0, "transit_hubs": 3.0}
+PENALTY_SEARCH = 1.5  # a penalized search explores this much further (in cost) than the time bound
+REUSE_PENALTY = 3.0  # a loop's way back: streets already walked on the way out cost this much more
 
 
 class OutsideCoverage(Exception):
@@ -56,6 +64,7 @@ class WalkGraph:
         self.names_idx = data["node_names"] if "node_names" in data else None
         self.street_names = str(data["street_names"]).split("\n") if "street_names" in data else []
         self.bbox = tuple(float(x) for x in data["bbox"])
+        self.edge_flags = data["edge_flags"] if "edge_flags" in data else np.zeros(len(self.indices), np.uint8)
         n = len(self.lat)
         self.csr = csr_matrix((self.minutes, self.indices, self.indptr), shape=(n, n))
         self.cos_lat = math.cos(math.radians(float(np.mean(self.lat))))
@@ -124,7 +133,8 @@ def load_graph(path: Path) -> WalkGraph:
 class LocalRouting:
     name = "local"
 
-    def __init__(self, graph: WalkGraph, fallback=None, pois=None):
+    def __init__(self, graph: WalkGraph, fallback=None, pois=None, m_per_min: float | None = None,
+                 avoid: tuple[str, ...] = ()):
         self.graph = graph
         self.pois = pois  # RoutePois: points of interest along each leg, or None
         self.fallback = fallback  # ORS provider, or a callable returning one, or None
@@ -132,6 +142,43 @@ class LocalRouting:
         self.elements: dict[str, tuple[float, float] | None] = {}
         self._trees: OrderedDict[int, tuple[np.ndarray, np.ndarray, float]] = OrderedDict()
         self.snap_m: list[float] = []  # recent snap distances, for reporting
+        # Pace: minutes reported are the graph's (at graph.m_per_min) times `scale`.
+        self.m_per_min = m_per_min or graph.m_per_min
+        self.scale = graph.m_per_min / self.m_per_min
+        self.avoid = tuple(sorted(a for a in avoid if a in AVOID_FLAGS))
+        self.csr = graph.csr
+        if self.avoid:
+            factor = np.ones(len(graph.minutes), dtype=np.float32)
+            for a in self.avoid:
+                factor[(graph.edge_flags & AVOID_FLAGS[a]) != 0] *= AVOID_PENALTY[a]
+            self.csr = csr_matrix((graph.minutes * factor, graph.indices, graph.indptr), shape=graph.csr.shape)
+        self._views: dict[tuple, "LocalRouting"] = {}
+        self.leg_nodes: dict[str, list[int]] = {}  # graph nodes of each walked leg, for a loop's way back
+
+    def view(self, m_per_min: float | None = None, avoid=()) -> "LocalRouting":
+        """The same graph at another walking pace and/or avoiding stairs, busy avenues or transit
+        hubs (by map data). The default view is this object, so defaults change nothing."""
+        key = (round(m_per_min or self.graph.m_per_min, 1), tuple(sorted(a for a in avoid if a in AVOID_FLAGS)))
+        if key == (round(self.m_per_min, 1), self.avoid):
+            return self
+        if key not in self._views:
+            self._views[key] = LocalRouting(self.graph, self.fallback, self.pois, key[0], key[1])
+        return self._views[key]
+
+    def _real_minutes(self, cost: np.ndarray, pred: np.ndarray, source: int) -> np.ndarray:
+        """Walking minutes along the cheapest (penalized) paths: summed down the search tree."""
+        real = np.full(len(cost), np.inf)
+        real[source] = 0.0
+        reached = np.nonzero(np.isfinite(cost))[0]
+        order = reached[np.argsort(cost[reached], kind="stable")]
+        order = order[order != source]
+        if not len(order):
+            return real
+        parents = pred[order]
+        weights = np.asarray(self.graph.csr[parents, order]).ravel()
+        for n, p, w in zip(order.tolist(), parents.tolist(), weights.tolist()):
+            real[n] = real[p] + w
+        return real
 
     def _fallback(self, why: str):
         fb = self.fallback() if callable(self.fallback) else self.fallback
@@ -150,8 +197,12 @@ class LocalRouting:
         if hit is not None and hit[2] >= limit:
             self._trees.move_to_end(source)
             return hit[0], hit[1]
-        dist, pred = dijkstra(self.graph.csr, directed=True, indices=source,
-                              limit=limit, return_predecessors=True)
+        # `limit` is in reported (paced) minutes; the graph is in its own minutes.
+        bound = limit / self.scale * (PENALTY_SEARCH if self.avoid else 1.0)
+        dist, pred = dijkstra(self.csr, directed=True, indices=source, limit=bound, return_predecessors=True)
+        if self.avoid:
+            dist = self._real_minutes(dist, pred, source)
+        dist = dist * self.scale
         self._trees[source] = (dist, pred, limit)
         self._trees.move_to_end(source)
         if len(self._trees) > DIJKSTRA_CACHE:
@@ -165,7 +216,7 @@ class LocalRouting:
         Raises OutsideCoverage when A or B is off the local map.
         """
         (na, sa), (nb, sb) = self.graph.snap(a), self.graph.snap(b)
-        speed = self.graph.m_per_min
+        speed = self.m_per_min
         ta = self._search(na, max_minutes)[0] + sa / speed
         tb = self._search(nb, max_minutes)[0] + sb / speed
         with np.errstate(invalid="ignore"):  # inf - inf for nodes neither reaches
@@ -194,7 +245,7 @@ class LocalRouting:
                      sum(n is None for n, _ in dst), SNAP_MAX_M)
         self.snap_m.extend(d for _, d in src + dst if d is not None)
 
-        speed = self.graph.m_per_min
+        speed = self.m_per_min
         durations, distances = [], []
         for (s_node, s_snap), s in zip(src, sources):
             dist, _ = self._search(s_node, bound)
@@ -233,10 +284,51 @@ class LocalRouting:
         if not np.isfinite(dist[e_node]):
             raise ProviderError("no_route", f"no walking path within {SEARCH_LIMIT_MIN:.0f} min")
 
+        leg = self._leg(start, end, s_node, e_node, s_snap, e_snap, dist, pred)
+        self.leg_nodes[key] = self._path(s_node, e_node, pred)
+        if len(self.legs) > CACHE_MAX:
+            self.legs.clear()
+            self.leg_nodes.clear()
+        self.legs[key] = leg
+        return leg
+
+    def walk_back(self, start: Point, end: Point, out_start: Point, out_end: Point) -> RouteLeg:
+        """The way back of a loop (start = where the way out ended): the shortest walk that prefers
+        streets the way out did not use (REUSE_PENALTY), so the loop is not the same street twice
+        when the map allows. Times are real walking times."""
+        out = self.leg_nodes.get(route_key(out_start, out_end))
+        try:
+            (s_node, s_snap), (e_node, e_snap) = self.graph.snap(start), self.graph.snap(end)
+        except OutsideCoverage:
+            return self.walk(start, end)
+        if not out:
+            return self.walk(start, end)
+        g = self.graph
+        cost = self.csr.data.copy()
+        for u, v in zip(out, out[1:]):
+            for a, b in ((u, v), (v, u)):
+                row = slice(g.indptr[a], g.indptr[a + 1])
+                hits = np.nonzero(g.indices[row] == b)[0]
+                if len(hits):
+                    cost[g.indptr[a] + hits[0]] *= REUSE_PENALTY
+        csr = csr_matrix((cost, g.indices, g.indptr), shape=g.csr.shape)
+        dist, pred = dijkstra(csr, directed=True, indices=s_node, limit=SEARCH_LIMIT_MIN / self.scale * REUSE_PENALTY,
+                              return_predecessors=True)
+        if not np.isfinite(dist[e_node]):
+            return self.walk(start, end)
+        dist = self._real_minutes(dist, pred, s_node) * self.scale
+        return self._leg(start, end, s_node, e_node, s_snap, e_snap, dist, pred)
+
+    @staticmethod
+    def _path(s_node: int, e_node: int, pred: np.ndarray) -> list[int]:
         nodes = [e_node]
         while nodes[-1] != s_node:
             nodes.append(int(pred[nodes[-1]]))
         nodes.reverse()
+        return nodes
+
+    def _leg(self, start, end, s_node, e_node, s_snap, e_snap, dist, pred) -> RouteLeg:
+        nodes = self._path(s_node, e_node, pred)
         g = self.graph
         geometry: list[Point] = [start]
         node_at: list[int] = []  # where each path node sits in the geometry
@@ -250,11 +342,7 @@ class LocalRouting:
         from app.services.directions import turn_steps
 
         steps = turn_steps(geometry, node_at, [g.names_of(u) for u in nodes]) if g.names_ptr is not None else []
-        minutes = float(dist[e_node]) + (s_snap + e_snap) / g.m_per_min
-        leg = RouteLeg(geometry=geometry, distance_m=round(minutes * g.m_per_min, 1),
-                       duration_min=round(minutes, 2), steps=steps,
-                       pois=self.pois.along(geometry) if self.pois else [])
-        if len(self.legs) > CACHE_MAX:
-            self.legs.clear()
-        self.legs[key] = leg
-        return leg
+        minutes = float(dist[e_node]) + (s_snap + e_snap) / self.m_per_min
+        return RouteLeg(geometry=geometry, distance_m=round(minutes * self.m_per_min, 1),
+                        duration_min=round(minutes, 2), steps=steps,
+                        pois=self.pois.along(geometry) if self.pois else [])

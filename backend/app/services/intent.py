@@ -57,7 +57,7 @@ INTENT_SCHEMA = {
 class ParsedIntent(BaseModel):
     intent: WalkIntent
     inferred_fields: list[str] = []  # fields not stated by the user, shown differently in the UI
-    source: str  # meta (live) / mock (USE_MOCKS or budget cap) / default (provider failed)
+    source: str  # meta (live) / mock (USE_MOCKS or budget cap) / default (provider failed) / none (nothing typed)
     note: str | None = None
 
 
@@ -90,7 +90,8 @@ _parsed_lock = threading.Lock()
 def parse_intent(text: str) -> ParsedIntent:
     text = text.strip()
     if not text:
-        return default_intent("empty text")
+        # Nothing to read, so no model call; not a fallback either (the page must not say "rule-based").
+        return default_intent("empty text").model_copy(update={"source": "none"})
     key = hashlib.sha256(f"{reasoning_override.get()}\n{text}".encode()).hexdigest()
     now = time.monotonic()
     with _parsed_lock:
