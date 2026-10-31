@@ -125,3 +125,44 @@ def test_invite_records_which_model_read_each_wish(glimmer):
     v = view(invite.token, a_key)
     assert v.read_by["a"]["source"] == "glimmer" and v.read_by["a"]["gpu"] == "H200"
     assert v.sources["a_intent"] == "glimmer"
+
+
+def answer(**fields) -> str:
+    base = {"duration_min": 25, "duration_strict": False, "vibes": [], "endpoint_type": None, "avoid": [],
+            "hard_constraints": [], "inferred_fields": []}
+    return json.dumps({**base, **fields})
+
+
+def test_extras_glimmer_adds_are_guesses_and_never_hard_rules(glimmer):
+    """Items the person didn't say are dashed guess chips; a hard constraint or an enforced avoid
+    (crowds) they didn't say becomes a soft vibe, so the planner never filters on it."""
+    from app.services.planner import avoids_crowds, requires_open
+
+    glimmer.content = answer(vibes=["quiet", "scenic"], avoid=["crowds", "traffic"],
+                             hard_constraints=["must be open now", "wheelchair accessible"])
+    r = intent.parse_intent("a quiet walk to a cafe, I use a wheelchair")
+    i = r.intent
+    assert r.source == "glimmer"
+    assert i.hard_constraints == []  # neither was said in full
+    assert not requires_open(i) and not avoids_crowds(i)  # nothing filters places
+    assert set(i.vibes) == {"quiet", "scenic", "must be open now", "wheelchair accessible", "avoid crowds"}
+    assert i.avoid == ["traffic"]  # not enforced by the planner: kept, marked a guess
+    assert set(r.inferred_items) == {"vibes:scenic", "vibes:must be open now", "vibes:wheelchair accessible",
+                                     "vibes:avoid crowds", "avoid:traffic"}
+    assert "vibes:quiet" not in r.inferred_items  # said: a plain chip
+
+
+def test_what_the_person_said_stays_as_they_said_it(glimmer):
+    from app.services.planner import avoids_crowds, requires_open
+
+    glimmer.content = answer(vibes=["sunny"], avoid=["crowds"], hard_constraints=["open now", "vegan options"])
+    r = intent.parse_intent("Somewhere with vegan options that's open now, in the sun, away from the crowds")
+    assert r.intent.hard_constraints == ["open now", "vegan options"] and requires_open(r.intent)
+    assert avoids_crowds(r.intent) and r.inferred_items == []
+
+
+def test_the_page_dashes_guessed_items():
+    from pathlib import Path
+
+    page = (Path(__file__).resolve().parents[2] / "frontend" / "index.html").read_text()
+    assert "state.inferredItems.includes(`${field}:${v}`)" in page

@@ -91,7 +91,7 @@
 <script src="/static/js/walk.js"></script>
 <script src="/static/js/options.js"></script>
 <script>
-const state = { intent: null, inferred: [], origin: null, text: "", mode: "solo", solo: null, chosen: 0,
+const state = { intent: null, inferred: [], inferredItems: [], origin: null, text: "", mode: "solo", solo: null, chosen: 0,
                 near: null, nearFor: null, nearOpen: null, passBy: [], nearSeen: [], nearMore: false, nearNote: "" };
 const $ = (id) => document.getElementById(id);
 const map = makeMap("map");
@@ -149,7 +149,7 @@ $("locate").addEventListener("click", () => {
 function renderChips() {
   const chips = [];
   const add = (list, field) => state.intent[field].forEach((v, i) => chips.push(el("span",
-    { class: "chip" + (state.inferred.includes(field) ? " inferred" : "") },
+    { class: "chip" + (state.inferred.includes(field) || state.inferredItems.includes(`${field}:${v}`) ? " inferred" : "") },
     field === "avoid" ? `avoid ${v}` : v,
     el("button", { type: "button", "aria-label": `remove ${v}`, onclick: () => { state.intent[field].splice(i, 1); renderChips(); } }, "×"))));
   add(state.intent, "vibes"); add(state.intent, "avoid"); add(state.intent, "hard_constraints");
@@ -161,7 +161,7 @@ $("parse").addEventListener("click", async () => {
   try {
     state.text = $("text").value.trim();
     const r = await api("/api/intents/parse", { method: "POST", body: { text: state.text } });
-    state.intent = r.intent; state.inferred = r.inferred_fields;
+    state.intent = r.intent; state.inferred = r.inferred_fields; state.inferredItems = r.inferred_items || [];
     $("duration").value = r.intent.duration_min; $("duration-label").textContent = r.intent.duration_min;
     $("endpoint").value = r.intent.endpoint_type || "";
     $("strict").checked = !!r.intent.duration_strict;

@@ -76,7 +76,13 @@ to the JSON schema (`json_schema`, every list bounded with `maxItems`). Result: 
    repo@revision, precision, host, GPU, endpoint id). The New walk page shows "Read by Muse Glimmer (open
    weights, on Modal)"; an invite stores who read A's and B's wishes and shows it under the plan.
    `/health` shows `open_weights`: the deployment and the window.
-4. Run log: each Glimmer call writes one line, to the server log and the spend log, with no user text:
+4. Guesses are never hard rules (`services/intent.ground_in_text`, for every model): each listed item
+   is checked against the person's own words. An item with none of their words is a guess: a dashed chip
+   they can remove (`inferred_items`). A hard constraint stays hard only if all its words are theirs;
+   otherwise it becomes a soft vibe. An `avoid` with a crowd word (the planner would drop crowded
+   meeting points) that they didn't say becomes a soft "avoid ..." vibe. The planner enforces only
+   "open" hard constraints and crowd avoids; everything else only changes the score.
+5. Run log: each Glimmer call writes one line, to the server log and the spend log, with no user text:
    `muse-glimmer, BF16, Modal, H200 | meta-models/Muse-Glimmer-30B@f84ecc3 deployment=ep-ez0BAxZPNiSL3x40VCpbFi | job=walk_intent ok latency=0.44s in=383 out=51 est=$0.00060`.
 
 ## Budget
@@ -103,6 +109,7 @@ scoring) was committed before the first run.
 ```bash
 .venv/bin/python scripts/glimmer_warm.py --no-site --minutes 10    # terminal 1
 .venv/bin/python scripts/eval_open_weights.py --run 3              # terminal 2; never overwrites a run
+.venv/bin/python scripts/compare_open_weights.py 1 2 3             # side by side; run 2 listed as void
 ```
 
 Output: `benchmarks/<date>-open-weights-run<N>.md` and `sample_outputs/open_weights/run<N>/`: per text

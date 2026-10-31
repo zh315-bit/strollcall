@@ -6,6 +6,7 @@ The model only extracts and reconciles; Pydantic and deterministic checks decide
 import hashlib
 import json
 import logging
+import re
 import threading
 import time
 from concurrent.futures import Future
@@ -61,6 +62,9 @@ class ParsedIntent(BaseModel):
     # default (provider failed) / none (nothing typed)
     source: str
     note: str | None = None
+    # Items the model added that the person's own words don't contain ("vibes:outdoor seating"):
+    # shown as dashed guess chips, and never a hard rule (see ground_in_text).
+    inferred_items: list[str] = []
     read_by: dict | None = None  # the model and deployment that read it (glimmer: model, precision, GPU, endpoint)
     fallback_from: str | None = None  # "glimmer" when it was tried and the Meta API answered instead
 
@@ -121,7 +125,64 @@ def parse_intent(text: str) -> ParsedIntent:
     return result
 
 
-def _validated(data: dict, source: str) -> ParsedIntent | None:
+# Words that say nothing about what the person wants; an item made only of these is not grounded.
+_FILLER = {"a", "an", "the", "to", "of", "at", "in", "on", "for", "with", "and", "or", "be", "is", "it", "my",
+           "must", "need", "needs", "now", "route", "walk", "place", "places", "somewhere", "spot", "very"}
+
+
+def _words(text: str) -> list[str]:
+    return [w for w in re.findall(r"[a-z]+", text.lower()) if w not in _FILLER]
+
+
+def _said(word: str, text_words: list[str]) -> bool:
+    """The word, or one sharing its stem, is in the text: the first 4 letters, or all of the shorter
+    word if it has 3 ("vegan"/"vegans", "stairs"/"stair", "sun"/"sunny")."""
+    for t in text_words:
+        n = min(4, len(word), len(t))
+        if n >= 3 and t[:n] == word[:n]:
+            return True
+    return False
+
+
+def ground_in_text(intent: WalkIntent, text: str) -> tuple[WalkIntent, list[str]]:
+    """Check each listed item against the person's own words, whatever model read them.
+
+    - A vibe or avoid item with no word from the text is a guess: kept, marked inferred.
+    - A hard constraint stays hard only if all its words come from the text; otherwise it
+      becomes a soft vibe, marked inferred. (Hard constraints filter places: "open" removes
+      closed destinations.)
+    - An avoid item the planner would enforce (crowd words drop crowded meeting points) that the
+      person didn't say becomes a soft "avoid ..." vibe, marked inferred.
+    Returns the intent and the inferred items as "field:value".
+    """
+    from app.services.planner import CROWD_WORDS
+
+    said = _words(text)
+    inferred: list[str] = []
+    vibes, avoid, hard = list(intent.vibes), [], []
+    for item in intent.hard_constraints:
+        words = _words(item)
+        if words and all(_said(w, said) for w in words):
+            hard.append(item)
+        else:
+            vibes.append(item)
+            inferred.append(f"vibes:{item}")
+    for item in intent.avoid:
+        if any(_said(w, said) for w in _words(item)):
+            avoid.append(item)
+        elif any(c in item for c in CROWD_WORDS):
+            vibes.append(f"avoid {item}")
+            inferred.append(f"vibes:avoid {item}")
+        else:
+            avoid.append(item)
+            inferred.append(f"avoid:{item}")
+    for item in intent.vibes:
+        if not any(_said(w, said) for w in _words(item)):
+            inferred.append(f"vibes:{item}")
+    return intent.model_copy(update={"vibes": _clean(vibes), "avoid": avoid, "hard_constraints": hard}), inferred
+
+
+def _validated(data: dict, source: str, text: str = "") -> ParsedIntent | None:
     try:
         intent = WalkIntent.model_validate(data)
     except ValidationError as e:
@@ -131,8 +192,10 @@ def _validated(data: dict, source: str) -> ParsedIntent | None:
     intent.vibes = _clean(intent.vibes)
     intent.avoid = _clean(intent.avoid)
     intent.hard_constraints = _clean(intent.hard_constraints)
-    inferred = [f for f in data.get("inferred_fields", []) if f in INTENT_FIELDS]
-    return ParsedIntent(intent=intent, inferred_fields=inferred, source=source, read_by=_read_by(source))
+    inferred = list(dict.fromkeys(f for f in data.get("inferred_fields", []) if f in INTENT_FIELDS))
+    intent, items = ground_in_text(intent, text)
+    return ParsedIntent(intent=intent, inferred_fields=inferred, inferred_items=items, source=source,
+                        read_by=_read_by(source))
 
 
 def _read_by(source: str) -> dict | None:
@@ -145,7 +208,7 @@ def _read_by(source: str) -> dict | None:
     return None
 
 
-def _try_glimmer(user: str) -> tuple[ParsedIntent | None, str]:
+def _try_glimmer(user: str, text: str) -> tuple[ParsedIntent | None, str]:
     """Muse Glimmer on our Modal endpoint, inside a warm window only; (None, why) if it failed."""
     from app.core.budget import BudgetExceeded
     from app.providers.glimmer import GlimmerProvider
@@ -154,7 +217,7 @@ def _try_glimmer(user: str) -> tuple[ParsedIntent | None, str]:
         data = GlimmerProvider().structured_json(SYSTEM_PROMPT, user, INTENT_SCHEMA, name="walk_intent")
     except (ProviderError, BudgetExceeded) as e:
         return None, getattr(e, "message", str(e))
-    parsed = _validated(data, "glimmer")
+    parsed = _validated(data, "glimmer", text)
     return parsed, "" if parsed else "invalid_model_output"
 
 
@@ -177,7 +240,7 @@ def _parse_now(text: str) -> ParsedIntent:
     try:
         if use_glimmer():
             tried_glimmer = True
-            parsed, why = _try_glimmer(user)
+            parsed, why = _try_glimmer(user, text)
             if parsed:
                 return parsed
             log.warning("wish reading: Muse Glimmer fell back to the Meta API (%s)", why)
@@ -190,7 +253,7 @@ def _parse_now(text: str) -> ParsedIntent:
     finally:
         output_cap_override.reset(cap)
 
-    parsed = _validated(data, source) or default_intent("invalid_model_output")
+    parsed = _validated(data, source, text) or default_intent("invalid_model_output")
     if tried_glimmer:
         parsed.fallback_from = "glimmer"
     return parsed
