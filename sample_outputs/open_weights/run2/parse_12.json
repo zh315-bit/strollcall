@@ -1,0 +1,61 @@
+{
+  "text": "I don't eat dairy, eggs or any other animal products",
+  "expected": {
+    "duration_min": 25,
+    "endpoint_type": "not scored"
+  },
+  "muse_glimmer": {
+    "raw": null,
+    "json_valid": false,
+    "intent": null,
+    "intent_valid": false,
+    "error": "model_unavailable: Muse Glimmer: BadRequestError, HTTP 400, Failed to compile json grammar: JSON Schema at #/properties/inferred_fields is not supported by xgrammar: keyword(s) uniqueItems would be ignored",
+    "latency_s": 0.191,
+    "cost_usd": 0.0,
+    "glimmer": {
+      "prompt_tokens": null,
+      "completion_tokens": null,
+      "reasoning_chars": null,
+      "finish_reason": null
+    },
+    "score": {
+      "duration": null,
+      "endpoint": null
+    }
+  },
+  "muse_spark_1_3": {
+    "raw": "{\"avoid\": [\"dairy\", \"eggs\", \"animal products\"], \"duration_min\": 25, \"duration_strict\": false, \"endpoint_type\": null, \"hard_constraints\": [], \"inferred_fields\": [\"duration_min\", \"vibes\", \"endpoint_type\", \"hard_constraints\", \"duration_min\", \"vibes\", \"endpoint_type\", \"hard_constraints\", \"duration_min\"], \"vibes\": []}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 25,
+      "duration_strict": false,
+      "vibes": [],
+      "endpoint_type": null,
+      "avoid": [
+        "dairy",
+        "eggs",
+        "animal products"
+      ],
+      "hard_constraints": []
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [
+      "duration_min",
+      "vibes",
+      "endpoint_type",
+      "hard_constraints",
+      "duration_min",
+      "vibes",
+      "endpoint_type",
+      "hard_constraints",
+      "duration_min"
+    ],
+    "latency_s": 2.882,
+    "cost_usd": 0.004093,
+    "score": {
+      "duration": true,
+      "endpoint": null
+    }
+  }
+}

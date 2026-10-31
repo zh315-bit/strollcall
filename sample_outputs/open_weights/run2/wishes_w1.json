@@ -1,0 +1,45 @@
+{
+  "case": "w1",
+  "a_text": "It's warm out, let's get a coffee we can drink sitting outside",
+  "b_text": "Somewhere nice, about 30 minutes",
+  "expected_wishes": [
+    [
+      "A",
+      "outdoor_seating"
+    ]
+  ],
+  "muse_glimmer": {
+    "wishes": [
+      {
+        "requirement": "outdoor_seating",
+        "who": "A",
+        "quote": "It's warm out, let's get a coffee we can drink sitting outside"
+      }
+    ],
+    "source": "glimmer",
+    "note": null,
+    "raw": "{\"wishes\": [{\"requirement\": \"outdoor_seating\", \"who\": \"A\", \"quote\": \"It's warm out, let's get a coffee we can drink sitting outside\"}]}",
+    "latency_s": 0.449,
+    "cost_usd": 0.000602,
+    "expected_found": 1,
+    "expected": 1,
+    "extra": 0
+  },
+  "muse_spark_1_3": {
+    "wishes": [
+      {
+        "requirement": "outdoor_seating",
+        "who": "A",
+        "quote": "we can drink sitting outside"
+      }
+    ],
+    "source": "meta",
+    "note": null,
+    "raw": null,
+    "latency_s": 1.12,
+    "cost_usd": 0.00154,
+    "expected_found": 1,
+    "expected": 1,
+    "extra": 0
+  }
+}

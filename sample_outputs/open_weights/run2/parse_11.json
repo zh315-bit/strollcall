@@ -1,0 +1,54 @@
+{
+  "text": "I'm plant-based, so somewhere with vegan options",
+  "expected": {
+    "duration_min": 25,
+    "endpoint_type": "not scored"
+  },
+  "muse_glimmer": {
+    "raw": null,
+    "json_valid": false,
+    "intent": null,
+    "intent_valid": false,
+    "error": "model_unavailable: Muse Glimmer: BadRequestError, HTTP 400, Failed to compile json grammar: JSON Schema at #/properties/inferred_fields is not supported by xgrammar: keyword(s) uniqueItems would be ignored",
+    "latency_s": 0.188,
+    "cost_usd": 0.0,
+    "glimmer": {
+      "prompt_tokens": null,
+      "completion_tokens": null,
+      "reasoning_chars": null,
+      "finish_reason": null
+    },
+    "score": {
+      "duration": null,
+      "endpoint": null
+    }
+  },
+  "muse_spark_1_3": {
+    "raw": "{\"avoid\": [], \"duration_min\": 25, \"duration_strict\": false, \"endpoint_type\": null, \"hard_constraints\": [\"vegan options\"], \"inferred_fields\": [\"duration_min\", \"vibes\", \"endpoint_type\", \"avoid\"], \"vibes\": []}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 25,
+      "duration_strict": false,
+      "vibes": [],
+      "endpoint_type": null,
+      "avoid": [],
+      "hard_constraints": [
+        "vegan options"
+      ]
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [
+      "duration_min",
+      "vibes",
+      "endpoint_type",
+      "avoid"
+    ],
+    "latency_s": 4.113,
+    "cost_usd": 0.004133,
+    "score": {
+      "duration": true,
+      "endpoint": null
+    }
+  }
+}
