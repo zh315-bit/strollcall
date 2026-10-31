@@ -33,6 +33,27 @@ log = logging.getLogger(__name__)
 MODEL_LABEL = "muse-glimmer"
 
 
+MAX_LIST_ITEMS = 8
+
+
+def bounded(schema: dict) -> dict:
+    """The schema with every list bounded, for constrained decoding: a list of choices holds each
+    choice at most once, any other list at most MAX_LIST_ITEMS. At temperature 0 under the grammar,
+    Glimmer once repeated "duration_min" in inferred_fields until the output cap (evaluation run 1,
+    2 of 12 texts). The app's own validation is unchanged."""
+    if not isinstance(schema, dict):
+        return schema
+    out = {k: (bounded(v) if isinstance(v, dict) else v) for k, v in schema.items()}
+    if "properties" in out:
+        out["properties"] = {k: bounded(v) for k, v in out["properties"].items()}
+    if out.get("type") == "array":
+        enum = (out.get("items") or {}).get("enum")
+        out["maxItems"] = min(out.get("maxItems", MAX_LIST_ITEMS), len(enum) if enum else MAX_LIST_ITEMS)
+        if enum:
+            out["uniqueItems"] = True
+    return out
+
+
 def answer_prompt(system: str, user: str) -> str:
     """The model's own chat template (chat_template.jinja at the pinned revision) for one system and
     one user message, ending where the assistant writes to the user. The template's generation
@@ -93,7 +114,7 @@ class GlimmerProvider:
             "max_tokens": max_tokens,
             "temperature": 0,  # extraction, not writing: the same wish reads the same way
             "stop": ["<|eot|>", "<|eom|>"],
-            "extra_body": {"json_schema": json.dumps(schema)},  # SGLang's constrained decoding
+            "extra_body": {"json_schema": json.dumps(bounded(schema))},  # SGLang's constrained decoding
         }
         self.guard.check(self._cost(s.open_weights_timeout_s))
         started = time.monotonic()
