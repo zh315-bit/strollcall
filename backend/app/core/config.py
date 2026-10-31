@@ -39,6 +39,22 @@ class Settings(BaseSettings):
     spark_open_input_per_m: float = 0.0  # USD per 1M tokens, from the provider's model page; required
     spark_open_output_per_m: float = 0.0
     spark_open_json_mode: str = "json_schema"  # or "prompt" if the provider rejects json_schema
+    # Wish reading (intent parsing only) on Muse Glimmer, Meta's open-weights model, on our own
+    # Modal Dedicated Endpoint (docs/open_weights.md). TEXT_PROVIDER_PARSE=open_weights turns it on;
+    # it is used only inside a warm window opened by scripts/glimmer_warm.py, and falls back to
+    # the Meta API after open_weights_timeout_s. Every other text job stays on text_provider.
+    text_provider_parse: str = "meta"  # meta / open_weights
+    open_weights_api_key: SecretStr = SecretStr("")  # Modal proxy token, sent as a Bearer token
+    open_weights_base_url: str = "https://zh3782--ep-strollcall-glimmer-server.us-west.modal.direct/v1"
+    open_weights_model: str = "strollcall-glimmer"  # the endpoint's served model name
+    open_weights_repo: str = "meta-models/Muse-Glimmer-30B"
+    open_weights_revision: str = "f84ecc3a0ea984a4c04542a84269e3d065350a6e"
+    open_weights_precision: str = "BF16"
+    open_weights_gpu: str = "H200"
+    open_weights_deployment: str = "ep-ez0BAxZPNiSL3x40VCpbFi"  # Modal endpoint id
+    # H200 $4.54/h + 4 CPU cores + 16 GiB (modal.com/pricing, 2026-10-31): billed per second warm.
+    open_weights_usd_per_hour: float = 4.86
+    open_weights_timeout_s: float = 3.0
     # Cap on output tokens per Spark call, reasoning included. Truncation is logged.
     meta_max_output_tokens: int = 4096  # 2048 truncated 3 of 10 live intent calls (2026-10-28)
     # Intent parsing at minimal effort used 561-884 output tokens (2026-10-30); room for about twice that.
