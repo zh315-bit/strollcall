@@ -186,10 +186,11 @@ function startCompanion(buddy, walk) {
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.detail || "transcription failed");
       const heard = (data.transcript || "").trim();
-      if (!heard) throw new Error("short");
+      if (!heard) throw new Error("silent");
       await send({ text: heard.slice(0, 300) }, heard);
     } catch (e) {
       buddy.say(e.message === "short" ? "I didn't catch that. Hold the button while you talk, then let go."
+        : e.message === "silent" ? "I couldn't hear any words. Try again a little closer to the phone, or tap below."
         : e.name === "NotAllowedError" ? "I can't hear you: the microphone isn't allowed for this page. The buttons below still work."
           : `Voice didn't work just now (${e.message}). The buttons below still work.`, defaults());
       settle("walking");
