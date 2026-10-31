@@ -23,3 +23,18 @@ ffmpeg -i loop.mp4 -i plate1920.png -i mask.png -filter_complex \
    [v][p]overlay=0:0:format=yuv444,format=yuv420p[out]" -map "[out]" -frames:v 121 -r 24 \
   -c:v libx264 -preset slow -crf 22 -profile:v high -pix_fmt yuv420p -movflags +faststart -an hero-loop.mp4
 ```
+
+## How to use (Home's three steps)
+
+`step-wish.jpg`, `step-walk.jpg` and `step-meet.jpg` are screenshots of our own UI on the live site
+(strollcall.onrender.com, 2026-10-31), taken in a 390×844 viewport at 2x with real answers from the
+running app, then cropped to 780×1000 and scaled to 520×667. home.css puts each in a plain phone frame.
+
+1. `step-wish.jpg`: New walk, "30 minutes, quiet streets, coffee at the end" read by Muse Spark
+   (30 minutes, ends at a cafe, quiet).
+2. `step-walk.jpg`: a solo walk to Little Canal after "Start walking", with places along the route on the map.
+3. `step-meet.jpg`: an accepted invite, option "Washington Square Park gate": A (blue) and B (orange)
+   meeting, then walking on together (green).
+
+To refresh them, run the same flows and crop with
+`ffmpeg -i shot.png -vf "crop=780:1000:0:Y,scale=520:-1:flags=lanczos" -q:v 3 step-NAME.jpg`.

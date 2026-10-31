@@ -44,7 +44,7 @@
   transition: transform .2s ease, box-shadow .2s ease, background-color .2s; }
 .pill:hover { transform: translateY(calc(-2 * var(--u))); }
 .pill:active { transform: translateY(0); }
-.pill:focus-visible, .step:focus-visible, .steps-link:focus-visible, .hero-foot a:focus-visible, :is(body.home, body.scene) .topnav a:focus-visible {
+.pill:focus-visible, .steps-link:focus-visible, .hero-foot a:focus-visible, :is(body.home, body.scene) .topnav a:focus-visible {
   outline: 3px solid #fff; outline-offset: 3px; }
 .pill-white { background: #fff; color: var(--green); box-shadow: 0 calc(6 * var(--u)) calc(18 * var(--u)) rgba(28, 70, 120, .16); }
 .pill-white:hover { color: var(--green); box-shadow: 0 calc(10 * var(--u)) calc(24 * var(--u)) rgba(28, 70, 120, .22); }
@@ -70,32 +70,39 @@
   font: 400 calc(16 * var(--u))/1.3 "Inter", system-ui, sans-serif; color: rgba(255, 255, 255, .92);
   text-shadow: 0 calc(2 * var(--u)) calc(10 * var(--u)) rgba(28, 70, 120, .35); }
 
-/* ---- The three steps, as the row of cards ---- */
+/* ---- How to use: three steps, each a light card with a phone showing our own UI over its line of text ---- */
 .steps { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
 .steps > * { pointer-events: auto; }
-.steps-title { position: absolute; left: calc(137 * var(--u)); top: calc(858 * var(--u)); margin: 0; display: block;
+.steps-title { position: absolute; left: calc(137 * var(--u)); top: calc(770 * var(--u)); margin: 0; display: block;
   font-size: calc(36 * var(--u)); line-height: 1; letter-spacing: .02em; text-shadow: 0 calc(2 * var(--u)) calc(12 * var(--u)) rgba(30, 60, 30, .3); }
-.steps-link { position: absolute; right: calc(1440 * var(--u) - 1308 * var(--u)); top: calc(864 * var(--u));
+.steps-link { position: absolute; right: calc(1440 * var(--u) - 1308 * var(--u)); top: calc(776 * var(--u));
   font: 400 calc(22 * var(--u))/1 "Inter", system-ui, sans-serif; color: #fff; text-decoration: none;
   text-shadow: 0 calc(2 * var(--u)) calc(10 * var(--u)) rgba(30, 60, 30, .35); }
 .steps-link:hover { color: #fff; }
 .steps-link .chev { display: inline-block; margin-left: .15em; transition: transform .2s ease; }
 .steps-link:hover .chev { transform: translateX(calc(4 * var(--u))); }
-.steps-row { position: absolute; left: calc(133 * var(--u)); top: calc(913 * var(--u)); display: flex; gap: calc(20 * var(--u)); }
-.step { position: relative; display: block; width: calc(378 * var(--u)); height: calc(273 * var(--u)); flex: none;
-  border-radius: calc(15 * var(--u)); overflow: hidden; color: #fff; text-decoration: none; isolation: isolate;
-  box-shadow: 0 calc(12 * var(--u)) calc(30 * var(--u)) rgba(20, 50, 20, .22); transition: transform .3s ease, box-shadow .3s ease; }
-.step img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: -1; transition: transform .5s ease; }
-.step::after { content: ""; position: absolute; inset: 0; z-index: -1;
-  background: linear-gradient(180deg, transparent 38%, rgba(18, 36, 22, .7)); }
-.step:hover { color: #fff; transform: translateY(calc(-8 * var(--u))); box-shadow: 0 calc(20 * var(--u)) calc(38 * var(--u)) rgba(20, 50, 20, .28); }
-.step:hover img { transform: scale(1.05); }
-.step-text { position: absolute; left: calc(20 * var(--u)); right: calc(20 * var(--u)); bottom: calc(18 * var(--u));
-  font: 400 calc(15.5 * var(--u))/1.4 "Inter", system-ui, sans-serif; }
-.step-text b { display: flex; align-items: center; gap: calc(10 * var(--u)); margin-bottom: calc(4 * var(--u));
-  font: 900 calc(24 * var(--u))/1.1 "Grandstander", var(--display); }
-.step-text i { display: inline-grid; place-items: center; width: calc(30 * var(--u)); height: calc(30 * var(--u)); flex: none;
-  border-radius: 50%; background: #fff; color: var(--green); font: 900 calc(17 * var(--u))/1 "Grandstander", var(--display); font-style: normal; }
+.steps-row { position: absolute; left: calc(133 * var(--u)); top: calc(824 * var(--u)); display: flex; gap: calc(20 * var(--u));
+  margin: 0; padding: 0; list-style: none; }
+/* Inside a card, sizes are in card units (--k = 1/378 of the card's width), so phones get the same card, smaller */
+.step { width: calc(378 * var(--u)); flex: none; container-type: inline-size; --k: calc(100cqw / 378); overflow: hidden;
+  box-shadow: 0 calc(12 * var(--u)) calc(30 * var(--u)) rgba(20, 50, 20, .22); }
+.steps .step { margin: 0; padding: 0; border-radius: calc(16 * var(--u)); background: #fbf8f1; color: #26352a;
+  font-weight: 400; text-align: left; } /* over style.css's .steps li (the How it works list) */
+.step-shot { height: calc(278 * var(--k)); overflow: hidden; display: flex; justify-content: center;
+  background: linear-gradient(160deg, #e3eedd, #cfe2cc); }
+/* A plain phone: dark bezel and a speaker slot, cut off by the bottom of the picture */
+.phone { position: relative; align-self: flex-start; width: calc(200 * var(--k)); margin-top: calc(22 * var(--k));
+  padding: calc(18 * var(--k)) calc(7 * var(--k)) 0; border-radius: calc(28 * var(--k)) calc(28 * var(--k)) 0 0;
+  background: #1f2a24; box-shadow: 0 calc(10 * var(--k)) calc(26 * var(--k)) rgba(28, 56, 30, .28); }
+.phone::before { content: ""; position: absolute; left: 50%; top: calc(7 * var(--k)); width: calc(38 * var(--k)); height: calc(5 * var(--k));
+  transform: translateX(-50%); border-radius: 99px; background: #46534b; }
+.phone img { display: block; width: 100%; height: auto; border-radius: calc(10 * var(--k)) calc(10 * var(--k)) 0 0; background: #fff; }
+.step-text { padding: calc(16 * var(--k)) calc(20 * var(--k)) calc(18 * var(--k)); }
+.step-text h3 { display: flex; align-items: center; gap: calc(10 * var(--k)); margin: 0 0 calc(5 * var(--k));
+  font: 600 calc(21 * var(--k))/1.15 var(--display); color: #26352a; letter-spacing: 0; }
+.step-text i { display: inline-grid; place-items: center; width: calc(28 * var(--k)); height: calc(28 * var(--k)); flex: none;
+  border-radius: 50%; background: var(--green); color: #fff; font: 600 calc(16 * var(--k))/1 var(--display); font-style: normal; }
+.step-text p { margin: 0; font: 400 calc(15 * var(--k))/1.4 "Inter", system-ui, sans-serif; color: #4f5d52; }
 
 .hero-foot { position: absolute; left: 0; right: 0; bottom: calc(26 * var(--u)); z-index: 2; margin: 0; display: flex;
   flex-wrap: wrap; justify-content: center; gap: calc(6 * var(--u)) calc(16 * var(--u)); font: 400 max(12px, calc(13.5 * var(--u)))/1.4 "Inter", system-ui, sans-serif;
@@ -134,17 +141,17 @@
   .steps-row { grid-column: 1 / -1; margin-top: 14px; gap: 12px; padding: 4px 16px 18px; overflow-x: auto;
     scroll-snap-type: x mandatory; scroll-padding: 0 16px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   .steps-row::-webkit-scrollbar { display: none; }
-  .step { width: min(78vw, 300px); height: auto; aspect-ratio: 378 / 273; scroll-snap-align: start; border-radius: 14px; }
-  .step-text { left: 14px; right: 14px; bottom: 12px; font-size: 13.5px; text-align: left; }
-  .step-text b { font-size: 19px; gap: 8px; }
-  .step-text i { width: 26px; height: 26px; font-size: 15px; }
+  .step { width: min(78vw, 300px); scroll-snap-align: start; }
+  .steps .step { border-radius: 14px; }
+  .step-text h3 { font-size: max(17px, calc(21 * var(--k))); }
+  .step-text p { font-size: max(13.5px, calc(15 * var(--k))); }
   .hero-foot { position: relative; bottom: auto; padding: 4px 16px 22px; font-size: 12px; }
 }
 
 /* ---- Reduced motion: the still plate only (home.js adds no video), and nothing moves ---- */
 @media (prefers-reduced-motion: reduce) {
   .hero *, .hero *::after { transition: none !important; }
-  .pill:hover, .step:hover, .step:hover img, .steps-link:hover .chev { transform: none; }
+  .pill:hover, .steps-link:hover .chev { transform: none; }
 }
 
 /* ---- My walks, How it works (body.scene): the same scene, fixed behind the page, and the same top bar ---- */
