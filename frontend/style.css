@@ -250,25 +250,77 @@ footer { color: var(--muted); font-size: .78rem; margin: 24px 0; text-align: cen
 .survey label.consent { display: flex; gap: 8px; align-items: flex-start; margin: 14px 0 6px; }
 .survey label.consent input { width: 22px; height: 22px; flex: none; margin-top: 2px; }
 
-/* In-app walking view: full screen, map in the middle, big readable numbers */
+/* In-app walking view: the map fills the screen (100dvh: the phone's browser bars don't cut it off),
+   everything else floats on it. Safe-area insets keep it clear of the iPhone's notch and home bar. */
 body.walking { overflow: hidden; }
-.walk-screen { position: fixed; inset: 0; z-index: 2000; display: flex; flex-direction: column; gap: 8px;
-  background: var(--bg, #fff7fb); padding: max(10px, env(safe-area-inset-top)) 12px max(10px, env(safe-area-inset-bottom)); }
-.walk-step { font: 600 1.15rem/1.3 var(--display); background: var(--card); border: 2.5px solid var(--line);
-  border-radius: 16px; padding: 10px 14px; box-shadow: var(--shadow-sm); }
-.walk-step .walk-to { display: block; font: 700 .8rem/1.2 var(--body, inherit); color: var(--muted); }
-.walk-step .walk-next { display: block; font-weight: 400; }
-.walk-map { flex: 1 1 auto; min-height: 200px; border: 3px solid var(--line); border-radius: 18px; }
-.walk-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; text-align: center; font-weight: 700; font-size: .85rem; }
-.walk-stats > div { background: var(--card); border: 2.5px solid var(--line); border-radius: 14px; padding: 6px; }
-.walk-stats b { display: block; font: 600 1.6rem/1.1 var(--display); }
-.walk-notice p { margin: 0; padding: 8px 12px; border-radius: 12px; font-weight: 700; }
+.walk-screen { position: fixed; inset: 0; min-height: 100vh; min-height: 100dvh; z-index: 2000; display: flex; overflow: hidden;
+  background: var(--bg, #fff7fb);
+  --pad-t: max(12px, env(safe-area-inset-top)); --pad-b: env(safe-area-inset-bottom, 0px);
+  --pad-l: max(12px, env(safe-area-inset-left)); --pad-r: max(12px, env(safe-area-inset-right));
+  --bar-h: 100px; --float: color-mix(in srgb, var(--card) 96%, transparent);
+  --float-shadow: 0 8px 24px rgba(43, 35, 64, .14); }
+.walk-map { position: absolute; inset: 0; z-index: 0; min-height: 150px; flex: 1 1 auto; }
+/* Outdoors the map must read in sunlight: full-contrast tiles while walking (planning pages stay muted) */
+.walk-map .leaflet-tile-pane { filter: none; }
+/* OSM attribution stays visible, just above the bottom bar */
+.walk-map .leaflet-bottom { bottom: calc(var(--bar-h) + var(--pad-b)); }
+.walk-map .leaflet-control-attribution { font-size: 11px; }
+
+/* Leaflet's panes and controls go up to z-index 1000: the floating parts sit above them. */
+.walk-top, .walk-side, .walk-bar { position: absolute; z-index: 1001; }
+.walk-top { top: var(--pad-t); left: var(--pad-l); right: var(--pad-r); display: flex; flex-direction: column;
+  align-items: flex-start; gap: 8px; max-height: calc(100% - var(--bar-h) - var(--pad-b) - var(--pad-t) - 170px);
+  overflow-y: auto; overscroll-behavior: contain; pointer-events: none; }
+.walk-top > * { pointer-events: auto; flex: none; max-width: 100%; box-sizing: border-box; }
+.walk-step { display: flex; gap: 12px; align-items: center; width: 100%; max-width: 460px; padding: 12px 14px;
+  background: var(--float); border-radius: 22px; box-shadow: var(--float-shadow); }
+.walk-turn { flex: none; width: 44px; height: 44px; border-radius: 14px; background: #22a35a; color: #fff;
+  display: grid; place-items: center; }
+.walk-turn svg { width: 26px; height: 26px; display: block; }
+.walk-step-text { min-width: 0; }
+.walk-step .walk-next { display: block; font: 600 1.25rem/1.2 var(--display); }
+.walk-step .walk-onto { display: block; font-size: .9rem; color: var(--text-2); }
+.walk-step .walk-onto:empty { display: none; }
+.walk-to { margin: 0; padding: 8px 14px; border-radius: 999px; background: var(--float); box-shadow: var(--shadow-sm);
+  font-weight: 700; font-size: .9rem; }
+.walk-notice:empty, .walk-note:empty { display: none; }
+.walk-notice { max-width: 460px; }
+.walk-notice p { margin: 0; padding: 8px 12px; border-radius: 14px; font-weight: 700; background: var(--float);
+  box-shadow: var(--shadow-sm); }
 .walk-notice.warn p { background: color-mix(in srgb, var(--sun) 45%, var(--card)); border: 2px dashed var(--line); }
 .walk-notice.ok p { background: color-mix(in srgb, var(--shared) 25%, var(--card)); }
-.walk-notice .arrival { margin: 0; }
-.walk-actions { justify-content: space-between; align-items: center; }
+.walk-notice .arrival { margin: 0; box-shadow: var(--float-shadow); }
+.walk-note { margin: 0; max-width: 460px; padding: 6px 12px; border-radius: 12px; background: var(--float);
+  font-size: .8rem; color: var(--text-2); }
+
+.walk-side { right: var(--pad-r); top: 46%; display: flex; flex-direction: column; gap: 10px; }
+.walk-btn { width: 48px; height: 48px; min-height: 48px; padding: 0; border: 0; border-radius: 16px;
+  background: var(--card); color: var(--ink); box-shadow: 0 4px 14px rgba(43, 35, 64, .16);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+  font: 700 .95rem var(--font); text-decoration: none; }
+.walk-btn[hidden] { display: none; }
+.walk-ico svg { width: 24px; height: 24px; display: block; }
+.walk-btn-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.voice-toggle { min-height: 48px; }
+.voice-toggle[aria-pressed="true"] { background: var(--sun); color: #3a2a00; }
+/* Back to my position: shown once you've dragged the map away. */
+.walk-recenter { color: #2f7bf6; }
+.walk-recenter[hidden] { display: none; }
+
+.walk-bar { left: 0; right: 0; bottom: 0; min-height: var(--bar-h); box-sizing: border-box; display: flex; align-items: center;
+  justify-content: space-between; gap: 12px; padding: 12px max(20px, var(--pad-r)) calc(12px + var(--pad-b)) max(20px, var(--pad-l));
+  background: color-mix(in srgb, var(--card) 97%, transparent); border-radius: 26px 26px 0 0;
+  box-shadow: 0 -8px 26px rgba(43, 35, 64, .1); }
+.walk-stats { display: flex; flex-direction: column; gap: 0; min-width: 0; font-size: .85rem; color: var(--text-2); }
+.walk-stats b { font: 600 1.6rem/1.1 var(--display); color: var(--ink); font-variant-numeric: tabular-nums; }
+.walk-stats .walk-min b { display: block; }
+.walk-stats .walk-min span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.walk-stats .walk-dist b { font: inherit; color: inherit; }
+.walk-talk:empty { display: none; }
 .walk-actions button { min-height: 44px; }
-.walk-note { margin: 0; text-align: center; }
+.walk-end { flex: none; min-height: 44px; padding: 0 18px; border-radius: 999px; border: 2px solid var(--line);
+  background: var(--card); color: var(--ink); font: 700 .95rem var(--font); cursor: pointer; }
+
 /* You on the walking map: a dot until a direction is known, then an arrow turned to --heading. */
 .walk-me { background: none; border: 0; }
 .walk-me svg { width: 36px; height: 36px; overflow: visible; display: block;
@@ -278,37 +330,41 @@ body.walking { overflow: hidden; }
 .walk-me .walk-me-arrow { display: none; }
 .walk-me.has-heading .walk-me-arrow { display: inline; }
 .walk-me.has-heading .walk-me-dot { display: none; }
-/* Back to my position: a round map button, shown once you've dragged the map away. */
-.walk-recenter { width: 48px; height: 48px; min-height: 48px; padding: 0; border-radius: 50%;
-  background: #fff; color: #2f7bf6; border: 2px solid rgba(0, 0, 0, .15); box-shadow: 0 2px 6px rgba(0, 0, 0, .3);
-  font-size: 1.6rem; line-height: 1; display: grid; place-items: center; cursor: pointer; }
-.walk-recenter[hidden] { display: none; }
+
 .start-walk { width: 100%; min-height: 52px; font-size: 1.1rem; }
 
 .walk-poi:empty { display: none; }
-.poi-card { position: relative; margin: 0; padding: 10px 14px; max-height: 34vh; overflow: auto; }
+.poi-card { position: relative; margin: 0; padding: 10px 14px; max-height: 34vh; overflow: auto; max-width: 460px;
+  box-shadow: var(--float-shadow, var(--shadow)); }
 .poi-card h3 { margin: 0 28px 4px 0; font: 600 1rem/1.3 var(--display); }
 .poi-card p { margin: 4px 0; }
 .poi-close { position: absolute; top: 6px; right: 6px; min-height: 36px; min-width: 36px; padding: 0; }
 .poi-intro .small a { color: inherit; }
 .poi-pin { font-size: 18px; line-height: 24px; text-align: center; filter: drop-shadow(0 1px 1px rgba(0,0,0,.4)); }
-.voice-toggle { min-height: 44px; }
-.voice-toggle[aria-pressed="true"] { background: var(--sun); }
 
-/* Short phones (e.g. 320x640): keep End walk and the voice toggle on screen with a place card open */
-.walk-screen { overflow-y: auto; overscroll-behavior: contain; }
-.walk-actions, .walk-stats, .walk-step { flex: none; }
-@media (max-height: 700px) {
-  .walk-screen { gap: 6px; }
-  .walk-step { padding: 6px 12px; font-size: 1rem; }
-  .walk-map { min-height: 150px; }
-  .poi-card { max-height: 22vh; padding: 8px 12px; }
-  .walk-stats > div { padding: 2px 6px; }
-  .walk-stats b { font-size: 1.25rem; }
-  .walk-note { font-size: .75rem; }
+/* Wide screens: map buttons top right with their labels, the bar a floating pill at the bottom centre. */
+@media (min-width: 900px) {
+  .walk-top { right: auto; width: min(460px, 40vw); }
+  .walk-side { top: var(--pad-t); flex-direction: row; align-items: center; }
+  .walk-side .walk-btn { width: auto; padding: 0 16px; border-radius: 999px; }
+  .walk-side .walk-recenter { width: 48px; padding: 0; border-radius: 16px; }
+  .walk-side .walk-btn-label { position: static; width: auto; height: auto; clip: auto; }
+  .walk-bar { left: 50%; right: auto; bottom: calc(20px + var(--pad-b)); transform: translateX(-50%); min-height: 0;
+    border-radius: 999px; padding: 10px 10px 10px 28px; gap: 22px; box-shadow: var(--float-shadow); }
+  .walk-stats { flex-direction: row; gap: 22px; }
+  .walk-stats > div + div { padding-left: 22px; border-left: 1px solid var(--line); }
+  .walk-stats .walk-min span { position: static; width: auto; height: auto; clip: auto; display: block; }
+  .walk-stats .walk-dist b { display: block; font: 600 1.6rem/1.1 var(--display); color: var(--ink); }
+  .walk-map .leaflet-bottom { bottom: 0; }
 }
-/* Outdoors the map must read in sunlight: full-contrast tiles while walking (planning pages stay muted) */
-.walk-map .leaflet-tile-pane { filter: none; }
+@media (max-height: 640px) {
+  .walk-screen { --bar-h: 84px; }
+  .walk-step { padding: 8px 12px; }
+  .walk-step .walk-next { font-size: 1.05rem; }
+  .walk-turn { width: 36px; height: 36px; }
+  .walk-stats b { font-size: 1.3rem; }
+  .poi-card { max-height: 22vh; padding: 8px 12px; }
+}
 
 /* ---- Top bar (every page, common.js siteChrome()): logo top-left, nav right, sticky.
    Design: Figma "StrollCall — Top bar". On phones the logo row scrolls away and only the nav sticks. ---- */

@@ -65,17 +65,20 @@ test("every key class the walking screen renders has a CSS rule", () => {
   assert.ok(styled("survey"), "the after-walk survey lost its styles");
 });
 
-test("the walking screen covers the viewport above the map and its map can grow", () => {
+test("the walking screen covers the viewport and its map fills it, controls floating on top", () => {
   const s = rule(".walk-screen");
   assert.equal(s.position, "fixed");
   assert.ok(s.inset === "0" || (s.top === "0" && s.bottom === "0"), "covers the whole viewport");
+  assert.equal(s["min-height"], "100dvh", "dynamic viewport height: the phone's browser bars don't cut it off");
   assert.ok(parseInt(s["z-index"], 10) >= 1000, "above Leaflet's panes and controls (z-index up to 1000)");
-  assert.match(s.display || "", /flex/);
   assert.ok(s.background || s["background-color"], "opaque: the page must not show through");
-  assert.ok(["auto", "scroll"].includes(s["overflow-y"]), "scrollable: End walk must stay reachable on short phones");
   const mapRule = rule(".walk-map");
-  assert.ok(/1/.test(mapRule.flex || mapRule["flex-grow"] || ""), "the map takes the free height");
-  assert.ok(parseInt(mapRule["min-height"], 10) >= 150, "the map keeps a usable height on 320x640");
+  assert.equal(mapRule.position, "absolute");
+  assert.equal(mapRule.inset, "0", "the map fills the screen");
+  assert.match(css, /\.walk-top, \.walk-side, \.walk-bar \{ position: absolute; z-index: 1001; \}/, "controls float above the map");
+  assert.match(css, /\.walk-bar \{ left: 0; right: 0; bottom: 0;/, "time, distance and End walk sit at the bottom");
+  assert.match(rule(".walk-screen")["--pad-b"] || "", /safe-area-inset-bottom/, "clear of the iPhone's home bar");
+  assert.match(css, /\.walk-map \.leaflet-bottom \{ bottom: calc\(var\(--bar-h\)/, "OSM attribution above the bar");
 });
 
 test("nothing hides the key parts (only an empty POI area may collapse)", () => {
@@ -89,7 +92,7 @@ test("nothing hides the key parts (only an empty POI area may collapse)", () => 
 });
 
 test("touch targets in the walking screen are at least 44 px tall", () => {
-  for (const sel of [".walk-actions button", ".voice-toggle", ".poi-close", ".walk-recenter"]) {
+  for (const sel of [".walk-actions button", ".voice-toggle", ".poi-close", ".walk-btn"]) {
     const r = rule(sel);
     const h = parseInt(r["min-height"], 10);
     assert.ok(h >= 36, `${sel} min-height ${r["min-height"]}`);

@@ -332,6 +332,37 @@ function poiCard(p, onClose) {
     introBlock(intro));
 }
 
+// Line icons for the walking screen's floating controls (stroke: currentColor).
+const WALK_ICONS = {
+  right: "M8 20v-6a5 5 0 0 1 5-5h6M15 5l4 4-4 4",
+  slight_right: "M8 20v-7l9-8M11 5h6v6",
+  left: "M16 20v-6a5 5 0 0 0-5-5H5M9 5 5 9l4 4",
+  slight_left: "M16 20v-7L7 5M13 5H7v6",
+  straight: "M12 20V5M7 10l5-5 5 5",
+  arrive: "M12 21s-6-5.6-6-10.5a6 6 0 0 1 12 0C18 15.4 12 21 12 21zM12 12.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4z",
+  center: "M12 3v3M12 18v3M3 12h3M18 12h3M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+  voiceOn: "M4 9v6h4l5 4V5L8 9H4zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11",
+  voiceOff: "M4 9v6h4l5 4V5L8 9H4zM17 10l4 4M21 10l-4 4",
+  mapApp: "M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2zM9 4v14M15 6v14",
+};
+
+function walkIcon(name, cls = "walk-ico") {
+  const node = el("span", { class: cls, "aria-hidden": "true" });
+  node.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="${WALK_ICONS[name]}"/></svg>`;
+  return node;
+}
+
+// The turn card's two lines and icon: "In 80 m, turn right" / "onto Van Reipen Ave".
+function stepView(info, targetName) {
+  const text = formatStep(info) || `To ${targetName}`;
+  const kind = !info ? "straight" : info.next && text !== info.finalText ? (info.next.kind in WALK_ICONS ? info.next.kind : "straight")
+    : info.next ? "straight" : "arrive";
+  const shown = text.replace(/([Ii]n [^:]+|Now): (\w)/g, (_, a, c) => `${a}, ${c.toLowerCase()}`);
+  if (/, then /.test(shown)) return { main: shown, sub: "", kind: "straight" };  // "Head south on …, then in 150 m, …"
+  const m = /^(.*?)\s+((?:onto|on)\s.+)$/.exec(shown);
+  return m ? { main: m[1], sub: m[2], kind } : { main: shown, sub: "", kind };
+}
+
 function startWalk(legs, opts = {}) {
   const mPerMin = opts.mPerMin || WALK.M_PER_MIN;  // the pace chosen in "More options"
   const follower = new WalkFollower(legs, { M_PER_MIN: mPerMin });
@@ -362,7 +393,20 @@ function startWalk(legs, opts = {}) {
   }
   let shown = null;
 
-  const stepEl = el("div", { class: "walk-step", role: "status", "aria-live": "polite" });
+  // Everything floats on a map that fills the screen: the turn card and "To:" top left, map buttons
+  // on the right, notices and place cards under the turn card, time, distance and End walk at the bottom.
+  const turnIcon = el("span", { class: "walk-turn" });
+  const nextMain = el("b", { class: "walk-next" }), nextSub = el("span", { class: "walk-onto" });
+  const stepEl = el("div", { class: "walk-step", role: "status", "aria-live": "polite" },
+    turnIcon, el("div", { class: "walk-step-text" }, nextMain, nextSub));
+  const toEl = el("p", { class: "walk-to" });
+  function setStep(info) {
+    const v = stepView(info, follower.current.name);
+    if (nextMain.textContent === v.main && nextSub.textContent === v.sub) return;
+    nextMain.textContent = v.main;
+    nextSub.textContent = v.sub;
+    turnIcon.replaceChildren(walkIcon(v.kind));
+  }
   const statsEl = el("div", { class: "walk-stats" });
   const noticeEl = el("div", { class: "walk-notice", role: "status", "aria-live": "polite" });
   const poiEl = el("div", { class: "walk-poi" });
@@ -370,9 +414,10 @@ function startWalk(legs, opts = {}) {
   // For the recap: when the walk started and which places' cards came up. No positions are kept.
   const startedAt = Date.now(), passed = [];
   const mapEl = el("div", { class: "walk-map" });
-  const screenNote = el("p", { class: "muted small walk-note" });
-  const fallback = el("a", { target: "_blank", rel: "noopener" }, "Open in a map app instead");
-  const endBtn = el("button", { type: "button", onclick: () => finish() }, "End walk");
+  const screenNote = el("p", { class: "walk-note" });
+  const fallback = el("a", { class: "walk-btn walk-mapapp", target: "_blank", rel: "noopener", "aria-label": "Open in a map app instead",
+    title: "Open in a map app" }, walkIcon("mapApp"), el("span", { class: "walk-btn-label" }, "Open in a map app"));
+  const endBtn = el("button", { type: "button", class: "walk-end", onclick: () => finish() }, "End walk");
   // Voice prompts: off unless the walker turned them on (remembered on this phone only).
   const canSpeak = typeof speechSynthesis !== "undefined" && typeof SpeechSynthesisUtterance !== "undefined";
   let voiceOn = false;
@@ -385,79 +430,87 @@ function startWalk(legs, opts = {}) {
     speechSynthesis.cancel();  // never queue stale prompts behind new ones
     speechSynthesis.speak(u);
   }
-  const voiceBtn = el("button", { type: "button", class: "voice-toggle", "aria-pressed": String(voiceOn),
-    onclick: () => {
-      voiceOn = !voiceOn;
-      voiceBtn.setAttribute("aria-pressed", String(voiceOn));
-      voiceBtn.textContent = voiceOn ? "🔊 Voice on" : "🔇 Voice off";
-      try { localStorage.setItem("strollcall:voice", voiceOn ? "on" : "off"); } catch (e) { /* fine */ }
-      if (voiceOn) say("Voice prompts on.");  // speaking inside the tap unlocks audio on iPhone
-      else speechSynthesis.cancel();
-    } }, voiceOn ? "🔊 Voice on" : "🔇 Voice off");
+  const voiceLabel = el("span", { class: "walk-btn-label" });
+  const voiceBtn = el("button", { type: "button", class: "walk-btn voice-toggle", onclick: () => {
+    voiceOn = !voiceOn;
+    showVoice();
+    try { localStorage.setItem("strollcall:voice", voiceOn ? "on" : "off"); } catch (e) { /* fine */ }
+    if (voiceOn) say("Voice prompts on.");  // speaking inside the tap unlocks audio on iPhone
+    else speechSynthesis.cancel();
+  } });
+  function showVoice() {
+    voiceBtn.setAttribute("aria-pressed", String(voiceOn));
+    voiceBtn.setAttribute("aria-label", voiceOn ? "Voice prompts on" : "Voice prompts off");
+    voiceLabel.textContent = voiceOn ? "Voice on" : "Voice off";
+    voiceBtn.replaceChildren(walkIcon(voiceOn ? "voiceOn" : "voiceOff"), voiceLabel);
+  }
+  showVoice();
   if (!canSpeak) voiceBtn.hidden = true;
-  const screen = el("div", { class: "walk-screen", role: "dialog", "aria-label": "Walking" },
-    stepEl, mapEl, poiEl, statsEl, noticeEl,
-    el("div", { class: "row walk-actions" }, endBtn, voiceBtn, fallback), screenNote);
-  document.body.append(screen);
-  // The page (top bar, sky) stays visible under the growing circle; "walking" hides it once covered.
-  const opening = playWalkOpen(screen, { map: mapEl, slide: [stepEl, statsEl, screen.querySelector(".walk-actions")] })
-    .then(() => { if (!closing) { document.body.classList.add("walking"); map.invalidateSize(); } });
-  let closing = false;  // ended during the opening: don't hide the page again
-
-  const map = L.map(mapEl, { zoomControl: true }).setView(legs[0].target, 17);
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: OSM_ATTRIBUTION }).addTo(map);
   // Like a map app: once your position is known the map zooms in on you and keeps you in the middle.
   // Dragging the map stops that; the button brings you back.
   const FOLLOW_ZOOM = 17;
   let follow = true;
-  const recenter = el("button", { type: "button", class: "walk-recenter", hidden: "", "aria-label": "Back to my position",
-    title: "Back to my position", onclick: (e) => {
-      L.DomEvent.stopPropagation(e);
+  const recenter = el("button", { type: "button", class: "walk-btn walk-recenter", hidden: "", "aria-label": "Back to my position",
+    title: "Back to my position", onclick: () => {
       setFollow(true);
       if (me) map.setView(me.getLatLng(), Math.max(map.getZoom(), FOLLOW_ZOOM));
-    } }, el("span", { "aria-hidden": "true" }, "◎"));
-  const RecenterControl = L.Control.extend({ options: { position: "bottomright" }, onAdd: () => {
-    L.DomEvent.disableClickPropagation(recenter);
-    return recenter;
-  } });
-  map.addControl(new RecenterControl());
+    } }, walkIcon("center"));
+
+  const top = el("div", { class: "walk-top" }, stepEl, toEl, noticeEl, poiEl, screenNote);
+  const side = el("div", { class: "walk-side" }, recenter, voiceBtn, fallback);
+  const bar = el("div", { class: "walk-bar walk-actions" }, statsEl, el("div", { class: "walk-talk" }), endBtn);
+  const screen = el("div", { class: "walk-screen", role: "dialog", "aria-label": "Walking" }, mapEl, top, side, bar);
+  document.body.append(screen);
+  // The page (top bar, sky) stays visible under the growing circle; "walking" hides it once covered.
+  const opening = playWalkOpen(screen, { map: mapEl, slide: [top, side, bar] })
+    .then(() => { if (!closing) { document.body.classList.add("walking"); map.invalidateSize(); } });
+  let closing = false;  // ended during the opening: don't hide the page again
+
+  const map = L.map(mapEl, { zoomControl: false }).setView(legs[0].target, 17);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: OSM_ATTRIBUTION }).addTo(map);
   function setFollow(on) {
     follow = on;
     recenter.hidden = on || !me;  // nothing to come back to before the first position
   }
   map.on("dragstart", () => setFollow(false));
-  // Notices and the arrival card change the map's height: let Leaflet re-measure.
+  // The screen's size changes with the phone's browser bars and rotation: let Leaflet re-measure.
   const resize = typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => map.invalidateSize()) : null;
   if (resize) resize.observe(mapEl);
+  // Room the floating panels take, so a fitted route isn't drawn under them.
+  const fitPadding = () => {
+    const s = screen.getBoundingClientRect(), t = top.getBoundingClientRect(), b = bar.getBoundingClientRect();
+    return { paddingTopLeft: [24, Math.min(t.bottom - s.top + 16, s.height / 2)], paddingBottomRight: [72, Math.min(s.bottom - b.top + 16, s.height / 3)] };
+  };
 
   function showLeg() {
     const leg = follower.current;
     if (routeLine) routeLine.remove();
     if (targetMarker) targetMarker.remove();
-    routeLine = L.polyline(leg.geometry, { color: color(leg.kind === "meetup" ? "--a" : "--shared") || "#ff5c8a", weight: 6, opacity: .85 }).addTo(map);
+    routeLine = L.polyline(leg.geometry, { color: color(leg.kind === "meetup" ? "--a" : "--shared") || "#ff5c8a", weight: 7, opacity: .9 }).addTo(map);
     targetMarker = L.marker(leg.target).addTo(map).bindPopup(leg.name);
     poiLayers.forEach((l) => l.remove());
     poiLayers = (leg.pois || []).map((p) => L.marker([p.lat, p.lon], { icon: L.divIcon({ className: "poi-pin" + (p.stop ? " stop-pin" : ""),
       html: p.stop ? String(p.stop) : POI_ICONS[p.category] || "📍", iconSize: [24, 24] }) })
       .addTo(map).bindPopup(p.stop ? `Stop ${p.stop}: ${p.name}` : p.name));
-    stepEl.replaceChildren(el("span", { class: "walk-to" }, `${leg.kind === "meetup" ? "To the meeting point" : "To"}: ${leg.name}`),
-      el("b", { class: "walk-next" }, formatStep(stepInfo(leg.steps, 0, leg.name)) || ""));
+    toEl.textContent = `${leg.kind === "meetup" ? "To the meeting point" : "To"}: ${leg.name}`;
+    setStep(stepInfo(leg.steps, 0, leg.name));
     fallback.href = mapsLink(leg.target[0], leg.target[1]);
     map.invalidateSize();
     // The whole route until we know where you are (and after a new route if you're looking around).
     if (me && follow) map.setView(me.getLatLng(), Math.max(map.getZoom(), FOLLOW_ZOOM));
-    else map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
+    else map.fitBounds(routeLine.getBounds(), fitPadding());
   }
 
   function stats(m) {
     const r = formatRemaining(m, mPerMin);
-    statsEl.replaceChildren(el("div", {}, el("b", {}, `~${r.min}`), "min left"), el("div", {}, el("b", {}, r.dist), "to go"));
+    statsEl.replaceChildren(el("div", { class: "walk-min" }, el("b", {}, `${r.min} min`), el("span", {}, " left")),
+      el("div", { class: "walk-dist" }, el("b", {}, r.dist), " to go"));
   }
 
   function notice(text, kind = "") {
     noticeEl.className = `walk-notice ${kind}`;
     delete noticeEl.dataset.waiting;
-    noticeEl.replaceChildren(text ? el("p", {}, text) : "");
+    noticeEl.replaceChildren(...(text ? [el("p", {}, text)] : []));
   }
 
   async function replan(ev) {
@@ -510,10 +563,9 @@ function startWalk(legs, opts = {}) {
     else if (follow) map.panTo(ll);
     const ev = follower.update(fix);
     say(promptFor(ev, said));
-    const nextText = ev.type === "arrived" ? "" : formatStep(ev.step);
-    const nextEl = stepEl.querySelector(".walk-next");
-    if (nextEl && nextText !== null && nextEl.textContent !== nextText) nextEl.textContent = nextText;
-    if (ev.type === "arrived") statsEl.replaceChildren(el("div", {}, el("b", {}, "✓"), "arrived"), el("div", {}, el("b", {}, `~${WALK.ARRIVE_M} m`), "or closer"));
+    if (ev.type !== "arrived") setStep(ev.step);
+    if (ev.type === "arrived") statsEl.replaceChildren(el("div", { class: "walk-min" }, el("b", {}, "Arrived")),
+      el("div", { class: "walk-dist" }, el("b", {}, `~${WALK.ARRIVE_M} m`), " or closer"));
     else stats(ev.remainingM);
     if (ev.poi) {
       poiShown = ev.poi;
@@ -530,17 +582,23 @@ function startWalk(legs, opts = {}) {
     if (opts.onEvent) opts.onEvent(ev);
   }
 
+  // The screen-on note shows for a while at the start, then gets out of the map's way.
+  function note(text) {
+    screenNote.textContent = text;
+    setTimeout(() => { screenNote.textContent = ""; }, 9000);
+  }
   async function keepAwake() {
     if (!("wakeLock" in navigator)) {
-      screenNote.textContent = "Keep your screen on while walking: a web page can't follow you in the background, and this phone can't keep the screen awake for us.";
+      note("Keep your screen on while walking: a web page can't follow you in the background, and this phone can't keep the screen awake for us.");
       return;
     }
     try {
       wakeLock = await navigator.wakeLock.request("screen");
-      screenNote.textContent = "Your screen stays on while you walk: a web page can't follow you in the background.";
+      if (!screenNote.dataset.shown) note("Your screen stays on while you walk: a web page can't follow you in the background.");
     } catch (e) {
-      screenNote.textContent = "Keep your screen on while walking: a web page can't follow you in the background.";
+      note("Keep your screen on while walking: a web page can't follow you in the background.");
     }
+    screenNote.dataset.shown = "1";
   }
   const onVisible = () => { if (document.visibilityState === "visible" && watchId !== null) keepAwake(); };
   document.addEventListener("visibilitychange", onVisible);
