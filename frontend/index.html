@@ -366,7 +366,11 @@ function soloPage(v, c, kicker) {
       el("p", { class: "muted small" }, `This walk doesn't pass ${p.name}: it was a wish, not a must.`)),
     el("p", { class: "muted" }, dest.opening_hours ? `Opening hours (OpenStreetMap, as of ${(dest.fetched_at || "").slice(0, 10)}): ${dest.opening_hours}` : "Opening hours unknown."),
     el("button", { class: "primary start-walk", onclick: () => startWalk([{ id: dest.id, name: dest.name, kind: "destination",
-      target: [dest.lat, dest.lon], geometry: c.leg.geometry, steps: c.leg.steps, pois: c.leg.pois }]) }, el("span", { class: "i i-footprints", "aria-hidden": "true" }), " Start walking"),
+      target: [dest.lat, dest.lon], geometry: c.leg.geometry, steps: c.leg.steps, pois: c.leg.pois }], {
+      onFinish: (done, summary) => { if (done) rememberSoloWalk({ ...summary, planned_min: Math.round(c.total_min),
+        km: +(c.leg.distance_m / 1000).toFixed(1),
+        dest: { id: dest.id, name: dest.name, category: dest.category, lat: dest.lat, lon: dest.lon } }); } }) },
+      el("span", { class: "i i-footprints", "aria-hidden": "true" }), " Start walking"),
     el("div", { class: "row" }, el("a", { href: mapsLink(dest.lat, dest.lon), target: "_blank", rel: "noopener" }, el("button", {}, "Open in a map app"))));
 }
 

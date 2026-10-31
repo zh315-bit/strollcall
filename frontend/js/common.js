@@ -299,7 +299,15 @@ function rememberWalk(token, role) {
 }
 
 function myWalks() {
-  return deviceStore.json("strollcall:walks", []).filter((w) => w && w.token);
+  return deviceStore.json("strollcall:walks", []).filter((w) => w && (w.token || w.solo));
+}
+
+// A walk on your own that was finished: there is nothing on the server, so the summary lives in the list itself.
+// Where it ended (a public place), the minutes and the places passed; never the route, so never the start.
+function rememberSoloWalk(walk) {
+  const walks = deviceStore.json("strollcall:walks", []);
+  walks.unshift({ solo: `s${Date.now().toString(36)}`, saved_at: new Date().toISOString(), ...walk });
+  deviceStore.set("strollcall:walks", JSON.stringify(walks.slice(0, 50)));
 }
 
 // After "Finish walk": minutes walked and the places passed. No positions, no track.

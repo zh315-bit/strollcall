@@ -77,6 +77,26 @@ function recapCard(w, v, done) {
   return card;
 }
 
+// A finished walk on your own: kept on this phone only (common.js rememberSoloWalk), so no share link.
+function soloRecap(w) {
+  const mapEl = el("div", { class: "recap-map" });
+  const card = el("section", { class: "card recap" },
+    el("h2", {}, "Your walk"),
+    el("div", { class: "recap-stats" },
+      el("div", {}, el("b", {}, w.minutes), "min walked"),
+      el("div", {}, el("b", {}, (w.places || []).length), "places passed")),
+    el("p", {}, `Walked to ${w.dest.name} (${prettyType(w.dest.category)}).`),
+    (w.places || []).length ? el("p", { class: "muted" }, "Passed: ", w.places.map((p) => p.name).join(", ")) : null,
+    mapEl);
+  setTimeout(() => {
+    const map = L.map(mapEl, { zoomControl: false, attributionControl: true, dragging: false, scrollWheelZoom: false });
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: OSM_ATTRIBUTION }).addTo(map);
+    L.marker([w.dest.lat, w.dest.lon]).addTo(map).bindPopup(w.dest.name);
+    map.setView([w.dest.lat, w.dest.lon], 15);
+  }, 0);
+  return card;
+}
+
 async function render() {
   const walks = myWalks();
   const list = document.getElementById("list");
@@ -87,6 +107,16 @@ async function render() {
   }
   const cards = [];
   for (const w of walks) {
+    if (w.solo) {
+      if (!w.dest) continue;
+      const when = new Date(w.saved_at).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+      cards.push(el("section", { class: "card walk-item" },
+        el("span", { class: "status" }, `${when} · On your own · Walked`),
+        el("p", {}, `${w.planned_min} min, ending at ${w.dest.name}`),
+        el("a", { href: "/new" }, "Plan another walk")));
+      cards.push(soloRecap(w));
+      continue;
+    }
     w.key = deviceStore.get(`strollcall:${w.token}`);
     let v = null;
     try { v = await api(`/api/invites/${w.token}`, w.key ? { headers: { "X-Invite-Key": w.key } } : {}); } catch (e) { /* gone */ }

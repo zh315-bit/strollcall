@@ -119,3 +119,21 @@ test("New walk: one tagline, and Just me is the default (first chip, first choic
   assert.match(page, /savedMode === "pair" \? "pair" : "solo"/);  // anything but a saved "pair" is Just me
   assert.match(page, /button: "Invite a friend"/);
 });
+
+test("a finished walk on your own is kept on this phone without its route, next to invites", () => {
+  const src = read("js/common.js");
+  const start = src.indexOf("const deviceStore"), end = src.indexOf("// After \"Finish walk\"");
+  const store = {};
+  const localStorage = { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } };
+  const api = Function("localStorage", `${src.slice(start, end)}; return { rememberWalk, myWalks, rememberSoloWalk };`)(localStorage);
+  api.rememberWalk("tok1", "a");
+  api.rememberSoloWalk({ minutes: 23, places: [{ id: "p1", name: "Union Square" }], planned_min: 22, km: 1.8,
+                         dest: { id: "n1", name: "Cotti Coffee", category: "cafe", lat: 40.73, lon: -73.99 } });
+  api.rememberWalk("tok2", "b");  // re-saving an invite keeps the solo walk
+  const walks = api.myWalks();
+  assert.deepEqual(walks.map((w) => w.token || "solo"), ["tok2", "solo", "tok1"]);
+  const solo = walks[1];
+  assert.equal(solo.dest.name, "Cotti Coffee");
+  assert.ok(solo.solo && solo.saved_at);
+  assert.ok(!("geometry" in solo) && !JSON.stringify(solo).includes("geometry"), "no route, so no start point");
+});
