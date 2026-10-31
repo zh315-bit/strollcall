@@ -166,3 +166,19 @@ def test_feature_flag_hides_the_buddy(grid, monkeypatch):
 
 def test_unknown_tool_is_refused(grid):
     assert client.post("/api/companion/ask", json={"tool": "delete_walk", "walk": grid["walk"]}).status_code == 422
+
+
+def test_identify_landmark_prefers_the_kind_they_name(grid):
+    at = grid["at"]
+
+    class Pois:
+        pois = [{"id": "n/1", "name": "Corner Fountain", "category": "fountain", "pts": [list(at(0, 0))]},
+                {"id": "n/2", "name": "Garibaldi", "category": "artwork", "pts": [list(at(0, 1))]}]
+
+    grid["routing"].pois = Pois()
+    from app.services import companion
+    from app.services.companion import WalkState
+
+    s = WalkState(**grid["walk"])
+    assert "Corner Fountain" in text_of(companion.identify_landmark(s, "what's that?").model_dump())
+    assert "Garibaldi" in text_of(companion.identify_landmark(s, "what's that statue?").model_dump())

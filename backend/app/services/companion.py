@@ -176,7 +176,7 @@ def _checked(c: Choice) -> Choice:
 
 # ---- Running a tool ----
 
-def run(choice: Choice, s: WalkState, now: datetime | None = None) -> Answer:
+def run(choice: Choice, s: WalkState, now: datetime | None = None, said: str | None = None) -> Answer:
     choice = _checked(choice)
     now = now or datetime.now(NYC)
     if choice.tool == "none":
@@ -191,7 +191,7 @@ def run(choice: Choice, s: WalkState, now: datetime | None = None) -> Answer:
         if choice.tool == "whats_nearby":
             return whats_nearby(s, now)
         if choice.tool == "identify_landmark":
-            return identify_landmark(s)
+            return identify_landmark(s, said)
         return reroute_avoid(choice.avoid, s)
     except OutsideArea:
         return Answer(tool=choice.tool, parts=["You're outside the area our walking map covers, so I can't change "
@@ -400,23 +400,39 @@ def _intros() -> dict:
         return {}
 
 
-def identify_landmark(s: WalkState) -> Answer:
+STOPWORDS = {"what", "that", "this", "there", "here", "building", "place", "thing", "called", "big", "tall", "with",
+             "the", "over", "right", "left", "front", "looking", "look", "which", "whats", "is"}
+
+
+# What people call it -> our POI categories (providers/route_pois.py)
+KIND_WORDS = {"statue": {"artwork", "memorial"}, "sculpture": {"artwork"}, "mural": {"artwork"}, "art": {"artwork"},
+              "monument": {"memorial", "landmark"}, "tower": {"notable", "landmark"}, "church": {"notable", "historic"}}
+
+
+def _words(text: str | None) -> set[str]:
+    words = {w for w in re.findall(r"[a-z]{3,}", (text or "").lower()) if w not in STOPWORDS}
+    return words.union(*(KIND_WORDS.get(w, set()) for w in words))
+
+
+def identify_landmark(s: WalkState, said: str | None = None) -> Answer:
+    """The nearest named landmark; one whose name has a word they used ("the arch") wins within reach."""
     from app.providers import get_routing
     from app.services.nearby import LANDMARK_KINDS
 
     pois = getattr(get_routing(), "pois", None)
     here = _here(s)
-    best = None
+    words, best = _words(said), None
     for p in (pois.pois if pois else []):
         if p["category"] not in LANDMARK_KINDS and p["category"] not in ("park", "garden"):
             continue
         d = min(haversine_m(*here, a, b) for a, b in p["pts"])
-        if d <= LANDMARK_NEAR_M and (best is None or d < best[0]):
-            best = (d, p)
+        named = bool(words & _words(p["name"] + " " + p["category"]))
+        if d <= LANDMARK_NEAR_M * (2 if named else 1) and (best is None or (not named, d) < (not best[2], best[0])):
+            best = (d, p, named)
     if best is None:
         return Answer(tool="identify_landmark", parts=[f"I can't find a named landmark within about "
                                                        f"{LANDMARK_NEAR_M:.0f} m of you in our map data."])
-    d, p = best
+    d, p, _ = best
     parts = ["That's probably ", {"b": p["name"]}, f", {'an' if _category(p['category'])[0] in 'aeiou' else 'a'} "
              f"{_category(p['category'])} about {max(10, round(d / 10) * 10):.0f} m from you (OpenStreetMap)."]
     intro = _intros().get(p["id"])
@@ -468,5 +484,5 @@ def ask(text: str | None, choice: Choice | None, s: WalkState, now: datetime | N
     if choice is not None:
         return run(choice, s, now)
     chosen, source = choose(text or "", s.minutes_left)
-    answer = run(chosen, s, now)
+    answer = run(chosen, s, now, said=text)
     return answer.model_copy(update={"source": source, "heard": text})

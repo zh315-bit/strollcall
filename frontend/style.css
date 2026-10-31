@@ -293,7 +293,10 @@ body.walking { overflow: hidden; }
 .walk-note { margin: 0; max-width: 460px; padding: 6px 12px; border-radius: 12px; background: var(--float);
   font-size: .8rem; color: var(--text-2); }
 
-.walk-side { right: var(--pad-r); top: 46%; display: flex; flex-direction: column; gap: 10px; }
+/* Phones: the map buttons in a column under the turn card on the right; the cards and notices below the
+   turn card leave that strip free, and the buddy's bubble at the bottom never reaches it. */
+.walk-side { right: var(--pad-r); top: calc(var(--pad-t) + 112px); display: flex; flex-direction: column; gap: 10px; }
+.walk-top > :not(.walk-step) { max-width: calc(100% - 58px); }
 .walk-btn { width: 48px; height: 48px; min-height: 48px; padding: 0; border: 0; border-radius: 16px;
   background: var(--card); color: var(--ink); box-shadow: 0 4px 14px rgba(43, 35, 64, .16);
   display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
@@ -419,6 +422,7 @@ body.walking { overflow: hidden; }
 /* Wide screens: map buttons top right with their labels, the bar a floating pill at the bottom centre. */
 @media (min-width: 900px) {
   .walk-top { right: auto; width: min(460px, 40vw); }
+  .walk-top > :not(.walk-step) { max-width: 100%; }
   .walk-side { top: var(--pad-t); flex-direction: row; align-items: center; }
   .walk-side .walk-btn { width: auto; padding: 0 16px; border-radius: 999px; }
   .walk-side .walk-recenter { width: 48px; padding: 0; border-radius: 16px; }
