@@ -342,6 +342,66 @@ body.walking { overflow: hidden; }
 .poi-intro .small a { color: inherit; }
 .poi-pin { font-size: 18px; line-height: 24px; text-align: center; filter: drop-shadow(0 1px 1px rgba(0,0,0,.4)); }
 
+/* The walking buddy (js/buddy.js): bottom left above the bar, a speech bubble beside it. */
+.walk-buddy { position: absolute; z-index: 1001; left: var(--pad-l); right: var(--pad-r);
+  bottom: calc(var(--bar-h) + var(--pad-b) + 22px); display: flex; align-items: flex-end; gap: 8px; pointer-events: none; }
+.walk-buddy > * { pointer-events: auto; }
+.walk-buddy[hidden] { display: none; }
+.buddy { flex: none; width: 64px; height: 64px; filter: drop-shadow(0 6px 10px rgba(43, 35, 64, .22)); }
+.buddy svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.buddy [data-s] { display: none; }
+.buddy[data-state="walking"] [data-s~="walking"], .buddy[data-state="listening"] [data-s~="listening"],
+.buddy[data-state="thinking"] [data-s~="thinking"], .buddy[data-state="speaking"] [data-s~="speaking"],
+.buddy[data-state="arrived"] [data-s~="arrived"] { display: inline; }
+.buddy-bubble { position: relative; min-width: 0; max-width: 420px; margin-bottom: 26px; padding: 12px 14px;
+  background: var(--card); color: var(--ink); border-radius: 20px 20px 20px 6px; box-shadow: var(--float-shadow);
+  display: flex; flex-direction: column; gap: 8px; }
+.buddy-bubble:has(.buddy-text:empty):has(.buddy-chips:empty) { display: none; }
+.buddy-text { margin: 0; font-size: .95rem; line-height: 1.4; }
+.buddy-text:empty, .buddy-chips:empty { display: none; }
+.buddy-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.buddy-chip { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid #dce8d8; background: #f3f8f1;
+  color: #1f7a47; font: 700 .85rem var(--font); cursor: pointer; }
+.buddy-chip.primary { background: #22a35a; border-color: #22a35a; color: #fff; }
+.buddy-chip:disabled { opacity: .6; cursor: default; }
+@media (prefers-color-scheme: dark) {
+  .buddy-chip { background: #1f3a2b; border-color: #2d5a40; color: #9fe3bd; }
+}
+
+/* The walking screen's own buttons: no thick bottom edge or press-down from the global button style */
+.walk-screen .walk-btn:active:not(:disabled), .walk-screen .walk-end:active:not(:disabled),
+.walk-screen .buddy-chip:active:not(:disabled) { transform: scale(.96); margin-bottom: 0; }
+.walk-screen .walk-end:active:not(:disabled) { border-bottom-width: 2px; }
+.walk-screen .buddy-chip:active:not(:disabled) { border-bottom-width: 1px; }
+
+/* Small animations, one per state */
+.buddy[data-state="walking"] .b-body { animation: buddy-step 1.1s ease-in-out infinite; }
+.buddy[data-state="listening"] .b-waves path { animation: buddy-wave 1s ease-in-out infinite; }
+.buddy[data-state="listening"] .b-waves path + path { animation-delay: .25s; }
+.buddy[data-state="thinking"] .b-dots circle { animation: buddy-dot 1.2s ease-in-out infinite; }
+.buddy[data-state="thinking"] .b-dots circle:nth-child(2) { animation-delay: .2s; }
+.buddy[data-state="thinking"] .b-dots circle:nth-child(3) { animation-delay: .4s; }
+.buddy[data-state="speaking"] .b-talk { transform-box: fill-box; transform-origin: center; animation: buddy-talk .32s ease-in-out infinite alternate; }
+.buddy[data-state="arrived"] .b-body { animation: buddy-hop .9s cubic-bezier(.3, 1.6, .5, 1) 2; }
+.buddy[data-state="arrived"] .b-confetti > * { transform-box: fill-box; transform-origin: center; animation: buddy-confetti 1.6s ease-out infinite; }
+.buddy[data-state="arrived"] .b-confetti > :nth-child(2n) { animation-delay: .4s; }
+@keyframes buddy-step { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes buddy-wave { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+@keyframes buddy-dot { 0%, 100% { opacity: .3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
+@keyframes buddy-talk { from { transform: scaleY(.45); } to { transform: scaleY(1.1); } }
+@keyframes buddy-hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-9px); } }
+@keyframes buddy-confetti { 0% { opacity: 0; transform: translateY(6px) rotate(0); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-8px) rotate(90deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .buddy *, .buddy { animation: none !important; }
+}
+@media (min-width: 900px) {
+  .walk-buddy { right: auto; bottom: calc(100px + var(--pad-b)); max-width: min(520px, 45vw); }
+  .buddy { width: 76px; height: 76px; }
+}
+@media (min-width: 1200px) {  /* room beside the centred bar */
+  .walk-buddy { bottom: calc(20px + var(--pad-b)); max-width: min(520px, calc(50vw - 260px)); }
+}
+
 /* Wide screens: map buttons top right with their labels, the bar a floating pill at the bottom centre. */
 @media (min-width: 900px) {
   .walk-top { right: auto; width: min(460px, 40vw); }

@@ -140,3 +140,16 @@ test("a finished walk on your own is kept on this phone without its route, next 
   assert.ok(solo.solo && solo.saved_at);
   assert.ok(!("geometry" in solo) && !JSON.stringify(solo).includes("geometry"), "no route, so no start point");
 });
+
+test("the walking buddy: five states drawn, decorative, replies in a live region, still under reduced motion", () => {
+  const buddy = read("js/buddy.js");
+  for (const page of ["index.html", "invite.html"]) assert.ok(read(page).includes("/static/js/buddy.js"), `${page} loads buddy.js`);
+  for (const s of ["walking", "listening", "thinking", "speaking", "arrived"]) {
+    assert.match(buddy, new RegExp(`data-s="[^"]*\\b${s}\\b`), `the drawing has parts for ${s}`);
+    assert.match(css, new RegExp(`\\.buddy\\[data-state="${s}"\\] \\[data-s~="${s}"\\]`), `CSS shows the ${s} parts`);
+  }
+  assert.match(buddy, /class: "buddy", "data-state": "walking", "aria-hidden": "true"/);
+  assert.match(buddy, /class: "buddy-text", role: "status", "aria-live": "polite"/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.buddy \*, \.buddy \{ animation: none !important; \}/);
+  assert.equal(rule(".walk-buddy").position, "absolute");
+});

@@ -427,6 +427,10 @@ function startWalk(legs, opts = {}) {
     if (!voiceOn || !text) return;
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "en-US";
+    if (buddy) {
+      u.onstart = () => { if (buddy.state === "walking") buddy.set("speaking"); };
+      u.onend = () => { if (buddy.state === "speaking") buddy.set("walking"); };
+    }
     speechSynthesis.cancel();  // never queue stale prompts behind new ones
     speechSynthesis.speak(u);
   }
@@ -459,10 +463,13 @@ function startWalk(legs, opts = {}) {
   const top = el("div", { class: "walk-top" }, stepEl, toEl, noticeEl, poiEl, screenNote);
   const side = el("div", { class: "walk-side" }, recenter, voiceBtn, fallback);
   const bar = el("div", { class: "walk-bar walk-actions" }, statsEl, el("div", { class: "walk-talk" }), endBtn);
-  const screen = el("div", { class: "walk-screen", role: "dialog", "aria-label": "Walking" }, mapEl, top, side, bar);
+  // The walking buddy (js/buddy.js), bottom left: walks along, celebrates arrival.
+  const buddy = typeof makeBuddy === "function" ? makeBuddy() : null;
+  const screen = el("div", { class: "walk-screen", role: "dialog", "aria-label": "Walking" }, mapEl, top, side,
+    buddy ? buddy.el : null, bar);
   document.body.append(screen);
   // The page (top bar, sky) stays visible under the growing circle; "walking" hides it once covered.
-  const opening = playWalkOpen(screen, { map: mapEl, slide: [top, side, bar] })
+  const opening = playWalkOpen(screen, { map: mapEl, slide: [top, side, buddy ? buddy.el : null, bar].filter(Boolean) })
     .then(() => { if (!closing) { document.body.classList.add("walking"); map.invalidateSize(); } });
   let closing = false;  // ended during the opening: don't hide the page again
 
@@ -530,6 +537,7 @@ function startWalk(legs, opts = {}) {
 
   function arrivedCard() {
     const leg = follower.current, more = follower.leg + 1 < follower.legs.length;
+    if (buddy) buddy.set("arrived");
     const turn = leg.kind === "turnaround";
     const acc = follower.last && follower.last.accuracy ? ` (your phone's location is accurate to about ${Math.round(follower.last.accuracy)} m)` : "";
     noticeEl.className = "walk-notice arrived";
@@ -539,7 +547,7 @@ function startWalk(legs, opts = {}) {
       more && !turn ? el("p", { class: "muted" }, "Look around for your friend.") : null,
       leg.id && poiIntros && poiIntros[leg.id] ? introBlock(poiIntros[leg.id]) : null,
       el("div", { class: "row" }, more
-        ? el("button", { class: "primary", onclick: () => { follower.nextLeg(); showLeg(); notice(""); } },
+        ? el("button", { class: "primary", onclick: () => { follower.nextLeg(); showLeg(); notice(""); if (buddy) buddy.set("walking"); } },
           turn ? "Head back to the start" : `Walk on together to ${follower.legs[follower.leg + 1].name}`)
         : el("button", { class: "primary", onclick: () => finish(true) }, "Finish walk"))));
   }

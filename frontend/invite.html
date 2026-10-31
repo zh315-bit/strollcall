@@ -39,6 +39,7 @@
 <script src="/static/js/plandeck.js"></script>
 <div id="chrome-ready" hidden></div> <!-- first render waits for the scripts above (see <head>) -->
 <script src="/static/js/walk.js"></script>
+<script src="/static/js/buddy.js"></script>
 <script>
 const token = location.pathname.split("/").pop();
 const store = { get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } },
