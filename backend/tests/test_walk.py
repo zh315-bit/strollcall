@@ -71,6 +71,32 @@ def test_route_pois_finds_a_park_by_its_edge_and_orders_by_distance(tmp_path):
     assert abs(found[0]["lat"] - (40.75 + 30 * m)) < 1e-6  # the park's point nearest the route, not its centre
 
 
+def test_route_pois_are_varied(tmp_path):
+    """A street lined with parks and buildings: two of a kind at most, the lone fountain kept,
+    and kept places spaced out along the route."""
+    import gzip
+    import json
+
+    from app.providers.route_pois import PER_CATEGORY, SPACING_M, RoutePois
+
+    m = 1 / 111_320
+    pois = [{"id": f"way/{i}", "name": f"Park {i}", "category": "park", "lat": 40.75 + 10 * m,
+             "lon": -73.9800 + i * 0.0012, "pts": [[40.75 + 10 * m, -73.9800 + i * 0.0012]]} for i in range(6)]
+    pois += [{"id": f"way/{10 + i}", "name": f"Tower {i}", "category": "notable building", "lat": 40.75 - 10 * m,
+              "lon": -73.9794 + i * 0.0012, "pts": [[40.75 - 10 * m, -73.9794 + i * 0.0012]], "wikidata": "Q1"}
+             for i in range(6)]
+    pois.append({"id": "node/99", "name": "Fountain", "category": "fountain", "lat": 40.75, "lon": -73.9790,
+                 "pts": [[40.75, -73.9790]]})
+    path = tmp_path / "pois.json.gz"
+    with gzip.open(path, "wt") as f:
+        json.dump({"pois": pois}, f)
+    found = RoutePois(path).along([(40.75, -73.9805), (40.75, -73.9730)])
+    cats = [p["category"] for p in found]
+    assert "fountain" in cats
+    assert cats.count("park") <= PER_CATEGORY and cats.count("notable building") <= PER_CATEGORY
+    assert all(b["along_m"] - a["along_m"] >= SPACING_M for a, b in zip(found, found[1:]))
+
+
 def test_other_persons_pois_are_not_shown():
     from app.models.schemas import RouteLeg
     from app.services.invites import trim_start

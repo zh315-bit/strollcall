@@ -1,10 +1,12 @@
-"""Points of interest for walking guidance: parks, historic sites, artworks, memorials, landmarks.
+"""Points of interest for walking guidance: parks and gardens, historic sites, artworks, memorials,
+notable buildings, viewpoints, fountains, bridges, squares and landmarks.
 
     python scripts/build_route_pois.py            # writes deploy/data/nyc_pois.json.gz
 
 Reads the OpenStreetMap responses cached by scripts/build_graph.py (cache/osmnx) and, if the
-public Overpass server answers (at most 3 tries with exponential backoff), adds artworks and
-historic sites the original build did not ask for. Each POI keeps its name, category, a
+public Overpass server answers (at most 3 tries with exponential backoff), adds what the original
+build did not ask for: artworks, historic sites, notable buildings (those with a Wikipedia or
+Wikidata link, so not every named building), viewpoints, fountains, bridges, gardens and squares. Each POI keeps its name, category, a
 representative point, sample points along its outline (every ~25 m, so a route passing a park's
 edge finds it), and its wikipedia / wikidata tags for scripts/make_poi_intros.py.
 Map data © OpenStreetMap contributors, ODbL.
@@ -25,8 +27,14 @@ OUT = ROOT / "deploy" / "data" / "nyc_pois.json.gz"
 SAMPLE_M = 25.0
 OVERPASS = "https://overpass-api.de/api/interpreter"
 EXTRA_QUERY = """[out:json][timeout:180];
-(nwr["tourism"="artwork"]["name"]({s},{w},{n},{e}); nwr["historic"]["name"]({s},{w},{n},{e}););
+(nwr["tourism"="artwork"]["name"]({b}); nwr["historic"]["name"]({b});
+ nwr["building"]["name"]["wikidata"]({b}); nwr["building"]["name"]["wikipedia"]({b});
+ nwr["amenity"~"^(place_of_worship|theatre|library|townhall|arts_centre)$"]["name"]["wikidata"]({b});
+ nwr["tourism"="viewpoint"]["name"]({b}); nwr["amenity"="fountain"]["name"]({b});
+ nwr["man_made"="bridge"]["name"]({b}); nwr["leisure"="garden"]["name"]({b});
+ nwr["place"="square"]["name"]({b}););
 out body; >; out skel qt;"""
+NOTABLE_AMENITIES = ("place_of_worship", "theatre", "library", "townhall", "arts_centre")
 USER_AGENT = "StrollCall/0.1 (Meta AI hackathon prototype; one-off POI build)"
 
 
@@ -39,8 +47,21 @@ def category(tags: dict) -> str | None:
         return "historic site"
     if tags.get("leisure") == "park":
         return "park"
-    if tags.get("tourism") in ("museum", "attraction", "viewpoint"):
+    if tags.get("leisure") == "garden":
+        return "garden"
+    if tags.get("tourism") == "viewpoint":
+        return "viewpoint"
+    if tags.get("amenity") == "fountain":
+        return "fountain"
+    if tags.get("man_made") == "bridge":
+        return "bridge"
+    if tags.get("place") == "square":
+        return "square"
+    if tags.get("tourism") in ("museum", "attraction"):
         return "landmark"
+    notable = tags.get("wikidata") or tags.get("wikipedia")
+    if notable and (tags.get("building") or tags.get("amenity") in NOTABLE_AMENITIES):
+        return "notable building"
     return None
 
 
@@ -58,7 +79,7 @@ def cached_elements() -> list[dict]:
 
 def extra_elements(bbox) -> list[dict]:
     s, w, n, e = bbox
-    query = EXTRA_QUERY.format(s=s, w=w, n=n, e=e)
+    query = EXTRA_QUERY.format(b=f"{s},{w},{n},{e}")
     for attempt in range(3):
         try:
             r = httpx.post(OVERPASS, data={"data": query}, headers={"User-Agent": USER_AGENT}, timeout=240)

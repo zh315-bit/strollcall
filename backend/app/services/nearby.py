@@ -25,7 +25,9 @@ NYC = ZoneInfo("America/New_York")
 NEAR_MIN = 15.0  # "within about 15 minutes' walk"
 SEARCH_M = 1100.0  # straight-line prefilter (15 min at 80 m/min, minus a little for street detours)
 PER_KIND = 8  # nearest candidates of each kind sent to the walking graph
-LANDMARK_KINDS = ("landmark", "historic site", "memorial", "artwork")
+GREEN_KINDS = ("park", "garden")
+LANDMARK_KINDS = ("landmark", "historic site", "memorial", "artwork", "notable building", "viewpoint", "fountain",
+                  "bridge", "square")
 INTROS_PATH = ROOT_DIR / "frontend" / "data" / "poi_intros.json"
 
 
@@ -41,7 +43,7 @@ class Highlight(BaseModel):
     id: str
     name: str
     kind: str  # park / cafe / landmark (what made it a highlight)
-    category: str  # shown: park, cafe, historic site, artwork, memorial, landmark
+    category: str  # shown: park, garden, cafe, or one of LANDMARK_KINDS
     lat: float  # the point walked to (for a park: its edge nearest the start)
     lon: float
     walk_min: int
@@ -69,10 +71,10 @@ def _spots(origin, places, pois) -> list[Spot]:
     """Named parks and landmark-like places (route POIs) and cafes (snapshot) near the origin."""
     out: list[Spot] = []
     for p in (pois.pois if pois else []):
-        if p["category"] == "park" or p["category"] in LANDMARK_KINDS:
+        if p["category"] in GREEN_KINDS or p["category"] in LANDMARK_KINDS:
             if haversine_m(*origin, p["lat"], p["lon"]) <= SEARCH_M or \
                any(haversine_m(*origin, a, b) <= SEARCH_M for a, b in p["pts"][::4]):
-                kind = "park" if p["category"] == "park" else "landmark"
+                kind = "park" if p["category"] in GREEN_KINDS else "landmark"
                 out.append(Spot(p["id"], p["name"], kind, p["category"], p["pts"]))
     snap = getattr(places, "snapshot", None)
     if snap is not None:

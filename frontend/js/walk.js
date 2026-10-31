@@ -308,7 +308,8 @@ async function loadPoiIntros() {
   return poiIntros;
 }
 
-const POI_ICONS = { park: "🌳", "historic site": "🏛️", artwork: "🎨", memorial: "🕊️", landmark: "📍" };
+const POI_ICONS = { park: "🌳", garden: "🌷", "historic site": "🏛️", artwork: "🎨", memorial: "🕊️", landmark: "📍",
+  "notable building": "🏢", viewpoint: "🌅", fountain: "⛲", bridge: "🌉", square: "🏙️" };
 
 function introBlock(intro) {
   if (!intro) return null;
@@ -324,7 +325,7 @@ function poiCard(p, onClose) {
   return el("div", { class: "card poi-card", role: "status" },
     el("button", { type: "button", class: "poi-close", "aria-label": "Close", onclick: onClose }, "×"),
     el("h3", {}, `${POI_ICONS[p.category] || "📍"} ${p.name}`),
-    el("p", { class: "muted small" }, `You're passing a ${p.category}.`),
+    el("p", { class: "muted small" }, `You're passing ${/^[aeiou]/i.test(p.category) ? "an" : "a"} ${p.category}.`),
     introBlock(intro));
 }
 
