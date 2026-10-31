@@ -54,17 +54,21 @@
 .hero-copy { display: contents; }
 .hero-kicker, .hero-title, .steps-title { font-family: "Grandstander", var(--display); font-weight: 900; color: #fff; text-transform: uppercase; }
 .hero-kicker { position: absolute; left: 0; right: 0; top: calc(193 * var(--u)); margin: 0; text-align: center;
-  font-size: calc(40.5 * var(--u)); line-height: 1; letter-spacing: .02em; text-shadow: 0 calc(3 * var(--u)) calc(14 * var(--u)) rgba(28, 70, 120, .22); }
+  font-size: calc(27 * var(--u)); line-height: 1; letter-spacing: .02em; text-shadow: 0 calc(3 * var(--u)) calc(14 * var(--u)) rgba(28, 70, 120, .22); }
 .hero-title { position: absolute; left: 0; right: 0; top: calc(241 * var(--u)); margin: 0; text-align: center;
   font-size: calc(143.5 * var(--u)); line-height: calc(118 * var(--u)); letter-spacing: -.005em;
   text-shadow: 0 calc(4 * var(--u)) calc(18 * var(--u)) rgba(28, 70, 120, .28); }
 .hero-title span { display: block; }
+.hero-kicker span { white-space: nowrap; } /* narrow screens wrap at a dot, not inside a phrase */
 .hero-sub { position: absolute; left: 0; right: 0; top: calc(503 * var(--u)); margin: 0; text-align: center;
   font: 400 calc(21.2 * var(--u))/calc(27 * var(--u)) "Inter", system-ui, sans-serif; color: #fff;
   text-shadow: 0 calc(2 * var(--u)) calc(12 * var(--u)) rgba(28, 70, 120, .35); }
 .hero-actions { position: absolute; left: 0; right: 0; top: calc(617 * var(--u)); display: flex; justify-content: center;
   align-items: center; gap: calc(13 * var(--u)); }
 .hero-actions .pill-white { height: calc(59 * var(--u)); padding: 0 calc(30 * var(--u)); font-size: calc(22 * var(--u)); }
+.hero-note { position: absolute; left: 0; right: 0; top: calc(692 * var(--u)); margin: 0; text-align: center;
+  font: 400 calc(16 * var(--u))/1.3 "Inter", system-ui, sans-serif; color: rgba(255, 255, 255, .92);
+  text-shadow: 0 calc(2 * var(--u)) calc(10 * var(--u)) rgba(28, 70, 120, .35); }
 
 /* ---- The three steps, as the row of cards ---- */
 .steps { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
@@ -114,13 +118,14 @@
   .hero-main { position: relative; inset: auto; flex: 1; display: flex; flex-direction: column; align-items: center;
     padding: 44px 0 0; text-align: center; }
   .hero-copy { display: flex; flex-direction: column; align-items: center; }
-  .hero-kicker, .hero-title, .hero-sub, .hero-actions { position: static; }
-  .hero-kicker { font-size: 22px; padding: 0 16px; }
+  .hero-kicker, .hero-title, .hero-sub, .hero-actions, .hero-note { position: static; }
+  .hero-kicker { font-size: 15px; line-height: 1.35; padding: 0 16px; }
   .hero-title { margin-top: 10px; padding: 0 12px; font-size: min(51px, 10.6vw); line-height: .92; } /* each line fits one row down to 320 px */
   .hero-sub { margin-top: 16px; padding: 0 22px; max-width: 30em; font-size: 16.5px; line-height: 1.5; }
   .wide-only { display: none; }
   .hero-actions { margin-top: 24px; flex-wrap: wrap; padding: 0 16px; gap: 10px; }
   .hero-actions .pill-white { height: 52px; padding: 0 26px; font-size: 18px; }
+  .hero-note { margin-top: 10px; padding: 0 16px; font-size: 14px; }
   .steps { position: relative; height: auto; width: 100%; margin-top: auto; padding: 48px 0 0; display: grid;
     grid-template-columns: 1fr auto; align-items: end; pointer-events: auto; }
   .steps-title, .steps-link, .steps-row { position: static; }

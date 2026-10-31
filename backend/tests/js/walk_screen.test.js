@@ -109,13 +109,13 @@ test("the typing tagline's source line stays transparent on every page head", ()
   assert.equal(hide.color, "transparent");
 });
 
-test("ten taglines per mode, each short enough for one line at 320 px", () => {
-  const src = read("index.html").match(/const TAGLINES = (\{[\s\S]*?\});/)[1];
-  const T = Function(`return (${src})`)();
-  for (const mode of ["pair", "solo"]) {
-    assert.equal(T[mode].length, 10, mode);
-    assert.equal(new Set(T[mode]).size, 10, `${mode}: no repeats`);
-    // 29 characters was the longest line measured to fit one line in the title font at 320 px.
-    for (const t of T[mode]) assert.ok(t.length <= 29, `${mode}: "${t}" may wrap`);
-  }
+test("New walk: one tagline, and Just me is the default (first chip, first choice)", () => {
+  const page = read("index.html");
+  assert.match(page, /<p class="tagline" id="tagline">Less planning\. More walking\.<\/p>/);
+  assert.ok(!/More meeting|Meet more/.test(page));
+  const solo = page.indexOf('id="mode-solo"'), pair = page.indexOf('id="mode-pair"');
+  assert.ok(solo > 0 && solo < pair, "Just me comes first");
+  assert.match(page, /id="mode-solo" aria-checked="true"/);
+  assert.match(page, /savedMode === "pair" \? "pair" : "solo"/);  // anything but a saved "pair" is Just me
+  assert.match(page, /button: "Invite a friend"/);
 });

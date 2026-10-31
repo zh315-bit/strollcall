@@ -22,37 +22,11 @@
 <main>
   <a class="back-home" href="/"><span aria-hidden="true">←</span> Home</a>
   <h1>StrollCall</h1>
-  <p class="tagline" id="tagline">Plan less. Meet more.</p>
-  <script>
-  // Ten short taglines per mode (each fits one line at 320 px), one picked at random per visit.
-  // Chosen here, before the first paint, so the page never shows one line and then swaps it.
-  const TAGLINES = {
-    pair: ["Plan less. Meet more.", "Meet halfway, then walk.", "Two starts, one walk.", "A fair place to meet.",
-           "Meet in the middle.", "Halfway to each other.", "Invite a friend for a stroll.", "Fair for both of you.",
-           "Two friends, one walk.", "Walk to meet, then stroll."],
-    solo: ["Plan less. Walk more.", "A walk worth taking.", "Somewhere nice, on foot.", "A short walk, a nice end.",
-           "Just you and a good walk.", "Coffee, a park, or books?", "Let the walk find you.", "Somewhere new today.",
-           "Pick a mood, get a walk.", "Step out for a walk."],
-  };
-  function pickTagline(mode, avoid) {
-    const list = TAGLINES[mode].filter((t) => t !== avoid);
-    return list[Math.floor(Math.random() * list.length)];
-  }
-  (function () {
-    let mode = "pair";
-    try {
-      const asked = new URLSearchParams(location.search).get("mode");
-      mode = TAGLINES[asked] ? asked : (localStorage.getItem("strollcall:mode") === "solo" ? "solo" : "pair");
-    } catch (e) { /* storage blocked: with a friend */ }
-    const p = document.getElementById("tagline");
-    p.textContent = pickTagline(mode);
-    p.dataset.mode = mode;
-  })();
-  </script>
+  <p class="tagline" id="tagline">Less planning. More walking.</p>
 
   <div class="mode-switch" role="radiogroup" aria-label="Who is walking">
-    <button type="button" role="radio" id="mode-pair" aria-checked="true"><span class="i i-users" aria-hidden="true"></span>With a friend</button>
-    <button type="button" role="radio" id="mode-solo" aria-checked="false"><span class="i i-footprints" aria-hidden="true"></span>On my own</button>
+    <button type="button" role="radio" id="mode-solo" aria-checked="true"><span class="i i-footprints" aria-hidden="true"></span>Just me</button>
+    <button type="button" role="radio" id="mode-pair" aria-checked="false"><span class="i i-users" aria-hidden="true"></span>With a friend</button>
   </div>
 
   <div class="layout">
@@ -88,14 +62,14 @@
   </section>
   <!-- One slot under step 1: "Near you" until a walk is found, then the step 3 result in its place. -->
   <div id="solo-result"></div>
-  <button class="primary" id="create" disabled>Create invite</button>
+  <button class="primary" id="create" disabled>Find my walk</button>
   <p id="create-error" class="error"></p>
   </div>
 
   <div class="pane-right">
   <section class="card map-card">
     <h2><span class="step-no">2</span>Where do you start?</h2>
-    <p class="muted" id="privacy-note">Only used to find a fair meeting point. Your friend never sees your exact start.</p>
+    <p class="muted" id="privacy-note">Only used to plan this walk. It is not stored.</p>
     <div class="row"><button id="locate">Use my location</button><span class="muted">or tap the map</span></div>
     <div id="map"></div>
     <p class="muted" id="origin-label">No start point yet.</p>
@@ -115,7 +89,7 @@
 <div id="chrome-ready" hidden></div> <!-- first render waits for the scripts above (see <head>) -->
 <script src="/static/js/walk.js"></script>
 <script>
-const state = { intent: null, inferred: [], origin: null, text: "", mode: "pair", solo: null, chosen: 0,
+const state = { intent: null, inferred: [], origin: null, text: "", mode: "solo", solo: null, chosen: 0,
                 near: null, nearFor: null, nearOpen: null, passBy: [], nearSeen: [], nearMore: false, nearNote: "" };
 const $ = (id) => document.getElementById(id);
 const map = makeMap("map");
@@ -125,7 +99,7 @@ let marker = null, routeLayers = [];
 
 const MODES = {
   pair: { privacy: "Only used to find a fair meeting point. Your friend never sees your exact start.",
-          button: "Create invite" },
+          button: "Invite a friend" },
   solo: { privacy: "Only used to plan this walk. It is not stored.",
           button: "Find my walk" },
 };
@@ -135,8 +109,6 @@ function setMode(mode) {
   try { localStorage.setItem("strollcall:mode", mode); } catch (e) { /* fine without it */ }
   $("mode-pair").setAttribute("aria-checked", mode === "pair");
   $("mode-solo").setAttribute("aria-checked", mode === "solo");
-  const tag = $("tagline");  // keep the visit's line; a new mode gets a new random line (retyped by bits.js)
-  if (tag.dataset.mode !== mode) { tag.textContent = pickTagline(mode, tag.textContent); tag.dataset.mode = mode; }
   $("privacy-note").textContent = MODES[mode].privacy;
   $("create").textContent = MODES[mode].button;
   $("create-error").textContent = "";
@@ -257,7 +229,7 @@ function showOnMap(h) {
 // The Muse Image illustration stays at the top of the card in every state.
 function nearImage() {
   return el("img", { class: "near-image", src: "/static/illustrations/park-cafe.jpg",
-    alt: "Illustration of two friends walking past a park toward a cafe" });
+    alt: "Illustration of a walk past a park toward a cafe" });
 }
 const NEAR_CREDIT = () => el("p", { class: "muted small" }, "Illustration made with Muse Image.");
 
@@ -443,14 +415,15 @@ $("create").addEventListener("click", async () => {
     location.href = `${r.invite_path}#key=${encodeURIComponent(r.a_key)}`;
   } catch (e) { $("create-error").textContent = e.message; $("create").disabled = false; }
 });
-let savedMode = "pair";
-try { savedMode = localStorage.getItem("strollcall:mode") || "pair"; } catch (e) { /* default */ }
-const askedMode = new URLSearchParams(location.search).get("mode");  // a link may pick the mode
-setMode(["pair", "solo"].includes(askedMode) ? askedMode : savedMode === "solo" ? "solo" : "pair");
+// Just me is the default; the last choice on this device wins, and a link may pick the mode.
+let savedMode = "solo";
+try { savedMode = localStorage.getItem("strollcall:mode") || "solo"; } catch (e) { /* default */ }
+const askedMode = new URLSearchParams(location.search).get("mode");
+setMode(["pair", "solo"].includes(askedMode) ? askedMode : savedMode === "pair" ? "pair" : "solo");
 </script>
 <script src="/static/js/jellyradio.js"></script>
 <script>
-// The friend / solo switch as a React Bits JellyRadio row; setMode() above still owns the state.
+// The Just me / With a friend switch as a React Bits JellyRadio row; setMode() above still owns the state.
 const narrow = window.matchMedia("(max-width: 360px)").matches;  // both chips must fit a 320 px phone
 jellyRadio(document.querySelector(".mode-switch"), {
   size: narrow ? "md" : "lg", gap: narrow ? 6 : 8, radius: 22, chipColor: "color-mix(in srgb, var(--card) 88%, transparent)",

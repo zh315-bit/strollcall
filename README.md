@@ -1,30 +1,43 @@
 # StrollCall
 
-*Less planning. More meeting.*
+*Less planning. More walking.*
 
-A invites B to a 20–30 minute walk with a link. StrollCall finds a meetup point that is fair in
-**walking time** for both, and a shared walk to a destination they both like. Meta models read and
-reconcile both people's preferences; a deterministic planner checks that every plan is real and
-feasible.
+StrollCall is about getting outside. You say how long you have and what you feel like ("25 minutes,
+quiet streets, coffee at the end"), and it plans a short walk worth taking in New York: a route past
+places nearby, ending somewhere good, with turn-by-turn directions in the browser. No app to download,
+no account.
+
+Walking on your own is the default. If you want company, invite a friend with one link: StrollCall
+finds a meetup point that is fair in **walking time** for both of you, then a shared walk to a
+destination you both like.
+
+Meta models read what you ask for (and, with a friend, reconcile both people's wishes); a
+deterministic planner on our own walking map checks that every plan is real and feasible.
 
 Built for the Meta Global AI Developer Hackathon (Oct 28 – Nov 4, 2026). All code in this
 repository was written during the event; no code from earlier projects was reused.
 
 ## Status
 
-Backend and planner in progress; frontend not started. See `docs/DEV_DOC.md` for scope and plan,
-and `benchmarks/` for measured planner results.
+Live at https://strollcall.onrender.com: walks on your own and with a friend, in-app walking guidance,
+and My walks. See `docs/DEV_DOC.md` for scope and plan, and `benchmarks/` for measured results.
 
 ## How Meta models are used
 
-| Job | Model | Output | Deterministic check |
-| --- | --- | --- | --- |
-| Parse a walk description | Muse Spark (`muse-spark-1.3`) | `WalkIntent` | JSON schema + Pydantic; default on failure |
-| Reconcile A's and B's preferences | Muse Spark | `JointPreference` + trade-off | shared vibes must come from both people; never changes time or hard constraints |
-| Rank the planner's top 6 | Muse Spark | order + reasons | only the supplied candidates; every number must be a measured fact |
-| Speech to text | Muse Voice Transcribe | transcript | WAV format check; user edits before parsing |
-| Invite card illustration | Muse Image (24 pictures made ahead of time, picked by theme) | image | model and prompt per file in `frontend/illustrations/manifest.json` |
-| Intros of places passed on a walk | Muse Spark (ahead of time, `scripts/make_poi_intros.py`) | at most 2 sentences | only from the place's Wikipedia summary; every number, name, feature and evaluative word must be in that text, else dropped |
+Solo walks use Muse Spark to read the wish (minutes, end point, mood, and the place features it asks
+for, which decide the order of the options the planner scores) and for place intros. Friend walks add
+two-person negotiation, the ranking of the fair meetup options with reasons, and the invite line.
+
+| Job | Used in | Model | Output | Deterministic check |
+| --- | --- | --- | --- | --- |
+| Parse a walk description | both | Muse Spark (`muse-spark-1.3`) | `WalkIntent` | JSON schema + Pydantic; default on failure |
+| Read wishes as place features ("sit outside", "not a chain") | both | Muse Spark | requirements from a fixed menu, with the quote | menu-limited; the planner scores them on OpenStreetMap data |
+| Reconcile both people's preferences | with a friend | Muse Spark | `JointPreference` + trade-off | shared vibes must come from both people; never changes time or hard constraints |
+| Rank the fair meetup plan's top 6 | with a friend | Muse Spark | order + reasons | only the supplied candidates; every number must be a measured fact |
+| Invite line | with a friend | Muse Spark | one or two sentences | no place, safety, crowd or weather claims |
+| Speech to text | both | Muse Voice Transcribe | transcript | WAV format check; user edits before parsing |
+| Illustrations | both | Muse Image (24 pictures made ahead of time, picked by theme) | image | model and prompt per file in `frontend/illustrations/manifest.json` |
+| Intros of places passed on a walk | both | Muse Spark (ahead of time, `scripts/make_poi_intros.py`) | at most 2 sentences | only from the place's Wikipedia summary; every number, name, feature and evaluative word must be in that text, else dropped |
 
 Every Meta call goes through a spend guard with a daily cap (`DAILY_BUDGET_USD`); past the cap the
 app switches to clearly labelled mock data. API responses say whether data is `meta`, `mock` or

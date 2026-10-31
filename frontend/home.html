@@ -4,11 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>StrollCall</title>
-  <meta name="description" content="Say the walk you want. Your friend taps one link. StrollCall finds a meeting point that's fair for both of you, then a short walk somewhere worth arriving.">
+  <meta name="description" content="Tell us how long you have and what you feel like. StrollCall plans a short walk worth taking in New York: on your own, or with a friend. Less planning. More walking.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Grandstander:wght@900&family=Inter:wght@400;500&family=Nunito:wght@400;500;600;700;800&display=swap">
   <link rel="preload" as="image" href="/static/media/hero-plate.jpg">
-  <!-- "Start a walk" should open New walk at once (the reveal in style.css starts the moment the new page
+  <!-- "Plan my walk" should open New walk at once (the reveal in style.css starts the moment the new page
        is ready): fetch it right away, and prerender it when a link to it is hovered or pressed (moderate).
        Its load only reads the coverage area; nothing is sent until the visitor acts. Chrome / Edge only. -->
   <script type="speculationrules">
@@ -33,14 +33,15 @@
   </div></div>
   <main class="hero-main">
     <div class="hero-copy"> <!-- not a direct child h1: common.js decorate() leaves it in place -->
-    <p class="hero-kicker">For two friends</p>
-    <h1 class="hero-title"><span>Less planning.</span> <span>More meeting.</span></h1>
-    <p class="hero-sub">Say the walk you want. Your friend taps one link.
-      <br class="wide-only">We find a meeting point that's fair for both of you,
-      <br class="wide-only">then a short walk somewhere worth arriving.</p>
+    <p class="hero-kicker"><span>20–30 minutes</span> · <span>on your own or with a friend</span> · <span>New York</span></p>
+    <h1 class="hero-title"><span>Step</span> <span>outside.</span></h1>
+    <p class="hero-sub">Tell us how long you have and what you feel like.
+      <br class="wide-only">We'll plan a short walk worth taking:
+      <br class="wide-only">on your own, or with a friend.</p>
     <div class="hero-actions">
-      <a class="pill pill-white" href="/new">Start a walk</a>
+      <a class="pill pill-white" href="/new">Plan my walk</a>
     </div>
+    <p class="hero-note">No app to download. No account.</p>
     </div>
 
     <section class="steps" aria-labelledby="steps-title">
@@ -49,15 +50,15 @@
       <div class="steps-row">
         <a class="step" href="/how">
           <img src="/static/illustrations/quiet-cafe.jpg" alt="" loading="lazy" decoding="async">
-          <span class="step-text"><b><i>1</i> Say your walk</b>Type or speak it: "25 minutes, quiet streets, coffee at the end."</span>
+          <span class="step-text"><b><i>1</i> Say what you feel like.</b>"25 minutes, quiet streets, coffee at the end."</span>
         </a>
         <a class="step" href="/how">
           <img src="/static/illustrations/lively-park.jpg" alt="" loading="lazy" decoding="async">
-          <span class="step-text"><b><i>2</i> Send one link</b>Your friend taps "I'm in" and adds what they'd like.</span>
+          <span class="step-text"><b><i>2</i> Get a walk worth taking.</b>A route past places nearby, ending somewhere good.</span>
         </a>
         <a class="step" href="/how">
           <img src="/static/illustrations/park-landmark.jpg" alt="" loading="lazy" decoding="async">
-          <span class="step-text"><b><i>3</i> Meet halfway</b>Fair by walking time, then walk together to the end.</span>
+          <span class="step-text"><b><i>3</i> Bring someone, if you want.</b>Send one link and we'll find a meeting point that's fair for both of you.</span>
         </a>
       </div>
     </section>

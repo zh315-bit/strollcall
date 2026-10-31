@@ -16,7 +16,7 @@
 <body>
 <main>
   <h1>A walk together</h1>
-  <p class="tagline">Less planning. More meeting.</p>
+  <p class="tagline">Less planning. More walking.</p>
   <div id="recap"><p class="muted"><span class="spinner"></span>Loading…</p></div>
   <footer>Map data © OpenStreetMap contributors (ODbL). Language features by Meta Muse models.</footer>
 </main>
@@ -38,7 +38,7 @@
   const day = new Date(`${r.date}T12:00:00`).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
   box.replaceChildren(el("section", { class: "card recap" },
     el("h2", {}, `A walk on ${day}`),
-    r.image_url ? el("img", { class: "recap-image", src: r.image_url, alt: "Illustration of two friends walking together" }) : null,
+    r.image_url ? el("img", { class: "recap-image", src: r.image_url, alt: "Illustration of a walk" }) : null,
     el("div", { class: "recap-stats" },
       el("div", {}, el("b", {}, r.minutes_walked), "min walked"),
       el("div", {}, el("b", {}, Math.round(r.shared_min)), "min together"),

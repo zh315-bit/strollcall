@@ -381,7 +381,7 @@ html:active-view-transition-type(fade)::view-transition-new(page) { animation: 2
 @keyframes page-in-left { from { opacity: 0; transform: translateX(-24px); } }
 @keyframes page-fade-out { to { opacity: 0; } }
 @keyframes page-fade-in { from { opacity: 0; } }
-/* Home -> New walk ("Start a walk"): the whole screen is one picture, and the new page opens from the
+/* Home -> New walk ("Plan my walk"): the whole screen is one picture, and the new page opens from the
    middle as a growing circle, settling from a slight zoom, while Home behind it leans in and softens. */
 html:active-view-transition-type(reveal, conceal) * { view-transition-name: none !important; }
 html:active-view-transition-type(reveal, conceal)::view-transition-old(root),

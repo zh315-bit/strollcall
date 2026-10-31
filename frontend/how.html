@@ -17,10 +17,24 @@
 <body class="scene"> <!-- on Home's hillside scene, with Home's top bar (home.css, js/scene.js) -->
 <main class="prose">
   <h1>How it works</h1>
-  <p class="tagline">A fair place to meet, a short walk together, and what's behind it.</p>
+  <p class="tagline">How we plan a walk worth taking, and what's behind it.</p>
 
   <section class="card">
-    <h2>A fair meeting point</h2>
+    <h2>Your walk</h2>
+    <ul>
+      <li>You say how long you have and what you feel like, typed or spoken: "25 minutes, quiet streets, coffee at
+        the end". You check what was understood before anything is planned.</li>
+      <li>From your start, one search on our walking map finds every place you can reach in time: cafes, bakeries,
+        bookstores, parks, ice cream, landmarks. Places known to be closed when you'd arrive are left out.</li>
+      <li>Each option is scored on how well it fits your wish and your minutes; you see up to six, best first, and
+        can swipe through them. Then you start walking with turn-by-turn directions on this page, and short intros
+        to places you pass.</li>
+      <li>Your start point is used for this plan only. It is not stored.</li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2>With a friend: a fair meeting point</h2>
     <ul>
       <li>Walking times come from our own walking map of Manhattan, northern Brooklyn, Long Island City, and Jersey City,
         Hoboken and their neighbors across the Hudson, built from OpenStreetMap, at 80 m per minute: a little slower than routing apps, to leave time for crossings.
@@ -32,7 +46,7 @@
         named parks, plazas and gates near the middle.</li>
       <li>From there you walk together to a place that fits what you asked for (a cafe, a park, a bookstore...),
         within your time budget: a few minutes of slack, or none if you set a hard limit. Places known to be closed
-        are left out. You see the best three.</li>
+        are left out. You see up to six options.</li>
       <li>If nothing fits, StrollCall says why and suggests what would work, such as "needs about 40 minutes".</li>
     </ul>
   </section>
@@ -40,11 +54,13 @@
   <section class="card">
     <h2>What the Meta models do</h2>
     <table>
-      <tr><th>Muse Spark</th><td>Reads your wish ("25 minutes, quiet, coffee at the end"), balances both people's
-        wishes, ranks the six options with reasons, and writes the invite line. Every answer is checked: it must fit
-        the schema, and every number and place feature must come from our data. If it doesn't, rule-based text is
-        used instead, and the page says so.</td></tr>
-      <tr><th>Muse Image</th><td>The 24 invite illustrations, made ahead of time and picked by the kind of walk.</td></tr>
+      <tr><th>Muse Spark</th><td>On your own: reads your wish ("25 minutes, quiet, coffee at the end") and which
+        place features it asks for; those decide the order of your options, which our planner scores on our data.
+        It also wrote the place intros ahead of time (below). With a friend, it adds two-person work: it balances
+        both people's wishes, ranks the options of the fair meetup plan with a short reason for each, and writes
+        the invite line. Every answer is checked: it must fit the schema, and every number and place feature must
+        come from our data. If it doesn't, rule-based text is used instead, and the page says so.</td></tr>
+      <tr><th>Muse Image</th><td>The 24 illustrations, made ahead of time and picked by the kind of walk.</td></tr>
       <tr><th>Muse Voice Transcribe</th><td>The Speak button: your words become text you can edit before it's read.</td></tr>
       <tr><th>Muse Spark Open</th><td>Built as a backup for the text jobs (Meta's open-weight model on a hosted
         provider). It is switched off and not used today.</td></tr>
@@ -72,26 +88,27 @@
 
   <section class="card">
     <h2>Privacy, briefly</h2>
-    <p>Start points are used to plan, never shown to the other person, and deleted when the invite expires after
-      24 hours. Your live position stays on your phone. <a href="/privacy">All the details</a>.</p>
+    <p>Your start point is used to plan your walk and is not stored. With a friend, it is never shown to them and is
+      deleted when the invite expires after 24 hours. Your live position stays on your phone.
+      <a href="/privacy">All the details</a>.</p>
   </section>
 
   <section class="card">
     <h2>How well it works</h2>
     <ul>
-      <li>12 test pairs across the map: the right outcome in 12 of 12 (a plan where one exists, an honest "too far"
+      <li>With a friend, 12 test pairs across the map: the right outcome in 12 of 12 (a plan where one exists, an honest "too far"
         where it doesn't). Median arrival gap 0.2 min, median time-budget error 0.4 min.
         <a href="https://github.com/zh315-bit/strollcall/blob/main/benchmarks/2026-10-28-local.md" target="_blank" rel="noopener">Report</a></li>
-      <li>10 wish cases written down before testing: the top pick met 7 of 10 wishes with Muse Spark, 4 of 10 with
+      <li>With a friend, 10 wish cases written down before testing: the top pick met 7 of 10 wishes with Muse Spark, 4 of 10 with
         rules only. <a href="https://github.com/zh315-bit/strollcall/blob/main/benchmarks/2026-10-28-ablation-wishes.md" target="_blank" rel="noopener">Report</a></li>
-      <li>Planning on the server takes well under a second; the Muse Spark steps take most of the time. With
-        Meta answering live, the plan shows about 10 s after the friend accepts, and Muse Spark's explanation
-        follows a few seconds later (median of 3 runs).
+      <li>Planning on the server takes well under a second; the Muse Spark steps take most of the time. With a
+        friend and Meta answering live, the plan shows about 3-4 s after your friend accepts, and Muse Spark's
+        explanation follows a few seconds later (median of 3 runs).
         <a href="https://github.com/zh315-bit/strollcall/blob/main/benchmarks/2026-10-30-live-flow.md" target="_blank" rel="noopener">Report</a></li>
       <li>Place intros: <a href="https://github.com/zh315-bit/strollcall/blob/main/benchmarks/2026-10-29-poi-intros.md" target="_blank" rel="noopener">report</a>.
         All code and reports: <a href="https://github.com/zh315-bit/strollcall" target="_blank" rel="noopener">github.com/zh315-bit/strollcall</a>.</li>
     </ul>
-    <p class="muted">Small tests by the team, not a study. A user test with friends is planned for Nov 2-3.</p>
+    <p class="muted">Small tests by the team, not a study. A user test is planned for Nov 2-3.</p>
   </section>
 
   <footer>Map data © OpenStreetMap contributors (ODbL). Language features by Meta Muse models.</footer>

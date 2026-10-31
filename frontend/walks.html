@@ -53,7 +53,7 @@ function recapCard(w, v, done) {
   } }, "Share recap");
   const card = el("section", { class: "card recap" },
     el("h2", {}, "Your walk"),
-    v.image_url ? el("img", { class: "recap-image", src: v.image_url, alt: "Illustration of two friends walking together" }) : null,
+    v.image_url ? el("img", { class: "recap-image", src: v.image_url, alt: "Illustration of a walk" }) : null,
     el("div", { class: "recap-stats" },
       el("div", {}, el("b", {}, done.minutes), "min walked"),
       el("div", {}, el("b", {}, (done.places || []).length), "places passed")),

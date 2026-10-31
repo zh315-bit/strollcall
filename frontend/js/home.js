@@ -44,7 +44,7 @@
     document.querySelectorAll(".hero-title span").forEach((line, i) =>
       run(line, [{ opacity: 0, translate: "0 48px", scale: ".94", filter: "blur(14px)" },
                  { opacity: 1, translate: "0 0", scale: "1", filter: "blur(0)" }], 380 + i * 160, 950, SPRING));
-    const later = [".hero-sub", ".hero-actions .pill-white", ".steps-title", ".steps-link",
+    const later = [".hero-sub", ".hero-actions .pill-white", ".hero-note", ".steps-title", ".steps-link",
                    ...[...document.querySelectorAll(".step")]];
     later.forEach((sel, i) => run(typeof sel === "string" ? $(sel) : sel, rise, 820 + i * 90, 750));
   }

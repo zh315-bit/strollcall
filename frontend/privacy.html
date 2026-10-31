@@ -20,11 +20,13 @@
   <section class="card">
     <h2>Where you start</h2>
     <ul>
-      <li>Your start point is used to plan the walk. It is kept in a private record that no page shows and that is
-        <b>deleted when the invite expires, 24 hours after it was created</b>. Your route from it is deleted then too;
-        the meeting point, destination and walking times stay with the invite.</li>
-      <li>Your friend never sees your start: their page shows your route only from about 200 m after it, and without
-        your turn-by-turn steps or the places you pass near it.</li>
+      <li>Your start point is used to plan the walk. When you walk on your own, it is used once and <b>not
+        stored</b>.</li>
+      <li>With a friend, it is kept in a private record that no page shows and that is <b>deleted when the invite
+        expires, 24 hours after it was created</b>. Your route from it is deleted then too; the meeting point,
+        destination and walking times stay with the invite.</li>
+      <li>With a friend, they never see your start: their page shows your route only from about 200 m after it, and
+        without your turn-by-turn steps or the places you pass near it.</li>
       <li>Start points are never written to logs.</li>
     </ul>
   </section>
@@ -57,14 +59,14 @@
     <p class="muted small">The app runs on Render (US) with a Neon database (US East). Planning and routing run on our
       own server. Your browser also loads map images from OpenStreetMap's tile servers (they see which area the map
       shows), fonts from Google Fonts and scripts from cdnjs and jsDelivr. If a walk ever falls outside our own map,
-      place lookups can go to OpenStreetMap's public Overpass service with the midpoint between you; the app asks for
+      place lookups can go to OpenStreetMap's public Overpass service with the start (or, with a friend, the midpoint between you); the app asks for
       start points inside the covered area to avoid that.</p>
   </section>
 
   <section class="card">
     <h2>This phone</h2>
     <p>This browser keeps your invite links and their private keys, your walk history (minutes and place names) and
-      two settings (voice prompts, with a friend or on your own). Nothing else.</p>
+      two settings (voice prompts, and Just me or With a friend). Nothing else.</p>
     <div class="row"><button type="button" id="forget">Forget this device</button></div>
     <p id="forget-result" class="muted small" role="status"></p>
     <p class="muted small">This clears StrollCall's storage in this browser. It doesn't change anything on the server:

@@ -205,7 +205,7 @@ function decorate() {
 
 // ---- Site navigation (top) and the privacy link (footer), on every page ----
 
-// New walk ("/new") is reached from Home's "Start a walk".
+// New walk ("/new") is reached from Home's "Plan my walk".
 const NAV = [["/", "Home"], ["/walks", "My walks"], ["/how", "How it works"]];
 
 const navIndex = (path) => NAV.findIndex(([href]) => (href === "/" ? path === "/" : path.startsWith(href)));
@@ -264,7 +264,7 @@ addEventListener("pageswap", (ev) => {
 const quietSkip = (vt) => vt?.ready.catch(() => {});
 const PAGES = ["/", "/new", "/walks", "/how"];
 const pageIndex = (path) => (path === "/" ? 0 : PAGES.findIndex((p, i) => i > 0 && path.startsWith(p)));
-// Home -> New walk ("Start a walk") opens the new page from the middle of the screen (style.css: reveal);
+// Home -> New walk ("Plan my walk") opens the new page from the middle of the screen (style.css: reveal);
 // New walk -> Home closes it back into the middle (conceal). Both documents tag the switch, so both
 // capture the whole screen as one picture.
 const openOrClose = (from, to) => {

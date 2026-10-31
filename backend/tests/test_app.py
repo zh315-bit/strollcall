@@ -50,7 +50,7 @@ def test_dev_plan_with_fixtures(monkeypatch):
 
 def test_pages_are_served():
     home = client.get("/").text
-    assert "StrollCall" in home and 'href="/new"' in home  # Home: "Start a walk" leads to the New walk page
+    assert "StrollCall" in home and 'href="/new"' in home  # Home: "Plan my walk" leads to the New walk page
     assert "New walk" in client.get("/new").text
     page = client.get("/i/sometoken")
     assert page.status_code == 200 and "invite" in page.text.lower()
