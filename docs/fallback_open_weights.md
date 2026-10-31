@@ -1,3 +1,6 @@
+> Superseded for wish reading (2026-10-31): Muse Glimmer now runs on our own Modal endpoint, see
+> `docs/open_weights.md`. This page is the earlier plan for Muse Spark Open on a hosted provider.
+
 # Fallback on Meta open-weight models (built, off by default)
 
 Status (2026-10-29): option A is built as `backend/app/providers/spark_open.py`, tested against fakes

@@ -30,7 +30,7 @@ two-person negotiation, the ranking of the fair meetup options with reasons, and
 
 | Job | Used in | Model | Output | Deterministic check |
 | --- | --- | --- | --- | --- |
-| Parse a walk description | both | Muse Spark (`muse-spark-1.3`) | `WalkIntent` | JSON schema + Pydantic; default on failure |
+| Parse a walk description | both | Muse Glimmer (open weights, our Modal endpoint) when warm, else Muse Spark (`muse-spark-1.3`) | `WalkIntent` | JSON schema + Pydantic; Muse Spark after 3 s or on any error; default on failure |
 | Read wishes as place features ("sit outside", "not a chain") | both | Muse Spark | requirements from a fixed menu, with the quote | menu-limited; the planner scores them on OpenStreetMap data |
 | Reconcile both people's preferences | with a friend | Muse Spark | `JointPreference` + trade-off | shared vibes must come from both people; never changes time or hard constraints |
 | Rank the fair meetup plan's top 6 | with a friend | Muse Spark | order + reasons | only the supplied candidates; every number must be a measured fact |
@@ -42,6 +42,22 @@ two-person negotiation, the ranking of the fair meetup options with reasons, and
 Every Meta call goes through a spend guard with a daily cap (`DAILY_BUDGET_USD`); past the cap the
 app switches to clearly labelled mock data. API responses say whether data is `meta`, `mock` or
 `default`.
+
+## Open-weights model
+
+Wish reading runs on **Muse Glimmer**, Meta's open-weights model (`meta-models/Muse-Glimmer-30B`, BF16,
+pinned revision `f84ecc3`), on our own **Modal** Dedicated Endpoint (SGLang, 1x H200,
+`ep-ez0BAxZPNiSL3x40VCpbFi`) whenever it is warm, with reasoning off (the prompt opens the model's answer
+channel) and the answer constrained to the `WalkIntent` JSON schema. If it doesn't answer within 3 s, or
+outside a warm window, Muse Spark reads the wish. The page says which model read it ("Read by Muse Glimmer (open
+weights, on Modal)"), plans record it, `/health` shows the deployment, and every Glimmer call writes a
+run-log line (model, precision, host, GPU, endpoint, latency; no user text).
+
+The endpoint scales to zero after 2 idle minutes. `scripts/glimmer_warm.py` warms it for a set window
+and stops before Modal's bill passes $20. Pre-registered evaluation against `muse-spark-1.3`:
+`scripts/eval_open_weights.py`, results in `benchmarks/2026-10-31-open-weights-run1.md`, and raw outputs side by
+side in `sample_outputs/open_weights/`. In run 1 Glimmer read wishes in 0.55 s (median) against 3.58 s for
+Muse Spark, with 10 of 12 valid against 12 of 12. Deployment, budget and commands: `docs/open_weights.md`.
 
 ## Setup
 
@@ -97,7 +113,8 @@ Web service settings:
 - Environment: `PYTHON_VERSION=3.11.11`, `GRAPH_PATH=deploy/data/nyc_graph.npz`,
   `PLACES_SNAPSHOT_PATH=deploy/data/nyc_places.json.gz`, `DAILY_BUDGET_USD`, and the secret
   `MODEL_API_KEY` (set it in the dashboard, never in the repo). `ORS_API_KEY` is optional
-  (only for start points outside the local map).
+  (only for start points outside the local map). For wish reading on Muse Glimmer: `TEXT_PROVIDER_PARSE=open_weights` and
+  the secret `OPEN_WEIGHTS_API_KEY` (the Modal proxy token).
 - Persistent state: Render free web services have an ephemeral filesystem, so set the secret
   `DATABASE_URL` to a Neon Postgres **pooled** connection string with `sslmode=require`. Tables are
   created on startup. Without `DATABASE_URL` the app uses a local SQLite file (development, tests).
@@ -124,6 +141,8 @@ Tests run with `USE_MOCKS=true` against recorded fixtures and cannot open networ
 | `scripts/make_poi_intros.py` | Wikipedia-sourced, fact-checked intros -> `frontend/data/poi_intros.json` |
 | `scripts/make_illustrations.py` | the 24 invite-card illustrations (Muse Image) |
 | `scripts/user_test_report.py` | user-test funnel, survey answers, predicted vs actual walk time |
+| `scripts/glimmer_warm.py` | warms the Muse Glimmer endpoint for a window, opens it on the live site, stops at $20 |
+| `scripts/eval_open_weights.py` | pre-registered evaluation: Muse Glimmer vs `muse-spark-1.3` on the wish cases |
 
 ## Data and attribution
 
