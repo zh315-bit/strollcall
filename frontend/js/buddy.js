@@ -62,3 +62,122 @@ function makeBuddy() {
     busy(on) { chips.querySelectorAll("button").forEach((b) => { b.disabled = on; }); },
   };
 }
+
+// ---- The companion: chips and hold-to-talk -> /api/companion/ask -> a reply, maybe a new route ----
+// walk: what the walking screen offers it:
+//   state()          -> the WalkState the server expects (position, current leg, minutes left...)
+//   apply(answer)    -> follows the new legs; returns an undo function
+//   mark(places)     -> shows "What's nearby?" places on the map (an empty list clears them)
+//   speak(text)      -> reads a reply out when voice prompts are on
+//   talkSlot         -> where the mic button goes (the bottom bar)
+// Returns { stop() } for when the walk ends. Nothing here is stored.
+function startCompanion(buddy, walk) {
+  let undo = null, busy = false, rest = null, stopped = false;
+  const canRecord = !!(navigator.mediaDevices && window.MediaRecorder && window.AudioContext);
+  const textOf = (parts) => parts.map((p) => (p && p.b ? p.b : String(p))).join("");
+
+  function settle(state, ms = 5000) {
+    clearTimeout(rest);
+    buddy.set(state);
+    if (state === "speaking") rest = setTimeout(() => { if (buddy.state === "speaking") buddy.set("walking"); }, ms);
+  }
+
+  function chipsFor(list) {
+    return list.map((c) => ({ label: c.label, onclick: () => tool(c.tool, c.args || {}) }));
+  }
+  const defaults = () => chipsFor([{ label: "I have 10 min", tool: "set_time_left", args: { minutes: 10 } },
+                                   { label: "What's nearby?", tool: "whats_nearby" }]);
+
+  async function send(body, heard) {
+    if (busy || stopped) return;
+    busy = true;
+    buddy.busy(true);
+    settle("thinking");
+    buddy.say(heard ? [`“${heard}” `, "Let me check…"] : "Let me check…");
+    try {
+      const a = await api("/api/companion/ask", { method: "POST", body: { ...body, walk: walk.state() } });
+      if (stopped) return;
+      walk.mark(a.places || []);
+      let chips = a.chips && a.chips.length ? chipsFor(a.chips) : defaults();
+      if (a.legs && a.legs.length) {
+        undo = walk.apply(a);
+        chips = [{ label: "Undo", onclick: () => takeBack() }, ...chips];
+      }
+      buddy.say(a.heard ? [`“${a.heard}” `, ...a.parts] : a.parts, chips);
+      walk.speak(textOf(a.parts));
+      settle("speaking", Math.min(9000, 2500 + textOf(a.parts).length * 45));
+    } catch (e) {
+      buddy.say(`I couldn't do that just now (${e.message}). Your route is unchanged.`, defaults());
+      settle("walking");
+    } finally {
+      busy = false;
+      buddy.busy(false);
+    }
+  }
+
+  function tool(name, args) { return send({ tool: name, args }); }
+
+  function takeBack() {
+    if (!undo) return;
+    undo();
+    undo = null;
+    walk.mark([]);
+    buddy.say("Back to your earlier route.", defaults());
+    walk.speak("Back to your earlier route.");
+    settle("speaking", 2500);
+  }
+
+  // Hold to talk: record while the button is held (pointer or Space/Enter), then transcribe and ask.
+  const mic = el("button", { type: "button", class: "walk-mic", "aria-label": "Hold to talk to your walking buddy" });
+  mic.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" '
+    + 'stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/>'
+    + '<path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+  let release = null, pressedAt = 0;
+  async function hold() {
+    if (release || busy || stopped) return;
+    let done;
+    const signal = new Promise((r) => (done = r));
+    release = done;
+    pressedAt = Date.now();
+    mic.classList.add("held");
+    settle("listening");
+    buddy.say("Listening… let go when you're done.");
+    try {
+      const wav = await recordToWav(signal);
+      if (Date.now() - pressedAt < 500) throw new Error("short");
+      settle("thinking");
+      buddy.say("Let me check…");
+      const form = new FormData();
+      form.append("audio", wav, "speech.wav");
+      const resp = await fetch("/api/voice/transcribe", { method: "POST", body: form });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.detail || "transcription failed");
+      const heard = (data.transcript || "").trim();
+      if (!heard) throw new Error("short");
+      await send({ text: heard.slice(0, 300) }, heard);
+    } catch (e) {
+      buddy.say(e.message === "short" ? "I didn't catch that. Hold the button while you talk, then let go."
+        : e.name === "NotAllowedError" ? "I can't hear you: the microphone isn't allowed for this page. The buttons below still work."
+          : `Voice didn't work just now (${e.message}). The buttons below still work.`, defaults());
+      settle("walking");
+    } finally {
+      release = null;
+      mic.classList.remove("held");
+    }
+  }
+  const letGo = () => { if (release) release(); };
+  mic.addEventListener("pointerdown", (e) => { e.preventDefault(); mic.setPointerCapture?.(e.pointerId); hold(); });
+  mic.addEventListener("pointerup", letGo);
+  mic.addEventListener("pointercancel", letGo);
+  mic.addEventListener("contextmenu", (e) => e.preventDefault());  // a long press must not open a menu
+  mic.addEventListener("keydown", (e) => { if ((e.key === " " || e.key === "Enter") && !e.repeat) { e.preventDefault(); hold(); } });
+  mic.addEventListener("keyup", (e) => { if (e.key === " " || e.key === "Enter") letGo(); });
+  if (walk.voice && canRecord) walk.talkSlot.append(mic);
+
+  buddy.say(walk.voice && canRecord ? "Hi, I'm walking with you. Hold the mic to ask me something, or tap below."
+    : "Hi, I'm walking with you. Tap below if you need me.", defaults());
+  return {
+    stop() { stopped = true; letGo(); clearTimeout(rest); },
+    arrived() { clearTimeout(rest); buddy.set("arrived"); },
+  };
+}

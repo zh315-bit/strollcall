@@ -362,7 +362,7 @@ function renderSolo() {
 
 // The legs the walking screen follows: to the place, and for a loop back to the start from there.
 function soloLegs(c, dest) {
-  const out = { id: dest.id, name: dest.name, kind: c.return_leg ? "turnaround" : "destination",
+  const out = { id: dest.id, name: dest.name, kind: c.return_leg ? "turnaround" : "destination", category: dest.category,
                 target: [dest.lat, dest.lon], geometry: c.leg.geometry, steps: c.leg.steps, pois: c.leg.pois };
   if (!c.return_leg) return [out];
   const back = c.return_leg.geometry;
@@ -385,7 +385,7 @@ function soloPage(v, c, kicker) {
     ...state.passBy.filter((p) => !c.rationale.includes(`Passes ${p.name}.`)).map((p) =>
       el("p", { class: "muted small" }, `This walk doesn't pass ${p.name}: it was a wish, not a must.`)),
     el("p", { class: "muted" }, dest.opening_hours ? `Opening hours (OpenStreetMap, as of ${(dest.fetched_at || "").slice(0, 10)}): ${dest.opening_hours}` : "Opening hours unknown."),
-    el("button", { class: "primary start-walk", onclick: () => startWalk(soloLegs(c, dest), { mPerMin: options.mPerMin(),
+    el("button", { class: "primary start-walk", onclick: () => startWalk(soloLegs(c, dest), { mPerMin: options.mPerMin(), avoid: options.value().avoid,
       onFinish: (done, summary) => { if (done) rememberSoloWalk({ ...summary, planned_min: Math.round(c.total_min),
         km: +km.toFixed(1),
         dest: { id: dest.id, name: dest.name, category: dest.category, lat: dest.lat, lon: dest.lon } }); } }) },

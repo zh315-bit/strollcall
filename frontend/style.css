@@ -316,7 +316,6 @@ body.walking { overflow: hidden; }
 .walk-stats .walk-min b { display: block; }
 .walk-stats .walk-min span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .walk-stats .walk-dist b { font: inherit; color: inherit; }
-.walk-talk:empty { display: none; }
 .walk-actions button { min-height: 44px; }
 .walk-end { flex: none; min-height: 44px; padding: 0 18px; border-radius: 999px; border: 2px solid var(--line);
   background: var(--card); color: var(--ink); font: 700 .95rem var(--font); cursor: pointer; }
@@ -373,6 +372,21 @@ body.walking { overflow: hidden; }
 .walk-screen .buddy-chip:active:not(:disabled) { transform: scale(.96); margin-bottom: 0; }
 .walk-screen .walk-end:active:not(:disabled) { border-bottom-width: 2px; }
 .walk-screen .buddy-chip:active:not(:disabled) { border-bottom-width: 1px; }
+
+/* Hold to talk: the big yellow button in the bar */
+.walk-talk { flex: none; display: flex; }
+.walk-mic { width: 72px; height: 72px; min-height: 72px; padding: 0; border: 0; border-radius: 50%; background: #ffd970;
+  color: #3a2a00; box-shadow: 0 8px 20px rgba(233, 181, 58, .45); display: grid; place-items: center; cursor: pointer;
+  touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.walk-mic svg { width: 30px; height: 30px; display: block; pointer-events: none; }
+.walk-mic.held { background: #ffc93c; transform: scale(1.08); box-shadow: 0 0 0 10px rgba(255, 201, 60, .3), 0 8px 20px rgba(233, 181, 58, .45); }
+.walk-mic:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.walk-screen .walk-mic:active:not(:disabled) { margin-bottom: 0; border-bottom-width: 0; }
+.nearby-pin { font-size: 20px; line-height: 28px; text-align: center; background: #fff; border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .3); }
+@media (max-height: 640px) {
+  .walk-mic { width: 60px; height: 60px; min-height: 60px; }
+}
 
 /* Small animations, one per state */
 .buddy[data-state="walking"] .b-body { animation: buddy-step 1.1s ease-in-out infinite; }

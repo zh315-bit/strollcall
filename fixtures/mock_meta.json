@@ -57,5 +57,11 @@
   },
   "invite_text": {
     "text": "Mock data: up for a short walk together this afternoon?"
+  },
+  "companion_tool": {
+    "tool": "add_stop",
+    "kind": "cafe",
+    "minutes": null,
+    "avoid": null
   }
 }

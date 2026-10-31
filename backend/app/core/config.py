@@ -87,6 +87,9 @@ class Settings(BaseSettings):
     cache_dir: Path = ROOT_DIR / "cache"
 
     daily_budget_usd: float = 15.0
+    # The walking buddy (services/companion.py). COMPANION_ENABLED=false hides it on every walking
+    # screen; the walk itself is unchanged.
+    companion_enabled: bool = True
 
     # Planner score weights; every term is normalized to 0-1 (DEV_DOC 6.3).
     planner_w_fit: float = 1.0

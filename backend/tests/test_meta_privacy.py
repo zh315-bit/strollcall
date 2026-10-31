@@ -96,6 +96,19 @@ def test_solo_and_voice_send_no_coordinates_to_meta(town, calls):  # noqa: F811
     assert_no_coordinates(calls, [origin])
 
 
+def test_walking_buddy_sends_only_the_words_to_meta(town, calls):  # noqa: F811
+    """Mid-walk the screen sends where you are and where the leg ends; Muse Spark gets only the words."""
+    here, end = town["a"], town["b"]
+    walk = {"lat": here["lat"], "lon": here["lon"], "target_lat": end["lat"], "target_lon": end["lon"],
+            "target_name": "Corner Cafe", "target_category": "cafe", "minutes_left": 7.3456,
+            "start_lat": here["lat"], "start_lon": here["lon"]}
+    resp = client.post("/api/companion/ask", json={"text": "I have 10 minutes, coffee on the way please", "walk": walk})
+    assert resp.status_code == 200
+    assert "companion_tool" in {n for n, _ in calls}
+    assert_no_coordinates(calls, [(here["lat"], here["lon"]), (end["lat"], end["lon"])])
+    assert "Corner Cafe" not in "".join(p for _, p in calls)  # not even our place names
+
+
 def test_ranking_on_a_real_plan_sends_no_coordinates(calls, monkeypatch):
     """Pair p1, replayed from fixtures recorded against real places: the ranking's facts."""
     import sys

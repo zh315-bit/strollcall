@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.api import coverage, dev, intents, invites, nearby, open_weights, solo, voice, walk
+from app.api import companion, coverage, dev, intents, invites, nearby, open_weights, solo, voice, walk
 from app.core.budget import SpendGuard
 from app.core.config import ROOT_DIR, get_settings
 from app.models.db import health as db_health
@@ -31,6 +31,7 @@ app.include_router(invites.recaps)
 app.include_router(solo.router)
 app.include_router(voice.router)
 app.include_router(walk.router)
+app.include_router(companion.router)
 app.include_router(open_weights.router)
 app.include_router(dev.router)  # answers 404 unless DEBUG=true
 

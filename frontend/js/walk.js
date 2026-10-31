@@ -176,6 +176,24 @@ class WalkFollower {
     }
   }
 
+  // A route change from the walking buddy: new legs for the current one ("current") or for the current
+  // one and every one after it ("rest"). Returns the legs it replaced, for restoreLegs (Undo).
+  swapLegs(legs, replace = "current") {
+    const old = this.legs.slice(this.leg);
+    const kept = replace === "rest" ? [] : this.legs.slice(this.leg + 1);
+    this.legs = [...this.legs.slice(0, this.leg), ...legs.map((l) => ({ ...l })), ...kept];
+    this.arrived = false;
+    this.offSince = null;
+    this.replanning = false;
+    return old;
+  }
+
+  restoreLegs(old) {
+    this.legs = [...this.legs.slice(0, this.leg), ...old];
+    this.arrived = false;
+    this.offSince = null;
+  }
+
   // After arriving at the meetup point: on to the destination. Returns false when done.
   nextLeg() {
     if (this.leg + 1 >= this.legs.length) return false;
@@ -465,6 +483,7 @@ function startWalk(legs, opts = {}) {
   const bar = el("div", { class: "walk-bar walk-actions" }, statsEl, el("div", { class: "walk-talk" }), endBtn);
   // The walking buddy (js/buddy.js), bottom left: walks along, celebrates arrival.
   const buddy = typeof makeBuddy === "function" ? makeBuddy() : null;
+  if (buddy) buddy.el.hidden = true;  // until the server says the companion is on
   const screen = el("div", { class: "walk-screen", role: "dialog", "aria-label": "Walking" }, mapEl, top, side,
     buddy ? buddy.el : null, bar);
   document.body.append(screen);
@@ -520,6 +539,59 @@ function startWalk(legs, opts = {}) {
     noticeEl.replaceChildren(...(text ? [el("p", {}, text)] : []));
   }
 
+  // The walking buddy's side of the screen (js/buddy.js): what it may know about the walk, and how
+  // its route changes are followed and undone. Hidden when the server or this phone switched it off.
+  let nearbyLayers = [], companion = null, lastPos = null;
+  const legM = (l) => projectOnRoute(l.geometry, l.geometry[0]).total;
+  function remainingM() {
+    const leg = follower.current;
+    const here = lastPos ? projectOnRoute(leg.geometry, lastPos) : null;
+    const now = here ? Math.max(here.total - here.along, 0) + (here.dist > WALK.OFF_ROUTE_M ? here.dist : 0) : legM(leg);
+    return now + follower.legs.slice(follower.leg + 1).reduce((m, l) => m + legM(l), 0);
+  }
+  function walkState() {
+    const leg = follower.current, last = follower.legs[follower.legs.length - 1];
+    const here = lastPos || leg.geometry[0];  // before the first fix: the start of this part of the route
+    const loop = follower.legs[0].kind === "turnaround";  // a loop ends where it began
+    return { lat: here[0], lon: here[1], target_lat: leg.target[0], target_lon: leg.target[1], target_name: leg.name,
+             target_kind: leg.kind, target_category: leg.category || null,
+             start_lat: loop ? last.target[0] : null, start_lon: loop ? last.target[1] : null,
+             fixed_target: !!opts.withFriend, m_per_min: mPerMin, minutes_left: Math.round(remainingM() / mPerMin * 10) / 10,
+             avoid: leg.avoid || opts.avoid || [], stops: (leg.pois || []).filter((p) => p.stop).length };
+  }
+  function refresh() {
+    showLeg();
+    const leg = follower.current, here = lastPos ? projectOnRoute(leg.geometry, lastPos) : null;
+    stats(here ? Math.max(here.total - here.along, 0) : legM(leg));
+    setStep(stepInfo(leg.steps, here ? here.along : 0, leg.name));
+  }
+  function markNearby(places) {
+    nearbyLayers.forEach((l) => l.remove());
+    nearbyLayers = places.map((p) => L.marker([p.lat, p.lon], { icon: L.divIcon({ className: "poi-pin nearby-pin",
+      html: POI_ICONS[p.category] || (p.category === "cafe" ? "☕" : "📍"), iconSize: [28, 28] }) })
+      .addTo(map).bindPopup(`${p.name} · ${p.walk_min} min`));
+  }
+  async function startBuddy() {
+    if (!buddy) return;
+    let off = false;
+    try { off = localStorage.getItem("strollcall:buddy") === "off" || /[?&]buddy=off\b/.test(location.search); } catch (e) { /* on */ }
+    let status = { enabled: false, voice: false };
+    if (!off) { try { status = await api("/api/companion"); } catch (e) { /* unreachable: leave it hidden */ } }
+    if (closing || !status.enabled || typeof startCompanion !== "function") return;
+    buddy.el.hidden = false;
+    companion = startCompanion(buddy, {
+      voice: status.voice, talkSlot: bar.querySelector(".walk-talk"), state: walkState, mark: markNearby,
+      speak: (text) => say(text),
+      apply(answer) {
+        const old = follower.swapLegs(answer.legs, answer.replace);
+        noticeEl.classList.contains("arrived") && notice("");
+        if (buddy.state === "arrived") buddy.set("walking");
+        refresh();
+        return () => { follower.restoreLegs(old); refresh(); };
+      },
+    });
+  }
+
   async function replan(ev) {
     notice("You seem to be off the route. Finding a way from where you are…", "warn");
     try {
@@ -537,7 +609,8 @@ function startWalk(legs, opts = {}) {
 
   function arrivedCard() {
     const leg = follower.current, more = follower.leg + 1 < follower.legs.length;
-    if (buddy) buddy.set("arrived");
+    if (companion) companion.arrived();
+    else if (buddy) buddy.set("arrived");
     const turn = leg.kind === "turnaround";
     const acc = follower.last && follower.last.accuracy ? ` (your phone's location is accurate to about ${Math.round(follower.last.accuracy)} m)` : "";
     noticeEl.className = "walk-notice arrived";
@@ -555,6 +628,7 @@ function startWalk(legs, opts = {}) {
   function onFix(pos) {
     const fix = { lat: pos.coords.latitude, lon: pos.coords.longitude, accuracy: pos.coords.accuracy, t: pos.timestamp / 1000 };
     const ll = [fix.lat, fix.lon];
+    lastPos = ll;
     facing.onFix({ ...fix, heading: pos.coords.heading, speed: pos.coords.speed });
     const first = !me;
     if (!me) {
@@ -612,6 +686,7 @@ function startWalk(legs, opts = {}) {
   document.addEventListener("visibilitychange", onVisible);
 
   function finish(done) {
+    if (companion) companion.stop();
     if (canSpeak) speechSynthesis.cancel();
     if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     watchId = null;
@@ -631,6 +706,7 @@ function startWalk(legs, opts = {}) {
 
   loadPoiIntros();
   showLeg();
+  startBuddy();
   stats(projectOnRoute(follower.current.geometry, follower.current.geometry[0]).total);
   keepAwake();
   if (!navigator.geolocation) {

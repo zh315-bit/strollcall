@@ -230,3 +230,23 @@ test("bearing and compass readings", () => {
   assert.strictEqual(compassFrom({ absolute: true, alpha: 90 }, 90), 0);  // phone turned sideways
   assert.strictEqual(compassFrom({ absolute: false, alpha: 90 }), null);  // relative only: not a compass
 });
+
+test("the walking buddy's route changes: a new current leg or a new rest of the walk, and Undo", () => {
+  const f = new WalkFollower(legs());
+  const via = { ...legs()[0], geometry: [...fx.a_leg.slice(0, 2), ...fx.a_leg.slice(2)], name: fx.meetup.name };
+  const old = f.swapLegs([via], "current");
+  assert.equal(f.legs.length, 2, "the shared leg after the meetup stays");
+  assert.equal(f.current.geometry.length, fx.a_leg.length);
+  f.restoreLegs(old);
+  assert.deepEqual(f.legs.map((l) => l.name), legs().map((l) => l.name));
+
+  const nearer = { name: "Mid Cafe", kind: "destination", target: fx.a_leg[5], geometry: fx.a_leg.slice(0, 6), steps: [], pois: [] };
+  const before = f.swapLegs([nearer], "rest");
+  assert.deepEqual(f.legs.map((l) => l.name), ["Mid Cafe"], "a shorter walk replaces everything still ahead");
+  const ev = f.update({ lat: fx.a_leg[5][0], lon: fx.a_leg[5][1], accuracy: 10, t: 1 });
+  assert.equal(ev.type, "arrived");
+  f.restoreLegs(before);
+  assert.equal(f.legs.length, 2);
+  assert.equal(f.update({ lat: fx.a_leg[0][0], lon: fx.a_leg[0][1], accuracy: 10, t: 2 }).type === "arrived", false,
+    "after Undo the walk goes on to the old target");
+});
