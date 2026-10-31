@@ -1,0 +1,53 @@
+{
+  "text": "I'm in a wheelchair this month after my knee surgery",
+  "expected": {
+    "duration_min": 25,
+    "endpoint_type": "not scored"
+  },
+  "muse_glimmer": {
+    "raw": "{\n  \"duration_min\": 25,\n  \"duration_strict\": false,\n  \"vibes\": [],\n  \"endpoint_type\": null,\n  \"avoid\": [],\n  \"hard_constraints\": [\n    \"wheelchair accessible route\"\n  ],\n  \"inferred_fields\": [\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration_min\",\n    \"duration",
+    "json_valid": false,
+    "intent": null,
+    "intent_valid": false,
+    "error": "model_unavailable: Muse Glimmer output truncated at 1536 tokens",
+    "latency_s": 6.841,
+    "cost_usd": 0.009228,
+    "glimmer": {
+      "prompt_tokens": 385,
+      "completion_tokens": 1536,
+      "reasoning_chars": null,
+      "finish_reason": "length"
+    },
+    "score": {
+      "duration": null,
+      "endpoint": null
+    }
+  },
+  "muse_spark_1_3": {
+    "raw": "{\"avoid\": [], \"duration_min\": 25, \"duration_strict\": false, \"endpoint_type\": null, \"hard_constraints\": [], \"inferred_fields\": [\"duration_min\", \"vibes\", \"endpoint_type\", \"avoid\", \"hard_constraints\"], \"vibes\": []}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 25,
+      "duration_strict": false,
+      "vibes": [],
+      "endpoint_type": null,
+      "avoid": [],
+      "hard_constraints": []
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [
+      "duration_min",
+      "vibes",
+      "endpoint_type",
+      "avoid",
+      "hard_constraints"
+    ],
+    "latency_s": 3.444,
+    "cost_usd": 0.003372,
+    "score": {
+      "duration": true,
+      "endpoint": null
+    }
+  }
+}

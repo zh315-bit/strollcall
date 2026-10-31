@@ -1,0 +1,45 @@
+{
+  "case": "w3",
+  "a_text": "Some little local place please, not a big chain",
+  "b_text": "Somewhere nice, about 30 minutes",
+  "expected_wishes": [
+    [
+      "A",
+      "not_a_chain"
+    ]
+  ],
+  "muse_glimmer": {
+    "wishes": [
+      {
+        "requirement": "not_a_chain",
+        "who": "A",
+        "quote": "Some little local place please, not a big chain"
+      }
+    ],
+    "source": "glimmer",
+    "note": null,
+    "raw": "{\"wishes\": [{\"requirement\": \"not_a_chain\", \"who\": \"A\", \"quote\": \"Some little local place please, not a big chain\"}]}",
+    "latency_s": 0.393,
+    "cost_usd": 0.000528,
+    "expected_found": 1,
+    "expected": 1,
+    "extra": 0
+  },
+  "muse_spark_1_3": {
+    "wishes": [
+      {
+        "requirement": "not_a_chain",
+        "who": "A",
+        "quote": "not a big chain"
+      }
+    ],
+    "source": "meta",
+    "note": null,
+    "raw": null,
+    "latency_s": 1.157,
+    "cost_usd": 0.001774,
+    "expected_found": 1,
+    "expected": 1,
+    "extra": 0
+  }
+}

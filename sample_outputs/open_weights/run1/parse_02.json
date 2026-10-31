@@ -1,0 +1,60 @@
+{
+  "text": "Somewhere nice, about 30 minutes",
+  "expected": {
+    "duration_min": 30,
+    "endpoint_type": null
+  },
+  "muse_glimmer": {
+    "raw": "{\n  \"duration_min\": 30,\n  \"duration_strict\": false,\n  \"vibes\": [],\n  \"endpoint_type\": null,\n  \"avoid\": [],\n  \"hard_constraints\": [],\n  \"inferred_fields\": []\n}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 30,
+      "duration_strict": false,
+      "vibes": [],
+      "endpoint_type": null,
+      "avoid": [],
+      "hard_constraints": []
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [],
+    "latency_s": 0.445,
+    "cost_usd": 0.000598,
+    "glimmer": {
+      "prompt_tokens": 383,
+      "completion_tokens": 51,
+      "reasoning_chars": null,
+      "finish_reason": "stop"
+    },
+    "score": {
+      "duration": true,
+      "endpoint": true
+    }
+  },
+  "muse_spark_1_3": {
+    "raw": "{\"avoid\": [], \"duration_min\": 30, \"duration_strict\": false, \"endpoint_type\": null, \"hard_constraints\": [], \"inferred_fields\": [\"vibes\", \"endpoint_type\", \"avoid\", \"hard_constraints\"], \"vibes\": []}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 30,
+      "duration_strict": false,
+      "vibes": [],
+      "endpoint_type": null,
+      "avoid": [],
+      "hard_constraints": []
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [
+      "vibes",
+      "endpoint_type",
+      "avoid",
+      "hard_constraints"
+    ],
+    "latency_s": 3.383,
+    "cost_usd": 0.003055,
+    "score": {
+      "duration": true,
+      "endpoint": true
+    }
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "text": "Some little local place please, not a big chain",
+  "expected": {
+    "duration_min": 25,
+    "endpoint_type": "not scored"
+  },
+  "muse_glimmer": {
+    "raw": "{\n  \"duration_min\": 25,\n  \"duration_strict\": false,\n  \"vibes\": [],\n  \"endpoint_type\": null,\n  \"avoid\": [\"big chain\"],\n  \"hard_constraints\": [],\n  \"inferred_fields\": [\"duration_min\", \"duration_min\"]\n}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 25,
+      "duration_strict": false,
+      "vibes": [],
+      "endpoint_type": null,
+      "avoid": [
+        "big chain"
+      ],
+      "hard_constraints": []
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [
+      "duration_min",
+      "duration_min"
+    ],
+    "latency_s": 0.514,
+    "cost_usd": 0.00069,
+    "glimmer": {
+      "prompt_tokens": 385,
+      "completion_tokens": 61,
+      "reasoning_chars": null,
+      "finish_reason": "stop"
+    },
+    "score": {
+      "duration": true,
+      "endpoint": null
+    }
+  },
+  "muse_spark_1_3": {
+    "raw": "{\"avoid\": [\"big chain\"], \"duration_min\": 25, \"duration_strict\": false, \"endpoint_type\": null, \"hard_constraints\": [], \"inferred_fields\": [\"duration_min\", \"vibes\", \"endpoint_type\", \"hard_constraints\"], \"vibes\": []}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 25,
+      "duration_strict": false,
+      "vibes": [],
+      "endpoint_type": null,
+      "avoid": [
+        "big chain"
+      ],
+      "hard_constraints": []
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [
+      "duration_min",
+      "vibes",
+      "endpoint_type",
+      "hard_constraints"
+    ],
+    "latency_s": 3.245,
+    "cost_usd": 0.003967,
+    "score": {
+      "duration": true,
+      "endpoint": null
+    }
+  }
+}

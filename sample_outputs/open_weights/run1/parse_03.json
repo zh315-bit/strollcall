@@ -1,0 +1,59 @@
+{
+  "text": "Coffee at the end, about 30 minutes",
+  "expected": {
+    "duration_min": 30,
+    "endpoint_type": "cafe"
+  },
+  "muse_glimmer": {
+    "raw": "{\n  \"duration_min\": 30,\n  \"duration_strict\": false,\n  \"vibes\": [],\n  \"endpoint_type\": \"cafe\",\n  \"avoid\": [],\n  \"hard_constraints\": [],\n  \"inferred_fields\": []\n}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 30,
+      "duration_strict": false,
+      "vibes": [],
+      "endpoint_type": "cafe",
+      "avoid": [],
+      "hard_constraints": []
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [],
+    "latency_s": 0.462,
+    "cost_usd": 0.000619,
+    "glimmer": {
+      "prompt_tokens": 384,
+      "completion_tokens": 52,
+      "reasoning_chars": null,
+      "finish_reason": "stop"
+    },
+    "score": {
+      "duration": true,
+      "endpoint": true
+    }
+  },
+  "muse_spark_1_3": {
+    "raw": "{\"avoid\": [], \"duration_min\": 30, \"duration_strict\": false, \"endpoint_type\": \"cafe\", \"hard_constraints\": [], \"inferred_fields\": [\"vibes\", \"avoid\", \"hard_constraints\"], \"vibes\": []}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 30,
+      "duration_strict": false,
+      "vibes": [],
+      "endpoint_type": "cafe",
+      "avoid": [],
+      "hard_constraints": []
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [
+      "vibes",
+      "avoid",
+      "hard_constraints"
+    ],
+    "latency_s": 1.609,
+    "cost_usd": 0.002083,
+    "score": {
+      "duration": true,
+      "endpoint": true
+    }
+  }
+}

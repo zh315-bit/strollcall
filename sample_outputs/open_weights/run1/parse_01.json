@@ -1,0 +1,70 @@
+{
+  "text": "It's warm out, let's get a coffee we can drink sitting outside",
+  "expected": {
+    "duration_min": 25,
+    "endpoint_type": "cafe"
+  },
+  "muse_glimmer": {
+    "raw": "{\n  \"duration_min\": 25,\n  \"duration_strict\": false,\n  \"vibes\": [\n    \"warm\",\n    \"outdoor seating\"\n  ],\n  \"endpoint_type\": \"cafe\",\n  \"avoid\": [],\n  \"hard_constraints\": [],\n  \"inferred_fields\": [\n    \"duration_min\",\n    \"duration_min\",\n    \"vibes\",\n    \"vibes\",\n    \"endpoint_type\",\n    \"avoid\",\n    \"hard_constraints\"\n  ]\n}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 25,
+      "duration_strict": false,
+      "vibes": [
+        "warm",
+        "outdoor seating"
+      ],
+      "endpoint_type": "cafe",
+      "avoid": [],
+      "hard_constraints": []
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [
+      "duration_min",
+      "duration_min",
+      "vibes",
+      "vibes",
+      "endpoint_type",
+      "avoid",
+      "hard_constraints"
+    ],
+    "latency_s": 1.283,
+    "cost_usd": 0.001729,
+    "glimmer": {
+      "prompt_tokens": 388,
+      "completion_tokens": 102,
+      "reasoning_chars": null,
+      "finish_reason": "stop"
+    },
+    "score": {
+      "duration": true,
+      "endpoint": true
+    }
+  },
+  "muse_spark_1_3": {
+    "raw": "{\"avoid\": [], \"duration_min\": 25, \"duration_strict\": false, \"endpoint_type\": \"cafe\", \"hard_constraints\": [\"outdoor seating\"], \"inferred_fields\": [\"duration_min\"], \"vibes\": []}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 25,
+      "duration_strict": false,
+      "vibes": [],
+      "endpoint_type": "cafe",
+      "avoid": [],
+      "hard_constraints": [
+        "outdoor seating"
+      ]
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [
+      "duration_min"
+    ],
+    "latency_s": 5.641,
+    "cost_usd": 0.006176,
+    "score": {
+      "duration": true,
+      "endpoint": true
+    }
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "case": "w4",
+  "a_text": "Coffee at the end, about 30 minutes",
+  "b_text": "Anywhere for coffee as long as it's not Starbucks",
+  "expected_wishes": [
+    [
+      "B",
+      "not_a_chain"
+    ]
+  ],
+  "muse_glimmer": {
+    "wishes": [],
+    "source": "glimmer",
+    "note": null,
+    "raw": "{\"wishes\": []}",
+    "latency_s": 0.233,
+    "cost_usd": 0.000312,
+    "expected_found": 0,
+    "expected": 1,
+    "extra": 0
+  },
+  "muse_spark_1_3": {
+    "wishes": [
+      {
+        "requirement": "not_a_chain",
+        "who": "B",
+        "quote": "as long as it's not Starbucks"
+      }
+    ],
+    "source": "meta",
+    "note": null,
+    "raw": null,
+    "latency_s": 1.177,
+    "cost_usd": 0.002094,
+    "expected_found": 1,
+    "expected": 1,
+    "extra": 0
+  }
+}

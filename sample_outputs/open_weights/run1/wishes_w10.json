@@ -1,0 +1,50 @@
+{
+  "case": "w10",
+  "a_text": "Coffee at the end, about 30 minutes",
+  "b_text": "I don't eat dairy, eggs or any other animal products",
+  "expected_wishes": [
+    [
+      "B",
+      "vegan_options"
+    ]
+  ],
+  "muse_glimmer": {
+    "wishes": [
+      {
+        "requirement": "vegan_options",
+        "who": "B",
+        "quote": "I don't eat dairy, eggs or any other animal products"
+      },
+      {
+        "requirement": "wifi",
+        "who": "A",
+        "quote": "Coffee at the end, about 30 minutes"
+      }
+    ],
+    "source": "glimmer",
+    "note": null,
+    "raw": "{\"wishes\": [{\"requirement\": \"vegan_options\", \"who\": \"B\", \"quote\": \"I don't eat dairy, eggs or any other animal products\"}, {\"requirement\": \"wifi\", \"who\": \"A\", \"quote\": \"Coffee at the end, about 30 minutes\"}]}",
+    "latency_s": 0.558,
+    "cost_usd": 0.000746,
+    "expected_found": 1,
+    "expected": 1,
+    "extra": 1
+  },
+  "muse_spark_1_3": {
+    "wishes": [
+      {
+        "requirement": "vegan_options",
+        "who": "B",
+        "quote": "I don't eat dairy, eggs or any other animal products"
+      }
+    ],
+    "source": "meta",
+    "note": null,
+    "raw": null,
+    "latency_s": 0.886,
+    "cost_usd": 0.0017,
+    "expected_found": 1,
+    "expected": 1,
+    "extra": 0
+  }
+}

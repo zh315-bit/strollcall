@@ -1,0 +1,45 @@
+{
+  "case": "w9",
+  "a_text": "I'm plant-based, so somewhere with vegan options",
+  "b_text": "Somewhere nice, about 30 minutes",
+  "expected_wishes": [
+    [
+      "A",
+      "vegan_options"
+    ]
+  ],
+  "muse_glimmer": {
+    "wishes": [
+      {
+        "requirement": "vegan_options",
+        "who": "A",
+        "quote": "I'm plant-based, so somewhere with vegan options"
+      }
+    ],
+    "source": "glimmer",
+    "note": null,
+    "raw": "{\"wishes\": [{\"requirement\": \"vegan_options\", \"who\": \"A\", \"quote\": \"I'm plant-based, so somewhere with vegan options\"}]}",
+    "latency_s": 0.375,
+    "cost_usd": 0.000503,
+    "expected_found": 1,
+    "expected": 1,
+    "extra": 0
+  },
+  "muse_spark_1_3": {
+    "wishes": [
+      {
+        "requirement": "vegan_options",
+        "who": "A",
+        "quote": "I'm plant-based, so somewhere with vegan options"
+      }
+    ],
+    "source": "meta",
+    "note": null,
+    "raw": null,
+    "latency_s": 1.598,
+    "cost_usd": 0.001814,
+    "expected_found": 1,
+    "expected": 1,
+    "extra": 0
+  }
+}
