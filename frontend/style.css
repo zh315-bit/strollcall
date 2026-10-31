@@ -455,3 +455,32 @@ html:active-view-transition-type(conceal)::view-transition-new(root) { animation
 .near-refresh-icon { display: inline-grid; }
 @keyframes near-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .near-refresh.spinning .near-refresh-icon { animation: none; opacity: .5; } }
+
+/* "More options ▾" on New walk (js/options.js): collapsed bar with chips, pill choices inside. */
+.more-options { margin: 10px 0 4px; border: 2px solid var(--line); border-radius: 16px; background: var(--card); }
+.more-options > summary { list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  padding: 10px 14px; font-weight: 700; min-height: 44px; box-sizing: border-box; }
+.more-options > summary::-webkit-details-marker { display: none; }
+.more-options > summary:focus-visible { outline: 3px solid var(--accent-deep); outline-offset: 2px; border-radius: 14px; }
+.opt-caret { display: inline-block; transition: transform .2s; }
+.more-options[open] .opt-caret { transform: rotate(180deg); }
+.opt-chips { display: contents; }
+.opt-chip { padding: 3px 10px; font-size: .8rem; font-weight: 700; }
+.opt-body { padding: 2px 14px 12px; border-top: 1.5px solid var(--soft-line); }
+.opt-group { border: 0; padding: 0; margin: 12px 0 0; min-width: 0; }
+.opt-group legend { font-weight: 800; padding: 0; margin-bottom: 6px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.opt-group .muted.small { margin: 6px 0 0; }
+.opt-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.opt-pill { position: relative; display: inline-flex; align-items: center; min-height: 36px; padding: 6px 12px;
+  border: 2px solid var(--line); border-radius: 999px; background: var(--bg); font-weight: 700; font-size: .9rem; cursor: pointer; }
+.opt-pill input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.opt-pill.on { background: var(--accent); border-color: var(--accent-deep); color: var(--accent-ink); }
+.opt-pill:has(input:focus-visible) { outline: 3px solid var(--accent-deep); outline-offset: 2px; }
+.opt-check { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-weight: 800; }
+.opt-check input { width: 20px; height: 20px; }
+.opt-wish { font-size: .72rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1.5px dashed var(--line); color: var(--muted); }
+.opt-reset { margin-top: 12px; font-size: .85rem; padding: 6px 12px; }
+.stop-list { margin: 6px 0; padding-left: 22px; }
+.stop-list small { color: var(--muted); }
+.poi-pin.stop-pin { font: 800 13px/20px var(--font); color: var(--accent-ink); background: var(--accent); border: 2px solid var(--accent-deep);
+  border-radius: 50%; box-sizing: border-box; filter: none; }

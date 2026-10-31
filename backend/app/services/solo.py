@@ -175,13 +175,13 @@ def _plan(origin: Point, intent: WalkIntent, places, routing, depart_at: datetim
         leg, back = legs[0], (legs[1] if back else None)
         hours = "open when you arrive, per OSM" if open_now else "opening hours unknown"
         suits = f", for you: {', '.join(met)}" if met else ""
-        walk = (f"Walk about {leg.duration_min:.0f} min to {p.name}" if not back else
-                f"Walk about {leg.duration_min:.0f} min to {p.name} and {back.duration_min:.0f} min back to your start,")
-        extra = describe(passes, stops, options.stops)
+        then = f", then {back.duration_min:.0f} min back to your start" if back else ""
+        extra = describe(passes, stops, options.stops, options.pass_kinds)
         candidates.append(SoloCandidate(
             id=pid, destination_place_id=pid, leg=leg, return_leg=back, stops=stops, passes=passes,
             total_min=round(total, 2), score=score,
-            rationale=(f"{walk} ({CATEGORY_LABELS.get(p.category, p.category)}{suits}, {hours})."
+            rationale=(f"Walk about {leg.duration_min:.0f} min to {p.name} "
+                       f"({CATEGORY_LABELS.get(p.category, p.category)}{suits}, {hours}){then}."
                        + "".join(f" Passes {n}." for n in passed_on(legs, pass_by))
                        + (f" {extra}" if extra else "")),
         ))

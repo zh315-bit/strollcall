@@ -156,7 +156,7 @@ def mark_stops(legs: list[RouteLeg], n: int, kinds: list[str]) -> list[dict]:
     for li, at, p in sorted(found, key=lambda f: (p_rank(f[2], wanted), f[1])):
         if len(chosen) == n:
             break
-        if all(abs(at - c[1]) >= spacing for c in chosen):
+        if all(abs(at - c[1]) >= spacing and p["id"] != c[2]["id"] for c in chosen):  # a loop passes some twice
             chosen.append((li, at, p))
     chosen.sort(key=lambda c: c[1])
     ids = {id(c[2]): k for k, c in enumerate(chosen, 1)}
@@ -171,11 +171,15 @@ def p_rank(p: dict, wanted: set[str]) -> int:
     return 0 if p.get("category") in wanted else 1
 
 
-def describe(passed: list[str], stops: list[dict], asked_stops: int) -> str:
+def describe(passed: list[str], stops: list[dict], asked_stops: int, asked_kinds: list[str] | None = None) -> str:
     """The plan card's sentence about the options, from what the route really does."""
     parts = []
     if passed:
         parts.append("Passes " + _join([KIND_LABELS[k] for k in passed]) + ".")
+    missed = [k for k in asked_kinds or [] if k not in passed]
+    if missed:
+        parts.append("Doesn't pass " + _join([KIND_LABELS[k] for k in missed]).replace(" and ", " or ")
+                     + ": a wish, not a must.")
     if stops:
         parts.append(f"{len(stops)} stop{'s' if len(stops) > 1 else ''} on the way: "
                      + _join([s["name"] for s in stops]) + ".")

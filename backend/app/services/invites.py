@@ -266,7 +266,7 @@ def apply_a_options(plan, options: WalkOptions, routing, places) -> None:
         legs = [c.a_leg, c.shared_leg]
         passes = kinds_passed(legs, options.pass_kinds, getattr(routing, "pois", None), places)
         stops = mark_stops(legs, options.stops, options.pass_kinds)
-        extra = describe(passes, stops, options.stops)
+        extra = describe(passes, stops, options.stops, options.pass_kinds)
         score = c.score + (w * len(passes) / len(options.pass_kinds) if options.pass_kinds else 0.0)
         plan.candidates[i] = c.model_copy(update={
             "a_leg": legs[0], "shared_leg": legs[1], "stops": stops, "passes": passes, "score": round(score, 6),

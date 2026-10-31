@@ -13,7 +13,7 @@ const WALK = {
   STEP_NOW_M: 20,       // "Now: turn left ..." this close to a turn
   POI_NEAR_M: 40,       // a point of interest this close (plus a little GPS slack) gets its card
   POI_SLACK_M: 15,
-  M_PER_MIN: 80,        // the planner's walking speed
+  M_PER_MIN: 80,        // the planner's walking speed ("Normal" pace; startWalk takes the chosen one)
 };
 
 const M_PER_DEG = 111320;
@@ -81,7 +81,8 @@ function spokenText(text) {
 // The prompt to speak for this event, at most once each (keys remembered in `said`), or null.
 function promptFor(ev, said) {
   const once = (key, text) => (said.has(key) ? null : (said.add(key), spokenText(text)));
-  if (ev.type === "arrived") return once(`arrived:${ev.leg}`, ev.legKind === "meetup" ? "You're at the meeting point." : "You've arrived.");
+  if (ev.type === "arrived") return once(`arrived:${ev.leg}`, ev.legKind === "meetup" ? "You're at the meeting point."
+    : ev.legKind === "turnaround" ? "You're at the halfway point. Head back when you're ready." : "You've arrived.");
   if (ev.type === "replan") return once(`replan:${ev.leg}:${Math.round(ev.from[0] * 1e4)}`, "You seem to be off the route. Finding a way from here.");
   const info = ev.step;
   if (!info || ev.type !== "on_route") return null;
@@ -100,7 +101,8 @@ function roundDist(m) {
   return r < 1000 ? `${r} m` : `${(m / 1000).toFixed(1)} km`;
 }
 
-// legs: [{ name, kind: "meetup" | "destination", target: [lat, lon], geometry: [[lat, lon], ...], steps? }]
+// legs: [{ name, kind: "meetup" | "turnaround" | "destination", target: [lat, lon], geometry: [[lat, lon], ...], steps? }]
+// ("turnaround": a loop's way out; the next leg leads back to the start)
 class WalkFollower {
   constructor(legs, opts = {}) {
     this.legs = legs.map((l) => ({ ...l }));
@@ -185,8 +187,8 @@ class WalkFollower {
 }
 
 // Rounded the way we can stand behind: GPS and our 80 m/min are approximate.
-function formatRemaining(m) {
-  const min = Math.max(1, Math.round(m / WALK.M_PER_MIN));
+function formatRemaining(m, mPerMin = WALK.M_PER_MIN) {
+  const min = Math.max(1, Math.round(m / mPerMin));
   const r50 = Math.max(50, Math.round(m / 50) * 50);
   const dist = r50 < 1000 ? `${r50} m` : `${(m / 1000).toFixed(1)} km`;
   return { min, dist };
@@ -325,12 +327,14 @@ function poiCard(p, onClose) {
   return el("div", { class: "card poi-card", role: "status" },
     el("button", { type: "button", class: "poi-close", "aria-label": "Close", onclick: onClose }, "×"),
     el("h3", {}, `${POI_ICONS[p.category] || "📍"} ${p.name}`),
-    el("p", { class: "muted small" }, `You're passing ${/^[aeiou]/i.test(p.category) ? "an" : "a"} ${p.category}.`),
+    el("p", { class: "muted small" }, p.stop ? `Stop ${p.stop} of your walk: ${/^[aeiou]/i.test(p.category) ? "an" : "a"} ${p.category}.`
+      : `You're passing ${/^[aeiou]/i.test(p.category) ? "an" : "a"} ${p.category}.`),
     introBlock(intro));
 }
 
 function startWalk(legs, opts = {}) {
-  const follower = new WalkFollower(legs);
+  const mPerMin = opts.mPerMin || WALK.M_PER_MIN;  // the pace chosen in "More options"
+  const follower = new WalkFollower(legs, { M_PER_MIN: mPerMin });
   const color = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   let watchId = null, wakeLock = null, routeLine = null, me = null, meCircle = null, targetMarker = null;
   // Facing direction for the arrow: the compass if the phone shares it, else the direction walked.
@@ -433,8 +437,9 @@ function startWalk(legs, opts = {}) {
     routeLine = L.polyline(leg.geometry, { color: color(leg.kind === "meetup" ? "--a" : "--shared") || "#ff5c8a", weight: 6, opacity: .85 }).addTo(map);
     targetMarker = L.marker(leg.target).addTo(map).bindPopup(leg.name);
     poiLayers.forEach((l) => l.remove());
-    poiLayers = (leg.pois || []).map((p) => L.marker([p.lat, p.lon], { icon: L.divIcon({ className: "poi-pin",
-      html: POI_ICONS[p.category] || "📍", iconSize: [24, 24] }) }).addTo(map).bindPopup(p.name));
+    poiLayers = (leg.pois || []).map((p) => L.marker([p.lat, p.lon], { icon: L.divIcon({ className: "poi-pin" + (p.stop ? " stop-pin" : ""),
+      html: p.stop ? String(p.stop) : POI_ICONS[p.category] || "📍", iconSize: [24, 24] }) })
+      .addTo(map).bindPopup(p.stop ? `Stop ${p.stop}: ${p.name}` : p.name));
     stepEl.replaceChildren(el("span", { class: "walk-to" }, `${leg.kind === "meetup" ? "To the meeting point" : "To"}: ${leg.name}`),
       el("b", { class: "walk-next" }, formatStep(stepInfo(leg.steps, 0, leg.name)) || ""));
     fallback.href = mapsLink(leg.target[0], leg.target[1]);
@@ -445,7 +450,7 @@ function startWalk(legs, opts = {}) {
   }
 
   function stats(m) {
-    const r = formatRemaining(m);
+    const r = formatRemaining(m, mPerMin);
     statsEl.replaceChildren(el("div", {}, el("b", {}, `~${r.min}`), "min left"), el("div", {}, el("b", {}, r.dist), "to go"));
   }
 
@@ -472,15 +477,17 @@ function startWalk(legs, opts = {}) {
 
   function arrivedCard() {
     const leg = follower.current, more = follower.leg + 1 < follower.legs.length;
+    const turn = leg.kind === "turnaround";
     const acc = follower.last && follower.last.accuracy ? ` (your phone's location is accurate to about ${Math.round(follower.last.accuracy)} m)` : "";
     noticeEl.className = "walk-notice arrived";
     noticeEl.replaceChildren(el("div", { class: "card arrival" },
-      el("h2", {}, more ? "You're at the meeting point" : "You've arrived"),
+      el("h2", {}, turn ? `You're at ${leg.name}` : more ? "You're at the meeting point" : "You've arrived"),
       el("p", {}, `You're within about ${WALK.ARRIVE_M} m of ${leg.name}${acc}.`),
-      more ? el("p", { class: "muted" }, "Look around for your friend.") : null,
+      more && !turn ? el("p", { class: "muted" }, "Look around for your friend.") : null,
       leg.id && poiIntros && poiIntros[leg.id] ? introBlock(poiIntros[leg.id]) : null,
       el("div", { class: "row" }, more
-        ? el("button", { class: "primary", onclick: () => { follower.nextLeg(); showLeg(); notice(""); } }, `Walk on together to ${follower.legs[follower.leg + 1].name}`)
+        ? el("button", { class: "primary", onclick: () => { follower.nextLeg(); showLeg(); notice(""); } },
+          turn ? "Head back to the start" : `Walk on together to ${follower.legs[follower.leg + 1].name}`)
         : el("button", { class: "primary", onclick: () => finish(true) }, "Finish walk"))));
   }
 

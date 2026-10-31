@@ -56,6 +56,7 @@
           </select>
         </label>
       </div>
+      <div id="more-options"></div>
       <div class="row" id="chips"></div>
       <div class="row" id="intent-source"></div>
     </div>
@@ -88,6 +89,7 @@
 <script src="/static/js/plandeck.js"></script>
 <div id="chrome-ready" hidden></div> <!-- first render waits for the scripts above (see <head>) -->
 <script src="/static/js/walk.js"></script>
+<script src="/static/js/options.js"></script>
 <script>
 const state = { intent: null, inferred: [], origin: null, text: "", mode: "solo", solo: null, chosen: 0,
                 near: null, nearFor: null, nearOpen: null, passBy: [], nearSeen: [], nearMore: false, nearNote: "" };
@@ -96,6 +98,7 @@ const map = makeMap("map");
 drawCoverage(map);
 loadCoverage().then((c) => { if (c.label && !state.origin) $("origin-label").textContent = `No start point yet. Walks can start inside the dashed box (${c.label}).`; });
 let marker = null, routeLayers = [];
+const options = moreOptions($("more-options"));
 
 const MODES = {
   pair: { privacy: "Only used to find a fair meeting point. Your friend never sees your exact start.",
@@ -112,6 +115,7 @@ function setMode(mode) {
   $("privacy-note").textContent = MODES[mode].privacy;
   $("create").textContent = MODES[mode].button;
   $("create-error").textContent = "";
+  options.setMode(mode);
   clearSolo();
   refresh();
 }
@@ -162,10 +166,11 @@ $("parse").addEventListener("click", async () => {
     $("endpoint").value = r.intent.endpoint_type || "";
     $("strict").checked = !!r.intent.duration_strict;
     renderChips();
-    $("intent-source").replaceChildren(
-      { meta: "Understood by Muse Spark", spark_open: "Understood by Muse Spark Open" }[r.source]
-        ? el("span", { class: "muted" }, { meta: "Understood by Muse Spark", spark_open: "Understood by Muse Spark Open" }[r.source])
-        : sourceBadge(r.source === "default" ? "default" : "mock"));
+    options.fromWish(r.intent, state.text);
+    const understood = { meta: "Understood by Muse Spark", spark_open: "Understood by Muse Spark Open",
+                         none: "Nothing typed, so these are the defaults. Change them below." }[r.source];
+    $("intent-source").replaceChildren(understood ? el("span", { class: "muted" }, understood)
+      : sourceBadge(r.source === "default" ? "default" : "mock"));
     $("intent").hidden = false;
   } catch (e) { alert(e.message); }
   $("parse").disabled = false;
@@ -348,27 +353,39 @@ function renderSolo() {
     el("h2", {}, el("span", { class: "step-no" }, "3"), pages.length > 1 ? `${pages.length} walks for you` : "Your walk"),
     deck ? deck.el : pages[0],
     ...(v.notes || []).map((n) => el("p", { class: "muted" }, el("span", { class: "i i-info", "aria-hidden": "true" }), " ", n)),
-    el("p", { class: "muted" }, "Walking times assume 80 m/min. We never claim a route or place is safe, quiet or open beyond what the data says.")));
+    el("p", { class: "muted" }, `Walking times assume ${options.mPerMin()} m/min. We never claim a route or place is safe, quiet or open beyond what the data says.`)));
   $("solo-result").replaceChildren(...parts.filter(Boolean));
   drawSoloRoute();
 }
 
+// The legs the walking screen follows: to the place, and for a loop back to the start from there.
+function soloLegs(c, dest) {
+  const out = { id: dest.id, name: dest.name, kind: c.return_leg ? "turnaround" : "destination",
+                target: [dest.lat, dest.lon], geometry: c.leg.geometry, steps: c.leg.steps, pois: c.leg.pois };
+  if (!c.return_leg) return [out];
+  const back = c.return_leg.geometry;
+  return [out, { name: "your start", kind: "destination", target: back[back.length - 1], geometry: back,
+                 steps: c.return_leg.steps, pois: c.return_leg.pois }];
+}
+
 function soloPage(v, c, kicker) {
   const dest = v.places[c.destination_place_id];
+  const km = (c.leg.distance_m + (c.return_leg ? c.return_leg.distance_m : 0)) / 1000;
   return el("div", {},
     kicker ? el("p", { class: "plan-kicker" }, kicker) : null,
     el("h2", {}, dest.name),
     el("div", { class: "times" }, el("div", {}, el("b", {}, Math.round(c.total_min)), "min walk"),
-      el("div", {}, el("b", {}, (c.leg.distance_m / 1000).toFixed(1)), "km"),
-      el("div", {}, el("b", { class: "word" }, prettyType(dest.category)), "ends at")),
+      el("div", {}, el("b", {}, km.toFixed(1)), "km"),
+      el("div", {}, el("b", { class: "word" }, prettyType(dest.category)), c.return_leg ? "turn back at" : "ends at")),
+    c.stops && c.stops.length ? el("ol", { class: "stop-list" }, c.stops.map((s) => el("li", {}, s.name,
+      el("small", {}, ` ${s.category}`)))) : null,
     el("p", {}, c.rationale, sourceBadge(v.sources.wishes)),
     ...state.passBy.filter((p) => !c.rationale.includes(`Passes ${p.name}.`)).map((p) =>
       el("p", { class: "muted small" }, `This walk doesn't pass ${p.name}: it was a wish, not a must.`)),
     el("p", { class: "muted" }, dest.opening_hours ? `Opening hours (OpenStreetMap, as of ${(dest.fetched_at || "").slice(0, 10)}): ${dest.opening_hours}` : "Opening hours unknown."),
-    el("button", { class: "primary start-walk", onclick: () => startWalk([{ id: dest.id, name: dest.name, kind: "destination",
-      target: [dest.lat, dest.lon], geometry: c.leg.geometry, steps: c.leg.steps, pois: c.leg.pois }], {
+    el("button", { class: "primary start-walk", onclick: () => startWalk(soloLegs(c, dest), { mPerMin: options.mPerMin(),
       onFinish: (done, summary) => { if (done) rememberSoloWalk({ ...summary, planned_min: Math.round(c.total_min),
-        km: +(c.leg.distance_m / 1000).toFixed(1),
+        km: +km.toFixed(1),
         dest: { id: dest.id, name: dest.name, category: dest.category, lat: dest.lat, lon: dest.lon } }); } }) },
       el("span", { class: "i i-footprints", "aria-hidden": "true" }), " Start walking"),
     el("div", { class: "row" }, el("a", { href: mapsLink(dest.lat, dest.lon), target: "_blank", rel: "noopener" }, el("button", {}, "Open in a map app"))));
@@ -382,6 +399,11 @@ function drawSoloRoute() {
   const color = getComputedStyle(document.documentElement).getPropertyValue("--a").trim();
   routeLayers = [L.polyline(c.leg.geometry, { color, weight: 5, opacity: .85 }).addTo(map),
                  L.marker([dest.lat, dest.lon]).addTo(map).bindPopup(dest.name)];
+  if (c.return_leg) routeLayers.push(L.polyline(c.return_leg.geometry, { color, weight: 4, opacity: .75, dashArray: "6 8" }).addTo(map));
+  for (const s of c.stops || []) {
+    routeLayers.push(L.marker([s.lat, s.lon], { icon: L.divIcon({ className: "poi-pin stop-pin", html: String(s.stop), iconSize: [24, 24] }) })
+      .addTo(map).bindPopup(`Stop ${s.stop}: ${s.name}`));
+  }
   map.invalidateSize();
   map.fitBounds(L.featureGroup(routeLayers).getBounds(), { padding: [20, 20] });
 }
@@ -391,7 +413,7 @@ async function findSoloWalk() {
   $("solo-result").replaceChildren(el("p", { class: "muted" }, el("span", { class: "spinner" }), "Finding a walk for you…"));
   try {
     state.solo = await api("/api/solo/plan", { method: "POST", body: { intent: state.intent, origin: state.origin,
-      text: $("text").value.trim(), pass_by_ids: state.passBy.map((p) => p.id) } });
+      text: $("text").value.trim(), pass_by_ids: state.passBy.map((p) => p.id), options: options.value() } });
     state.chosen = 0;
     renderSolo();
     $("solo-result").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -413,7 +435,7 @@ $("create").addEventListener("click", async () => {
   }
   try {
     const r = await api("/api/invites", { method: "POST", body: { a_intent: state.intent, a_origin: state.origin,
-      a_text: $("text").value.trim(), pass_by_ids: state.passBy.map((p) => p.id) } });
+      a_text: $("text").value.trim(), pass_by_ids: state.passBy.map((p) => p.id), a_options: options.value() } });
     try { localStorage.setItem(`strollcall:${r.token}`, r.a_key); } catch (e) { /* private mode: key stays in the URL */ }
     rememberWalk(r.token, "a");
     location.href = `${r.invite_path}#key=${encodeURIComponent(r.a_key)}`;
