@@ -63,5 +63,13 @@
     "kind": "cafe",
     "minutes": null,
     "avoid": null
+  },
+  "custom_option": {
+    "kinds": [
+      "bridges"
+    ],
+    "places": [],
+    "count": null,
+    "unsupported": []
   }
 }

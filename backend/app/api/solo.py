@@ -50,6 +50,6 @@ def solo_plan(req: SoloRequest) -> SoloResponse:
         wishes = interpret_wishes(req.text, "")
         sources["wishes"] = wishes.source
     plan = plan_solo((req.origin.lat, req.origin.lon), req.intent, places, routing, datetime.now(NYC), wishes,
-                     pass_by=resolve_pass_by(req.pass_by_ids), options=req.options)
+                     pass_by=resolve_pass_by([*req.pass_by_ids, *req.options.pass_place_ids]), options=req.options)
     return SoloResponse(**plan.model_dump(), sources=sources,
                         demo_data=any(v in ("mock", "default") for v in sources.values()))

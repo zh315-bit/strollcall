@@ -329,7 +329,8 @@ async function loadPoiIntros() {
 }
 
 const POI_ICONS = { park: "🌳", garden: "🌷", "historic site": "🏛️", artwork: "🎨", memorial: "🕊️", landmark: "📍",
-  "notable building": "🏢", viewpoint: "🌅", fountain: "⛲", bridge: "🌉", square: "🏙️" };
+  "notable building": "🏢", viewpoint: "🌅", fountain: "⛲", bridge: "🌉", square: "🏙️",
+  cafe: "☕", bakery: "🥐", ice_cream: "🍦", bookstore: "📚" };
 
 function introBlock(intro) {
   if (!intro) return null;
@@ -345,8 +346,8 @@ function poiCard(p, onClose) {
   return el("div", { class: "card poi-card", role: "status" },
     el("button", { type: "button", class: "poi-close", "aria-label": "Close", onclick: onClose }, "×"),
     el("h3", {}, `${POI_ICONS[p.category] || "📍"} ${p.name}`),
-    el("p", { class: "muted small" }, p.stop ? `Stop ${p.stop} of your walk: ${/^[aeiou]/i.test(p.category) ? "an" : "a"} ${p.category}.`
-      : `You're passing ${/^[aeiou]/i.test(p.category) ? "an" : "a"} ${p.category}.`),
+    el("p", { class: "muted small" }, p.stop ? `Stop ${p.stop} of your walk: ${/^[aeiou]/i.test(p.category) ? "an" : "a"} ${p.category.replace("_", " ")}.`
+      : `You're passing ${/^[aeiou]/i.test(p.category) ? "an" : "a"} ${p.category.replace("_", " ")}.`),
     introBlock(intro));
 }
 

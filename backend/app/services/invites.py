@@ -92,7 +92,7 @@ def create(a_intent: WalkIntent, a_origin: tuple[float, float], a_text: str = ""
         {"sources": {"invite_text": text_source, "image": image_source, **({"a_intent": a_read["source"]} if a_read else {})},
          "read_by": {"a": a_read} if a_read else {}, "image_url": image_url,
          # Places A asked to pass by (known places, public): a soft preference for the planner.
-         "pass_by": [vars(p) for p in resolve_pass_by(pass_by_ids or [])],
+         "pass_by": [vars(p) for p in resolve_pass_by([*(pass_by_ids or []), *a_options.pass_place_ids])],
          "events": {"created": _now().isoformat()}},
         {"a_origin": list(a_origin), "a_key": a_key, "a_text": a_text[:500],
          "a_options": a_options.model_dump()},
@@ -278,9 +278,10 @@ def _timed(timings: dict, name: str, fn, *args):
 def apply_a_options(plan, options: WalkOptions, routing, places) -> None:
     """A's "Pass by" (a soft rescoring of the routed options by what A's legs really pass) and "Stops
     on the way" (places on A's legs, no detour, so the meeting times do not change)."""
-    from app.services.options import describe, kinds_passed, mark_stops
+    from app.services.options import avoid_places, avoided, describe, kinds_passed, mark_stops
 
-    if plan.status != "proposed" or not (options.pass_kinds or options.stops):
+    keep_away = avoid_places(options)
+    if plan.status != "proposed" or not (options.pass_kinds or options.stops or keep_away):
         return
     from app.services.planner import Weights
 
@@ -288,8 +289,10 @@ def apply_a_options(plan, options: WalkOptions, routing, places) -> None:
     for i, c in enumerate(plan.candidates):
         legs = [c.a_leg, c.shared_leg]
         passes = kinds_passed(legs, options.pass_kinds, getattr(routing, "pois", None), places)
-        stops = mark_stops(legs, options.stops, options.pass_kinds)
-        extra = describe(passes, stops, options.stops, options.pass_kinds)
+        stops = mark_stops(legs, options.stops, options.stop_kinds or options.pass_kinds, places,
+                           only=bool(options.stop_kinds))
+        extra = describe(passes, stops, options.stops, options.pass_kinds, options.stop_kinds,
+                         avoided(legs[:1], keep_away))
         score = c.score + (w * len(passes) / len(options.pass_kinds) if options.pass_kinds else 0.0)
         plan.candidates[i] = c.model_copy(update={
             "a_leg": legs[0], "shared_leg": legs[1], "stops": stops, "passes": passes, "score": round(score, 6),

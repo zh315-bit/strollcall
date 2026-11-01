@@ -2,8 +2,32 @@
 // (backend/app/services/options.py). Collapsed by default; set options show as chips on the bar.
 // Each option is the user's own choice, a guess from the wish ("from your wish"), or the default.
 // The user's own choices win over the wish and are remembered on this device.
+// "Something else" under Pass by, Avoid and Stops takes typed words; the server reads them
+// (/api/options/understand) into kinds and places the planner can honor, and says what it can't.
 
-const OPTION_DEFAULTS = { shape: "one_way", pace: "normal", pass_kinds: [], avoid: [], stops: 0, must_be_open: false };
+const OPTION_DEFAULTS = { shape: "one_way", pace: "normal", pass_kinds: [], avoid: [], stops: 0, must_be_open: false,
+                          custom: { pass: [], avoid: [], stops: [] } };
+const CUSTOM_MAX = 3;  // typed items per row
+const CUSTOM_HINTS = { pass: "Other: bridges, a view…", avoid: "Other: Times Square…", stops: "Other: a coffee…" };
+const uniq = (xs) => [...new Set(xs)];
+
+// What the typed items add to the options the planner gets.
+function withCustom(v) {
+  const c = v.custom, kinds = (f) => c[f].flatMap((i) => i.kinds), ids = (items) => uniq(items.flatMap((i) => i.places.map((p) => p.id)));
+  const typedStops = c.stops.reduce((n, i) => n + (i.kinds.length ? i.count || 1 : 0), 0);
+  const { custom, ...rest } = v;
+  return { ...rest, pass_kinds: uniq([...v.pass_kinds, ...kinds("pass")]), avoid: uniq([...v.avoid, ...kinds("avoid")]),
+           stops: v.stops || Math.min(3, typedStops), stop_kinds: uniq(kinds("stops")),
+           pass_place_ids: ids([...c.pass, ...c.stops]).slice(0, 3), avoid_place_ids: ids(c.avoid).slice(0, 3) };
+}
+
+// A remembered value that no longer has the shape this page expects is dropped.
+function cleanCustom(c) {
+  const item = (i) => i && typeof i.text === "string" && Array.isArray(i.kinds) && Array.isArray(i.places) && Array.isArray(i.labels);
+  const out = {};
+  for (const f of ["pass", "avoid", "stops"]) out[f] = (c && Array.isArray(c[f]) ? c[f].filter(item) : []).slice(0, CUSTOM_MAX);
+  return out;
+}
 const PACE_M_PER_MIN = { relaxed: 65, normal: 80, brisk: 95 };
 const PASS_KINDS = [["parks", "Parks"], ["waterfront", "Waterfront"], ["landmarks", "Landmarks"],
                     ["public_art", "Public art"], ["bookstores", "Bookstores"], ["markets", "Markets"]];
@@ -40,12 +64,13 @@ function optionsFromWish(intent, text) {
   return out;
 }
 
-function moreOptions(container) {
+function moreOptions(container, opts = {}) {
   const value = { ...OPTION_DEFAULTS }, source = {};
+  const drafts = { pass: "", avoid: "", stops: "" }, notes = { pass: "", avoid: "", stops: "" }, busy = {};
   let mode = "solo";
   try {
     const saved = JSON.parse(localStorage.getItem(OPTIONS_KEY) || "{}");
-    for (const [k, v] of Object.entries(saved)) if (k in OPTION_DEFAULTS) { value[k] = v; source[k] = "user"; }
+    for (const [k, v] of Object.entries(saved)) if (k in OPTION_DEFAULTS) { value[k] = k === "custom" ? cleanCustom(v) : v; source[k] = "user"; }
   } catch (e) { /* nothing remembered */ }
 
   const save = () => {
@@ -53,7 +78,8 @@ function moreOptions(container) {
     try { localStorage.setItem(OPTIONS_KEY, JSON.stringify(mine)); } catch (e) { /* fine without it */ }
   };
   const setByUser = (k, v) => {
-    const a = document.activeElement, focus = a && a.name ? `input[name="${a.name}"][value="${a.value}"]` : null;
+    const a = document.activeElement, focus = a && a.name && /^(radio|checkbox)$/.test(a.type)
+      ? `input[name="${a.name}"][value="${CSS.escape(a.value)}"]` : null;
     value[k] = v; source[k] = "user"; save(); render();
     if (focus) { const again = body.querySelector(focus); if (again) again.focus(); }  // the panel was redrawn
   };
@@ -77,13 +103,59 @@ function moreOptions(container) {
   const group = (k, title, control, note) => el("fieldset", { class: "opt-group" },
     el("legend", {}, title, tag(k)), control, note ? el("p", { class: "muted small" }, note) : null);
 
+  // Typed items under a row, and the box to type one more.
+  async function addCustom(f) {
+    const text = drafts[f].trim();
+    if (!text || busy[f]) return;
+    busy[f] = true; notes[f] = "Reading that…"; render();
+    try {
+      const origin = opts.origin ? opts.origin() : null;
+      const r = await api("/api/options/understand", { method: "POST", body: { field: f, text, ...(origin ? { origin } : {}) } });
+      notes[f] = r.note || "";
+      if (r.kinds.length || r.places.length) {
+        drafts[f] = "";
+        busy[f] = false;
+        const items = [...value.custom[f], { text: r.text, kinds: r.kinds, places: r.places, labels: r.labels, count: r.count }];
+        if (f === "stops" && r.kinds.length) {  // "two coffees" sets Stops on the way to 2 (still yours to change)
+          value.stops = Math.min(3, Math.max(value.stops, items.reduce((n, i) => n + (i.kinds.length ? i.count || 1 : 0), 0)));
+          source.stops = "user";
+        }
+        setByUser("custom", { ...value.custom, [f]: items });
+      }
+    } catch (e) {
+      notes[f] = "Couldn't read that just now. Try again.";
+    }
+    busy[f] = false;
+    render();
+    const again = body.querySelector(`input[name="opt-custom-${f}"]`);
+    if (again) again.focus();
+  }
+  const custom = (f, verb) => {
+    const items = value.custom[f];
+    return el("div", { class: "opt-custom" },
+      items.length ? el("ul", { class: "opt-typed", "aria-label": `Typed under ${verb}` }, items.map((item, i) =>
+        el("li", { class: "opt-pill on" }, el("span", { class: "opt-typed-text" }, `“${item.text}” `,
+          el("span", { class: "opt-understood" }, "→ " + item.labels.join(", "))),
+          el("button", { type: "button", class: "opt-remove", "aria-label": `Remove “${item.text}”`,
+            onclick: () => { notes[f] = ""; setByUser("custom", { ...value.custom, [f]: items.filter((_, j) => j !== i) }); } }, "×")))) : null,
+      items.length < CUSTOM_MAX ? el("form", { class: "opt-add", onsubmit: (e) => { e.preventDefault(); addCustom(f); } },
+        el("input", { type: "text", name: `opt-custom-${f}`, maxlength: "80", value: drafts[f], autocomplete: "off",
+          placeholder: CUSTOM_HINTS[f], "aria-label": `Something else: ${verb}`,
+          disabled: busy[f] ? "" : null, oninput: (e) => { drafts[f] = e.target.value; } }),
+        el("button", { type: "submit", class: "opt-add-btn", disabled: busy[f] ? "" : null }, busy[f] ? "…" : "Add")) : null,
+      el("p", { class: "muted small opt-note", role: "status", "aria-live": "polite" }, notes[f]));
+  };
+
   function chips() {
     const out = [];
     if (mode === "solo" && value.shape === "loop") out.push("Loop");
     if (value.pace !== "normal") out.push(`${value.pace[0].toUpperCase()}${value.pace.slice(1)} pace`);
     if (value.pass_kinds.length) out.push("Pass " + value.pass_kinds.map((k) => PASS_KINDS.find((p) => p[0] === k)[1].toLowerCase()).join(", "));
     for (const a of value.avoid) out.push(`Avoid ${AVOIDS.find((x) => x[0] === a)[1].toLowerCase()}`);
-    if (value.stops) out.push(`${value.stops} stop${value.stops > 1 ? "s" : ""}`);
+    for (const i of value.custom.pass) out.push(`Pass ${i.labels.join(", ")}`);
+    for (const i of value.custom.avoid) out.push(`Avoid ${i.labels.join(", ")}`);
+    const n = withCustom(value).stops;
+    if (n) out.push(`${n} stop${n > 1 ? "s" : ""}` + (value.custom.stops.length ? ": " + value.custom.stops.flatMap((i) => i.labels).join(", ") : ""));
     if (value.must_be_open) out.push("Open on arrival");
     return out.map((t) => el("span", { class: "chip opt-chip" }, t));
   }
@@ -96,11 +168,13 @@ function moreOptions(container) {
         [["loop", "Loop back to start"], ["one_way", "End somewhere else"]])) : null,
       group("pace", "Pace", radios("pace", "Pace", [["relaxed", "Relaxed"], ["normal", "Normal"], ["brisk", "Brisk"]]),
         `Walking times use ${PACE_M_PER_MIN[value.pace]} m a minute.`),
-      group("pass_kinds", "Pass by", checks("pass_kinds", PASS_KINDS), "A wish, not a must: walks that pass more of these come first."),
-      group("avoid", "Avoid", checks("avoid", AVOIDS),
+      group("pass_kinds", "Pass by", [checks("pass_kinds", PASS_KINDS), custom("pass", "pass by")],
+        "A wish, not a must: walks that pass more of these come first."),
+      group("avoid", "Avoid", [checks("avoid", AVOIDS), custom("avoid", "avoid")],
         "Based on map data, which can be incomplete: we can't promise a step-free or accessible route."),
-      group("stops", "Stops on the way", radios("stops", "Stops on the way", [[0, "0"], [1, "1"], [2, "2"], [3, "3"]]),
-        "Places right on the route, so no detour."),
+      group("stops", "Stops on the way", [radios("stops", "Stops on the way", [[0, "0"], [1, "1"], [2, "2"], [3, "3"]]),
+        custom("stops", "stops on the way")],
+        "Places right on the route, so no detour. Typed stops are only of the kinds you name."),
       el("fieldset", { class: "opt-group" }, el("label", { class: "opt-check" },
         el("input", { type: "checkbox", name: "opt-must_be_open", value: "1", checked: value.must_be_open ? "" : null, onchange: (e) => setByUser("must_be_open", e.target.checked) }),
         " Destination must be open", tag("must_be_open")),
@@ -108,6 +182,7 @@ function moreOptions(container) {
       mode === "pair" ? el("p", { class: "muted small" }, "With a friend these apply to your side of the walk.") : null,
       any ? el("button", { type: "button", class: "opt-reset", onclick: () => {
         for (const k of Object.keys(OPTION_DEFAULTS)) if (source[k] === "user") { value[k] = OPTION_DEFAULTS[k]; delete source[k]; }
+        for (const f of Object.keys(notes)) notes[f] = "";
         save(); render();
       } }, "Reset my choices") : null].filter(Boolean));
   }
@@ -128,10 +203,9 @@ function moreOptions(container) {
     },
     setMode(m) { mode = m; render(); },
     // What the planner gets: no route shape with a friend.
-    value() { return { ...value, shape: mode === "solo" ? value.shape : "one_way",
-                       pass_kinds: [...value.pass_kinds], avoid: [...value.avoid] }; },
+    value() { return withCustom({ ...value, shape: mode === "solo" ? value.shape : "one_way" }); },
     mPerMin() { return PACE_M_PER_MIN[value.pace]; },
   };
 }
 
-if (typeof module !== "undefined") module.exports = { optionsFromWish, OPTION_DEFAULTS };
+if (typeof module !== "undefined") module.exports = { optionsFromWish, withCustom, cleanCustom, OPTION_DEFAULTS };

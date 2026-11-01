@@ -99,7 +99,7 @@ const map = makeMap("map");
 drawCoverage(map);
 loadCoverage().then((c) => { if (c.label && !state.origin) $("origin-label").textContent = `No start point yet. Walks can start inside the dashed box (${c.label}).`; });
 let marker = null, routeLayers = [];
-const options = moreOptions($("more-options"));
+const options = moreOptions($("more-options"), { origin: () => state.origin });
 
 const MODES = {
   pair: { privacy: "Only used to find a fair meeting point. Your friend never sees your exact start.",

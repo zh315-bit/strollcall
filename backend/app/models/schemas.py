@@ -15,15 +15,26 @@ class WalkIntent(BaseModel):
     hard_constraints: list[str] = []
 
 
+# "Pass by" kinds: the six on the page, and more a typed wish can name (services/options.py).
+PASS_KIND_NAMES = ("parks", "waterfront", "landmarks", "public_art", "bookstores", "markets",
+                   "bridges", "viewpoints", "fountains", "squares", "cafes", "bakeries", "ice_cream")
+PassKind = Literal["parks", "waterfront", "landmarks", "public_art", "bookstores", "markets",
+                   "bridges", "viewpoints", "fountains", "squares", "cafes", "bakeries", "ice_cream"]
+
+
 class WalkOptions(BaseModel):
     """"More options" on the New walk page: only what the planner can honor with map data
     (services/options.py). The defaults change nothing."""
     shape: Literal["one_way", "loop"] = "one_way"  # walking alone only
     pace: Literal["relaxed", "normal", "brisk"] = "normal"
-    pass_kinds: list[Literal["parks", "waterfront", "landmarks", "public_art", "bookstores", "markets"]] = \
-        Field(default=[], max_length=6)
+    pass_kinds: list[PassKind] = Field(default=[], max_length=len(PASS_KIND_NAMES))
     avoid: list[Literal["stairs", "busy_avenues", "transit_hubs"]] = Field(default=[], max_length=3)
     stops: int = Field(default=0, ge=0, le=3)
+    # "Something else" typed under Pass by / Avoid / Stops, as understood by services/custom_options.py:
+    # places by id only (names and positions come from our data), and the kinds a stop should be.
+    pass_place_ids: list[str] = Field(default=[], max_length=3)
+    avoid_place_ids: list[str] = Field(default=[], max_length=3)
+    stop_kinds: list[PassKind] = Field(default=[], max_length=len(PASS_KIND_NAMES))
     must_be_open: bool = False
 
 

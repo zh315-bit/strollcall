@@ -614,6 +614,19 @@ html:active-view-transition-type(conceal)::view-transition-new(root) { animation
 .opt-check input { width: 20px; height: 20px; }
 .opt-wish { font-size: .72rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1.5px dashed var(--line); color: var(--muted); }
 .opt-reset { margin-top: 12px; font-size: .85rem; padding: 6px 12px; }
+/* "Something else" under Pass by / Avoid / Stops: typed items as pills, then the box for one more. */
+.opt-custom { margin-top: 8px; }
+.opt-typed { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.opt-typed .opt-pill { cursor: default; gap: 4px; max-width: 100%; padding-right: 4px; border-radius: 20px; }
+.opt-typed-text { min-width: 0; overflow-wrap: anywhere; }
+.opt-understood { font-weight: 600; font-size: .82rem; }
+.opt-remove { min-width: 28px; min-height: 28px; padding: 0; border-radius: 50%; border: 0; background: transparent;
+  color: inherit; font-size: 1.1rem; line-height: 1; box-shadow: none; }
+.opt-remove:hover { background: rgba(0, 0, 0, .08); }
+.opt-add { display: flex; gap: 6px; min-width: 0; }
+.opt-add input { flex: 1; min-width: 0; min-height: 40px; margin: 0; padding: 8px 12px; font-size: 16px; border-radius: 999px; }
+.opt-add-btn { flex: none; min-height: 40px; padding: 6px 14px; font-size: .9rem; }
+.opt-group .muted.small.opt-note:empty { display: none; }
 .stop-list { margin: 6px 0; padding-left: 22px; }
 .stop-list small { color: var(--muted); }
 .poi-pin.stop-pin { font: 800 13px/20px var(--font); color: var(--accent-ink); background: var(--accent); border: 2px solid var(--accent-deep);

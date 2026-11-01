@@ -38,6 +38,9 @@ AVOID_FLAGS = {"stairs": EDGE_STAIRS, "busy_avenues": EDGE_BUSY, "transit_hubs":
 # Penalties, not exclusions: a route still exists when the only way is up the stairs or along the
 # avenue, it is just the last choice. Times shown are always the real walking times.
 AVOID_PENALTY = {"stairs": 20.0, "busy_avenues": 3.0, "transit_hubs": 3.0}
+AVOID_NEAR_M = 100.0  # a place typed under Avoid: edges with an end this close to it...
+AVOID_NEAR_PENALTY = 4.0  # ...cost this many times their minutes
+MAX_VIEWS = 16
 PENALTY_SEARCH = 1.5  # a penalized search explores this much further (in cost) than the time bound
 REUSE_PENALTY = 3.0  # a loop's way back: streets already walked on the way out cost this much more
 
@@ -134,7 +137,7 @@ class LocalRouting:
     name = "local"
 
     def __init__(self, graph: WalkGraph, fallback=None, pois=None, m_per_min: float | None = None,
-                 avoid: tuple[str, ...] = ()):
+                 avoid: tuple[str, ...] = (), avoid_near: tuple[tuple[float, float], ...] = ()):
         self.graph = graph
         self.pois = pois  # RoutePois: points of interest along each leg, or None
         self.fallback = fallback  # ORS provider, or a callable returning one, or None
@@ -146,23 +149,38 @@ class LocalRouting:
         self.m_per_min = m_per_min or graph.m_per_min
         self.scale = graph.m_per_min / self.m_per_min
         self.avoid = tuple(sorted(a for a in avoid if a in AVOID_FLAGS))
+        self.avoid_near = tuple(avoid_near)
+        self.penalized = bool(self.avoid or self.avoid_near)
         self.csr = graph.csr
-        if self.avoid:
+        if self.penalized:
             factor = np.ones(len(graph.minutes), dtype=np.float32)
             for a in self.avoid:
                 factor[(graph.edge_flags & AVOID_FLAGS[a]) != 0] *= AVOID_PENALTY[a]
+            if self.avoid_near:
+                near = np.zeros(len(graph.lat), dtype=bool)
+                xs, ys = graph._xy([p[0] for p in self.avoid_near], [p[1] for p in self.avoid_near])
+                for hits in graph.tree.query_ball_point(np.column_stack([xs, ys]), AVOID_NEAR_M):
+                    near[hits] = True
+                source = np.repeat(np.arange(len(graph.lat)), graph.degree)
+                factor[near[source] | near[graph.indices]] *= AVOID_NEAR_PENALTY
             self.csr = csr_matrix((graph.minutes * factor, graph.indices, graph.indptr), shape=graph.csr.shape)
-        self._views: dict[tuple, "LocalRouting"] = {}
+        self._views: OrderedDict[tuple, "LocalRouting"] = OrderedDict()
         self.leg_nodes: dict[str, list[int]] = {}  # graph nodes of each walked leg, for a loop's way back
 
-    def view(self, m_per_min: float | None = None, avoid=()) -> "LocalRouting":
+    def view(self, m_per_min: float | None = None, avoid=(), avoid_near=()) -> "LocalRouting":
         """The same graph at another walking pace and/or avoiding stairs, busy avenues or transit
-        hubs (by map data). The default view is this object, so defaults change nothing."""
-        key = (round(m_per_min or self.graph.m_per_min, 1), tuple(sorted(a for a in avoid if a in AVOID_FLAGS)))
-        if key == (round(self.m_per_min, 1), self.avoid):
+        hubs (by map data) and the surroundings of places (points). The default view is this
+        object, so defaults change nothing."""
+        key = (round(m_per_min or self.graph.m_per_min, 1), tuple(sorted(a for a in avoid if a in AVOID_FLAGS)),
+               tuple(avoid_near))
+        if key == (round(self.m_per_min, 1), self.avoid, self.avoid_near):
             return self
-        if key not in self._views:
-            self._views[key] = LocalRouting(self.graph, self.fallback, self.pois, key[0], key[1])
+        if key in self._views:
+            self._views.move_to_end(key)
+        else:
+            self._views[key] = LocalRouting(self.graph, self.fallback, self.pois, key[0], key[1], key[2])
+            if len(self._views) > MAX_VIEWS:
+                self._views.popitem(last=False)
         return self._views[key]
 
     def _real_minutes(self, cost: np.ndarray, pred: np.ndarray, source: int) -> np.ndarray:
@@ -198,9 +216,9 @@ class LocalRouting:
             self._trees.move_to_end(source)
             return hit[0], hit[1]
         # `limit` is in reported (paced) minutes; the graph is in its own minutes.
-        bound = limit / self.scale * (PENALTY_SEARCH if self.avoid else 1.0)
+        bound = limit / self.scale * (PENALTY_SEARCH if self.penalized else 1.0)
         dist, pred = dijkstra(self.csr, directed=True, indices=source, limit=bound, return_predecessors=True)
-        if self.avoid:
+        if self.penalized:
             dist = self._real_minutes(dist, pred, source)
         dist = dist * self.scale
         self._trees[source] = (dist, pred, limit)

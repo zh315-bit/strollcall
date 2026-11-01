@@ -87,9 +87,11 @@ def solo_fit(dest: Place, intent: WalkIntent, wishes=None) -> tuple[float, list[
 
 def _plan(origin: Point, intent: WalkIntent, places, routing, depart_at: datetime, wishes, weights,
           pass_by=None, options: WalkOptions | None = None) -> SoloPlan:
-    from app.services.options import GRAPH_M_PER_MIN, describe, kinds_passed, mark_stops, pace_m_per_min
+    from app.services.options import (GRAPH_M_PER_MIN, avoid_places, avoided, describe, kinds_passed, mark_stops,
+                                       pace_m_per_min)
 
     options = options or WalkOptions()
+    keep_away = avoid_places(options)
     loop = options.shape == "loop"
     legs_per_walk = 2 if loop else 1
     speed = WALK_M_PER_MIN * pace_m_per_min(options) / GRAPH_M_PER_MIN  # straight-line estimates
@@ -171,12 +173,14 @@ def _plan(origin: Point, intent: WalkIntent, places, routing, depart_at: datetim
         passes = kinds_passed(legs, options.pass_kinds, getattr(routing, "pois", None), places)
         if options.pass_kinds:
             score = round(score + weights.pass_by * len(passes) / len(options.pass_kinds), 6)
-        stops = mark_stops(legs, options.stops, options.pass_kinds)
+        stops = mark_stops(legs, options.stops, options.stop_kinds or options.pass_kinds, places,
+                           only=bool(options.stop_kinds), not_named=p.name)
         leg, back = legs[0], (legs[1] if back else None)
         hours = "open when you arrive, per OSM" if open_now else "opening hours unknown"
         suits = f", for you: {', '.join(met)}" if met else ""
         then = f", then {back.duration_min:.0f} min back to your start" if back else ""
-        extra = describe(passes, stops, options.stops, options.pass_kinds)
+        extra = describe(passes, stops, options.stops, options.pass_kinds, options.stop_kinds,
+                         avoided(legs, keep_away))
         candidates.append(SoloCandidate(
             id=pid, destination_place_id=pid, leg=leg, return_leg=back, stops=stops, passes=passes,
             total_min=round(total, 2), score=score,

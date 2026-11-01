@@ -149,7 +149,7 @@ def resolve_pass_by(ids: list[str]) -> list[PassBy]:
     """Known places only, by id; names and positions come from our data, never from the request."""
     from app.providers import get_places, get_routing
 
-    wanted = list(dict.fromkeys(ids))[:3]
+    wanted = list(dict.fromkeys(ids))[:6]  # three from Near you, three typed under Pass by
     if not wanted:
         return []
     found: dict[str, PassBy] = {}
