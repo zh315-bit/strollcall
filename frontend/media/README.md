@@ -38,3 +38,20 @@ running app, then cropped to 780×1000 and scaled to 520×667. home.css puts eac
 
 To refresh them, run the same flows and crop with
 `ffmpeg -i shot.png -vf "crop=780:1000:0:Y,scale=520:-1:flags=lanczos" -q:v 3 step-NAME.jpg`.
+
+`hero-grass.jpg` (2160×1230): where Home's frame is taller than the plate (the "Meet halfway, fairly"
+section, home.css), the hill goes on below it. It is the plate's own mid-grass rows (y 1260–1720), four
+times, every other one mirrored left to right, each fading in over the one above, so no edge or mirror
+line shows; the plate's last rows fade out over its top.
+
+```bash
+ffmpeg -i hero-plate.jpg -/filter_complex grass.fg -frames:v 1 -q:v 4 hero-grass.jpg
+# grass.fg:
+# [0]crop=2160:460:0:1260,format=rgba,split=4[s1][s2][s3][s4];
+# [s1]hflip[a];
+# [s2]geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(lt(Y,140),255*Y/140,255)'[b];
+# [s3]hflip,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(lt(Y,140),255*Y/140,255)'[c];
+# [s4]geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='if(lt(Y,140),255*Y/140,255)'[d];
+# color=c=0x4a7d2c:s=2160x1230,format=rgba[bg];
+# [bg][a]overlay=0:0[t1];[t1][b]overlay=0:330[t2];[t2][c]overlay=0:660[t3];[t3][d]overlay=0:990,format=yuv420p
+```

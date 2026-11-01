@@ -16,13 +16,17 @@
 }
 
 /* ---- The scene: the 9:8 plate, and the square video laid over it (mirror-padded 120/1920 top and bottom) ---- */
-/* Below the plate (when the frame is taller than 9:8) the grass goes on in its own colour. */
-.hero-scene { position: absolute; inset: 0; z-index: 0; overflow: hidden; background: linear-gradient(#3b6d28, #2d5621); }
+/* Below the plate (when the frame is taller than 9:8) the hill goes on: hero-grass.jpg, rows of the plate's
+   own grass laid end to end (frontend/media/README.md), under the plate's last 100 units fading out into it. */
+.hero-scene { position: absolute; inset: 0; z-index: 0; overflow: hidden; background: #4a7d2c; }
 .scene-frame { position: absolute; left: 0; top: 0; width: 100%; height: calc(1280 * var(--u)); }
-@media (min-width: 821px) {  /* the plate (and its video) end where the plate ends, fading into that colour */
-  .hero .scene-frame { overflow: hidden; }
-  .hero:has(.fair:not([hidden])) .scene-frame::after { content: ""; position: absolute; inset: auto 0 0; height: calc(240 * var(--u));
-    z-index: 1; pointer-events: none; background: linear-gradient(rgba(59, 109, 40, 0), rgba(59, 109, 40, .55) 60%, #3b6d28); }
+@media (min-width: 821px) {
+  .hero .scene-frame { overflow: hidden; }  /* the video's mirrored padding stops where the plate does */
+  .hero:has(.fair:not([hidden])) .hero-scene {
+    background: url("/static/media/hero-grass.jpg") 0 calc(1180 * var(--u)) / 100% calc(820 * var(--u)) no-repeat, #4a7d2c; }
+  .hero:has(.fair:not([hidden])) .scene-frame {
+    -webkit-mask-image: linear-gradient(#000 calc(100% - 100 * var(--u)), transparent);
+    mask-image: linear-gradient(#000 calc(100% - 100 * var(--u)), transparent); }
 }
 .hero-plate, .hero-video { position: absolute; display: block; pointer-events: none; user-select: none; }
 .hero-plate { inset: 0; width: 100%; height: 100%; }
