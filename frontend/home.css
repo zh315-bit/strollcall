@@ -215,9 +215,18 @@
   .hero-foot { position: relative; bottom: auto; padding: 4px 16px 22px; font-size: 12px; }
 }
 
+/* ---- Scroll reveals (home.js): a block waits a little lower and transparent, then rises in once ---- */
+.sr { opacity: 0; translate: 0 40px; }
+.sr.sr-card { translate: 0 56px; scale: .96; }
+.hero-foot.sr { translate: 0 10px; } /* near the frame's clipped bottom edge: only a short way */
+.sr.sr-in { opacity: 1; translate: 0 0; scale: 1;
+  transition: opacity .7s cubic-bezier(.22, 1, .36, 1) var(--sr-delay, 0ms), translate .9s cubic-bezier(.22, 1, .36, 1) var(--sr-delay, 0ms),
+    scale .9s cubic-bezier(.22, 1, .36, 1) var(--sr-delay, 0ms); }
+
 /* ---- Reduced motion: the still plate only (home.js adds no video), and nothing moves ---- */
 @media (prefers-reduced-motion: reduce) {
   .hero *, .hero *::after { transition: none !important; }
+  .sr { opacity: 1; translate: none; scale: none; }
   .pill:hover, .steps-link:hover .chev, .fair-try:hover .chev { transform: none; }
 }
 

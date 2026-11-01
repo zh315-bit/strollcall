@@ -33,7 +33,7 @@ test("the section is hidden until the file loads, and the page plans nothing", (
   assert.ok(home.indexOf('class="hero-copy"') < home.indexOf('id="fair"'), "below the hero copy");
   assert.equal((js.match(/fetch\(/g) || []).length, 1);
   assert.ok(js.includes('fetch("/static/data/fairness_example.json")') && !/\/api\//.test(js));
-  assert.ok(js.includes("if (!valid(d)) return;") && js.includes("section.hidden = false"));
+  assert.ok(js.includes("if (!valid(d)) { ready(); return; }") && js.includes("section.hidden = false"));
 });
 
 test("maps are images with the numbers in words; text is HTML; the link opens New walk with a friend", () => {
@@ -50,4 +50,15 @@ test("drawn once when in view, all walks at one speed; still under reduced motio
   assert.ok(js.includes("IntersectionObserver") && js.includes("io.disconnect()"));
   assert.ok(js.includes("prefers-reduced-motion: reduce") && js.includes('easing: "linear"'));
   assert.ok(/duration: ms\(t\)/.test(js), "a walk's drawing time is its walking time");
+});
+
+test("scroll reveals: each block below the fold rises in once, measured after the section settles; none under reduced motion", () => {
+  const homeJs = read("frontend/js/home.js"), css = read("frontend/home.css");
+  assert.ok(homeJs.indexOf("if (reduce) return;") < homeJs.indexOf("function reveals()"), "reduced motion: no reveals");
+  for (const sel of [".fair-card", ".steps-title", ".step", ".hero-foot"]) assert.ok(homeJs.includes(sel), sel);
+  assert.ok(homeJs.includes("io.unobserve(e.target)"), "once only");
+  assert.ok(homeJs.includes('"fair:ready"') && homeJs.includes("fair.dataset.ready"));
+  // fairness.js says it is ready on every path: shown, no data, or a failed fetch.
+  assert.equal((js.match(/ready\(\)/g) || []).length, 3);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{[^}]*\}\s*\.sr \{ opacity: 1; translate: none; scale: none; \}/);
 });

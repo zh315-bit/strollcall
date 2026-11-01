@@ -3,6 +3,8 @@
 // The entrance plays when someone lands on Home; coming back from another page of the site (New walk
 // closes into it, style.css: conceal) Home is simply there.
 // New walk prerenders Home on hover: until it is actually shown, Home loads no video and plays nothing.
+// Further down, each block (Meet halfway, How to use and its three steps, the footer) rises into place
+// the first time it scrolls into view; whatever is already on screen when Home opens is left as it is.
 
 (() => {
   const VIDEO = "/static/media/hero-loop.mp4"; // 1920², the boy and the dog from the sharp still (frontend/media/README.md)
@@ -44,8 +46,7 @@
     document.querySelectorAll(".hero-title span").forEach((line, i) =>
       run(line, [{ opacity: 0, translate: "0 48px", scale: ".94", filter: "blur(14px)" },
                  { opacity: 1, translate: "0 0", scale: "1", filter: "blur(0)" }], 380 + i * 160, 950, SPRING));
-    const later = [".hero-sub", ".hero-actions .pill-white", ".hero-note", ".steps-title", ".steps-link",
-                   ...[...document.querySelectorAll(".step")]];
+    const later = [".hero-sub", ".hero-actions .pill-white", ".hero-note"];
     later.forEach((sel, i) => run(typeof sel === "string" ? $(sel) : sel, rise, 820 + i * 90, 750));
   }
 
@@ -56,7 +57,46 @@
     if (from) return new URL(from).origin === location.origin;
     return typeof ARRIVED_IN_SITE !== "undefined" && !!ARRIVED_IN_SITE;
   };
-  const start = () => { addVideo(); if (!fromSite()) entrance(); };
+  // ---- Scroll reveals: .sr waits (hidden, a little lower), .sr-in rises in (home.css) ----
+  const io = "IntersectionObserver" in window ? new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      io.unobserve(e.target);
+      e.target.classList.add("sr-in");
+      // Once in place, back to plain: no leftover transition or offset on hovers and later layout.
+      const done = (t) => {
+        if (t.target !== e.target || t.propertyName !== "translate") return;  // the longest of the three
+        e.target.removeEventListener("transitionend", done);
+        e.target.classList.remove("sr", "sr-in", "sr-card");
+      };
+      e.target.addEventListener("transitionend", done);
+    }
+  }, { threshold: 0.15 }) : null;
+  function reveal(nodes, { always = false, card = false, stagger = 0 } = {}) {
+    if (!io) return;
+    nodes.forEach((n, i) => {
+      if (!n || (!always && n.getBoundingClientRect().top < innerHeight)) return;  // on screen already: leave it
+      n.classList.add("sr");
+      if (card) n.classList.add("sr-card");
+      n.style.setProperty("--sr-delay", `${i * stagger}ms`);
+      io.observe(n);
+    });
+  }
+  // "Meet halfway, fairly" shows only once its data has loaded (fairness.js), and then always rises in.
+  // Showing it moves everything under it, so the rest is measured after that (fair.dataset.ready).
+  function reveals() {
+    const fair = $("#fair");
+    if (fair && !fair.dataset.ready) { document.addEventListener("fair:ready", reveals, { once: true }); return; }
+    if (fair && !fair.hidden) {
+      reveal([$(".fair-title"), $(".fair-try")], { always: true });
+      reveal([$(".fair-card")], { always: true, card: true });
+    }
+    reveal([$(".steps-title"), $(".steps-link")], { stagger: 80 });
+    reveal([...document.querySelectorAll(".step")], { card: true, stagger: 110 });
+    reveal([$(".hero-foot")]);
+  }
+
+  const start = () => { addVideo(); reveals(); if (!fromSite()) entrance(); };
   if (document.prerendering) document.addEventListener("prerenderingchange", start, { once: true });
   else start();
 })();

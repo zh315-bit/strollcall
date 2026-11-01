@@ -120,9 +120,12 @@
     appear(right.end, met + ms(d.destination.shared_min));
   }
 
+  // home.js waits for this to place its scroll reveals: shown or not, the layout under it is final now.
+  const ready = () => { section.dataset.ready = "1"; document.dispatchEvent(new Event("fair:ready")); };
   fetch("/static/data/fairness_example.json").then((r) => (r.ok ? r.json() : null)).then((d) => {
-    if (!valid(d)) return;  // never made-up numbers: no file, no section
+    if (!valid(d)) { ready(); return; }  // never made-up numbers: no file, no section
     const parts = build(d);
+    ready();
     const still = !document.body.animate || matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (still || typeof IntersectionObserver === "undefined") return;
     section.classList.add("fair-waiting");  // routes undrawn until the section is in view
@@ -133,5 +136,5 @@
       animate(parts, d);
     }, { threshold: 0.4 });
     io.observe(section.querySelector(".fair-maps"));
-  }).catch(() => { /* the section stays hidden */ });
+  }).catch(() => ready());  // the section stays hidden
 })();
