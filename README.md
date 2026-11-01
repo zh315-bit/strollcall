@@ -98,6 +98,14 @@ off it, an arrival card within 40 m, and cards for parks, historic sites, artwor
 landmarks within ~40 m of the route. The track stays in the phone; only a re-plan sends the
 current position, which the server neither stores nor logs. The map-app link stays as a fallback.
 
+**Meet halfway, fairly (Home).** A section under the headline compares two small maps from one real
+benchmark pair: walking to the point halfway between the two starts on the map, and walking to our
+planner's meeting point. The numbers and routes are measured once on the local walking graph by
+`scripts/build_fairness_example.py` and saved to `frontend/data/fairness_example.json`; the page reads
+only that file (no planning at load) and hides the section without it. The current example is pair
+**p2** (Christopher Street-Stonewall station and 14th Street-Union Square station), generated
+2026-11-01: 6 and 11 minutes to the map midpoint, 10 and 9 minutes to our meeting point.
+
 **Walking buddy.** The blue character on the walking screen (`frontend/js/buddy.js`,
 `backend/app/services/companion.py`). Hold the mic (Muse Voice Transcribe) or tap a chip ("I have
 10 min", "What's nearby?"). For spoken requests Muse Spark picks one tool from the words and the

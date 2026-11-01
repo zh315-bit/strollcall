@@ -44,6 +44,29 @@
     <p class="hero-note">No app to download. No account.</p>
     </div>
 
+    <!-- Meet halfway, fairly: one real benchmark pair, measured once (js/fairness.js fills it from
+         data/fairness_example.json, and leaves it hidden without that file) -->
+    <section class="fair" id="fair" aria-labelledby="fair-title" hidden>
+      <h2 class="fair-title" id="fair-title">Meet halfway, fairly</h2>
+      <div class="fair-card">
+        <div class="fair-maps">
+          <figure class="fair-map" data-map="mid">
+            <figcaption class="fair-map-title">Halfway on the map</figcaption>
+            <svg class="fair-svg" role="img" focusable="false"></svg>
+            <ul class="fair-legend"></ul>
+          </figure>
+          <figure class="fair-map" data-map="meet">
+            <figcaption class="fair-map-title">Halfway by walking time</figcaption>
+            <svg class="fair-svg" role="img" focusable="false"></svg>
+            <ul class="fair-legend"></ul>
+          </figure>
+        </div>
+        <p class="fair-caption">Halfway by walking time, not by distance.</p>
+        <p class="fair-note">A real example from our tests in New York. Route data © OpenStreetMap contributors.</p>
+      </div>
+      <a class="fair-try" href="/new?mode=pair">Try it <span class="chev" aria-hidden="true">&rarr;</span></a>
+    </section>
+
     <section class="steps" aria-labelledby="steps-title">
       <h2 class="steps-title" id="steps-title">How to use</h2>
       <a class="steps-link" href="/how">How it works <span class="chev" aria-hidden="true">&rarr;</span></a>
@@ -76,5 +99,6 @@
 <div id="chrome-ready" hidden></div> <!-- first render waits for the scripts above (see <head>) -->
 <script src="/static/js/bits.js"></script>
 <script src="/static/js/home.js"></script>
+<script src="/static/js/fairness.js"></script>
 </body>
 </html>

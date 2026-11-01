@@ -9,11 +9,21 @@
 :is(body.home, body.scene) .sky { display: none; } /* common.js adds the site sky; these pages have the scene */
 
 .hero { position: relative; container-type: inline-size; aspect-ratio: 1440 / 1280; overflow: hidden; color: #fff;
-  --u: calc(100cqw / 1440); --green: #5b875c; font-family: "Inter", system-ui, sans-serif; }
+  --u: calc(100cqw / 1440); --green: #5b875c; font-family: "Inter", system-ui, sans-serif;
+  --fair: 0; } /* frame units the "Meet halfway, fairly" section adds below the copy, when it shows */
+@media (min-width: 821px) {
+  .hero:has(.fair:not([hidden])) { --fair: 720; aspect-ratio: 1440 / 2000; }
+}
 
 /* ---- The scene: the 9:8 plate, and the square video laid over it (mirror-padded 120/1920 top and bottom) ---- */
-.hero-scene { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
-.scene-frame { position: absolute; inset: 0; }
+/* Below the plate (when the frame is taller than 9:8) the grass goes on in its own colour. */
+.hero-scene { position: absolute; inset: 0; z-index: 0; overflow: hidden; background: linear-gradient(#3b6d28, #2d5621); }
+.scene-frame { position: absolute; left: 0; top: 0; width: 100%; height: calc(1280 * var(--u)); }
+@media (min-width: 821px) {  /* the plate (and its video) end where the plate ends, fading into that colour */
+  .hero .scene-frame { overflow: hidden; }
+  .hero:has(.fair:not([hidden])) .scene-frame::after { content: ""; position: absolute; inset: auto 0 0; height: calc(240 * var(--u));
+    z-index: 1; pointer-events: none; background: linear-gradient(rgba(59, 109, 40, 0), rgba(59, 109, 40, .55) 60%, #3b6d28); }
+}
 .hero-plate, .hero-video { position: absolute; display: block; pointer-events: none; user-select: none; }
 .hero-plate { inset: 0; width: 100%; height: 100%; }
 .hero-video { left: 0; top: -6.25%; width: 100%; height: 112.5%; object-fit: fill; opacity: 0; transition: opacity .6s; }
@@ -52,7 +62,7 @@
 /* ---- Copy, centred on the frame ---- */
 .hero-main { position: absolute; inset: 0; z-index: 2; max-width: none; margin: 0; padding: 0; view-transition-name: page; }
 .hero-copy { display: contents; }
-.hero-kicker, .hero-title, .steps-title { font-family: "Grandstander", var(--display); font-weight: 900; color: #fff; text-transform: uppercase; }
+.hero-kicker, .hero-title, .steps-title, .fair-title { font-family: "Grandstander", var(--display); font-weight: 900; color: #fff; text-transform: uppercase; }
 .hero-kicker { position: absolute; left: 0; right: 0; top: calc(193 * var(--u)); margin: 0; text-align: center;
   font-size: calc(27 * var(--u)); line-height: 1; letter-spacing: .02em; text-shadow: 0 calc(3 * var(--u)) calc(14 * var(--u)) rgba(28, 70, 120, .22); }
 .hero-title { position: absolute; left: 0; right: 0; top: calc(241 * var(--u)); margin: 0; text-align: center;
@@ -73,15 +83,15 @@
 /* ---- How to use: three steps, each a light card with a phone showing our own UI over its line of text ---- */
 .steps { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
 .steps > * { pointer-events: auto; }
-.steps-title { position: absolute; left: calc(137 * var(--u)); top: calc(770 * var(--u)); margin: 0; display: block;
+.steps-title { position: absolute; left: calc(137 * var(--u)); top: calc((770 + var(--fair)) * var(--u)); margin: 0; display: block;
   font-size: calc(36 * var(--u)); line-height: 1; letter-spacing: .02em; text-shadow: 0 calc(2 * var(--u)) calc(12 * var(--u)) rgba(30, 60, 30, .3); }
-.steps-link { position: absolute; right: calc(1440 * var(--u) - 1308 * var(--u)); top: calc(776 * var(--u));
+.steps-link { position: absolute; right: calc(1440 * var(--u) - 1308 * var(--u)); top: calc((776 + var(--fair)) * var(--u));
   font: 400 calc(22 * var(--u))/1 "Inter", system-ui, sans-serif; color: #fff; text-decoration: none;
   text-shadow: 0 calc(2 * var(--u)) calc(10 * var(--u)) rgba(30, 60, 30, .35); }
 .steps-link:hover { color: #fff; }
 .steps-link .chev { display: inline-block; margin-left: .15em; transition: transform .2s ease; }
 .steps-link:hover .chev { transform: translateX(calc(4 * var(--u))); }
-.steps-row { position: absolute; left: calc(133 * var(--u)); top: calc(824 * var(--u)); display: flex; gap: calc(20 * var(--u));
+.steps-row { position: absolute; left: calc(133 * var(--u)); top: calc((824 + var(--fair)) * var(--u)); display: flex; gap: calc(20 * var(--u));
   margin: 0; padding: 0; list-style: none; }
 /* Inside a card, sizes are in card units (--k = 1/378 of the card's width), so phones get the same card, smaller */
 .step { width: calc(378 * var(--u)); flex: none; container-type: inline-size; --k: calc(100cqw / 378); overflow: hidden;
@@ -103,6 +113,52 @@
 .step-text i { display: inline-grid; place-items: center; width: calc(28 * var(--k)); height: calc(28 * var(--k)); flex: none;
   border-radius: 50%; background: var(--green); color: #fff; font: 600 calc(16 * var(--k))/1 var(--display); font-style: normal; }
 .step-text p { margin: 0; font: 400 calc(15 * var(--k))/1.4 "Inter", system-ui, sans-serif; color: #4f5d52; }
+
+/* ---- Meet halfway, fairly (js/fairness.js): where the steps were, the steps move down by --fair ---- */
+.fair { position: absolute; left: calc(133 * var(--u)); top: calc(770 * var(--u)); width: calc(1174 * var(--u)); z-index: 1; }
+.fair-title { margin: 0 0 calc(18 * var(--u)) calc(4 * var(--u)); font-size: max(22px, calc(36 * var(--u))); line-height: 1;
+  letter-spacing: .02em; text-shadow: 0 1px 3px rgba(20, 50, 90, .35), 0 2px 14px rgba(20, 50, 90, .45); }
+.fair-card { padding: calc(24 * var(--u)) calc(28 * var(--u)) calc(20 * var(--u)); border-radius: calc(16 * var(--u));
+  background: #fbf8f1; color: #26352a; box-shadow: 0 calc(12 * var(--u)) calc(30 * var(--u)) rgba(20, 50, 20, .22); }
+.fair-maps { display: grid; grid-template-columns: 1fr 1fr; gap: calc(28 * var(--u)); }
+.fair-map { margin: 0; min-width: 0; }
+.fair-map-title { margin: 0 0 calc(8 * var(--u)); font: 600 max(15px, calc(21 * var(--u)))/1.2 var(--display); color: #26352a; }
+.fair-svg { display: block; width: 100%; height: auto; border-radius: calc(12 * var(--u)); box-shadow: inset 0 0 0 1px #e6e0d2; }
+.fm-bg { fill: #f3efe4; }
+.fm-streets { fill: none; stroke: #ddd6c6; stroke-width: 3; stroke-linecap: round; }
+.fm-route { fill: none; stroke-width: 10; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 1; }
+.fm-a { stroke: #3b82f6; }
+.fm-b { stroke: #f06a2c; }
+.fm-shared { stroke: #2b2340; stroke-width: 8; stroke-dasharray: 16 12; }
+.fm-mask-path { fill: none; stroke: #fff; stroke-width: 40; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 1; }
+.fm-start { stroke: #fff; stroke-width: 5; }
+.fm-a-dot { fill: #3b82f6; }
+.fm-b-dot { fill: #f06a2c; }
+.fm-pin { stroke-width: 6; transform-box: fill-box; transform-origin: center; }
+.fm-mid { fill: #fff; stroke: #26352a; }
+.fm-meet { fill: #22a35a; stroke: #fff; }
+.fm-end { fill: #2b2340; stroke: #fff; }
+.fair-legend { display: flex; flex-wrap: wrap; gap: calc(6 * var(--u)) calc(18 * var(--u)); margin: calc(10 * var(--u)) 0 0; padding: 0;
+  list-style: none; font: 500 max(13px, calc(16 * var(--u)))/1.35 "Inter", system-ui, sans-serif; color: #26352a; }
+.fair-legend li { display: block; }
+.fl-key { display: inline-block; width: 18px; height: 4px; margin-right: 6px; border-radius: 2px; vertical-align: .3em; }
+.fl-a .fl-key { background: #3b82f6; }
+.fl-b .fl-key { background: #f06a2c; }
+.fl-shared .fl-key { background: repeating-linear-gradient(90deg, #2b2340 0 6px, transparent 6px 10px); }
+.fl-gap, .fl-even { display: inline-block; padding: 1px 9px; border-radius: 999px; font-weight: 700; }
+.fl-gap { background: #ffe1cf; color: #8c3209; }
+.fl-even { background: #dcf2e3; color: #17603a; }
+.fair-caption { margin: calc(18 * var(--u)) 0 calc(4 * var(--u)); text-align: center; font: 600 max(16px, calc(23 * var(--u)))/1.3 var(--display); color: #26352a; }
+.fair-note { margin: 0; text-align: center; font: 400 max(12px, calc(14 * var(--u)))/1.4 "Inter", system-ui, sans-serif; color: #56645a; }
+.fair-try { display: table; margin: calc(14 * var(--u)) 0 0 auto; font: 500 max(15px, calc(22 * var(--u)))/1 "Inter", system-ui, sans-serif;
+  color: #fff; text-decoration: none; text-shadow: 0 calc(2 * var(--u)) calc(10 * var(--u)) rgba(20, 50, 20, .5); }
+.fair-try:hover { color: #fff; }
+.fair-try .chev { display: inline-block; margin-left: .15em; transition: transform .2s ease; }
+.fair-try:hover .chev { transform: translateX(4px); }
+.fair-try:focus-visible { outline: 3px solid #fff; outline-offset: 4px; border-radius: 4px; }
+/* Before it scrolls into view (only when it will animate): the walks undrawn, the arrivals not yet shown */
+.fair-waiting :is(.fm-a, .fm-b, .fm-mask-path) { stroke-dashoffset: 1; }
+.fair-waiting :is(.fm-mid, .fm-meet, .fm-end, .fl-gap, .fl-even) { opacity: 0; }
 
 .hero-foot { position: absolute; left: 0; right: 0; bottom: calc(26 * var(--u)); z-index: 2; margin: 0; display: flex;
   flex-wrap: wrap; justify-content: center; gap: calc(6 * var(--u)) calc(16 * var(--u)); font: 400 max(12px, calc(13.5 * var(--u)))/1.4 "Inter", system-ui, sans-serif;
@@ -133,6 +189,13 @@
   .hero-actions { margin-top: 24px; flex-wrap: wrap; padding: 0 16px; gap: 10px; }
   .hero-actions .pill-white { height: 52px; padding: 0 26px; font-size: 18px; }
   .hero-note { margin-top: 10px; padding: 0 16px; font-size: 14px; }
+  .fair { position: static; width: auto; margin: 48px 16px 0; align-self: stretch; text-align: left; }
+  .fair-title { margin: 0 0 12px; font-size: 24px; }
+  .fair-card { padding: 16px 16px 14px; border-radius: 14px; }
+  .fair-maps { grid-template-columns: 1fr; gap: 20px; }
+  .fair-svg { border-radius: 10px; }
+  .fair-caption { margin-top: 16px; }
+  .fair-try { margin-top: 12px; font-size: 16px; }
   .steps { position: relative; height: auto; width: 100%; margin-top: auto; padding: 48px 0 0; display: grid;
     grid-template-columns: 1fr auto; align-items: end; pointer-events: auto; }
   .steps-title, .steps-link, .steps-row { position: static; }
@@ -151,7 +214,7 @@
 /* ---- Reduced motion: the still plate only (home.js adds no video), and nothing moves ---- */
 @media (prefers-reduced-motion: reduce) {
   .hero *, .hero *::after { transition: none !important; }
-  .pill:hover, .steps-link:hover .chev { transform: none; }
+  .pill:hover, .steps-link:hover .chev, .fair-try:hover .chev { transform: none; }
 }
 
 /* ---- My walks, How it works (body.scene): the same scene, fixed behind the page, and the same top bar ---- */
