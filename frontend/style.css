@@ -399,14 +399,16 @@ body.walking { overflow: hidden; }
 .buddy[data-state="thinking"] .b-dots circle { animation: buddy-dot 1.2s ease-in-out infinite; }
 .buddy[data-state="thinking"] .b-dots circle:nth-child(2) { animation-delay: .2s; }
 .buddy[data-state="thinking"] .b-dots circle:nth-child(3) { animation-delay: .4s; }
-.buddy[data-state="speaking"] .b-talk { transform-box: fill-box; transform-origin: center; animation: buddy-talk .32s ease-in-out infinite alternate; }
+.buddy[data-state="speaking"] .b-talk { transform-box: fill-box; transform-origin: 50% 0; animation: buddy-talk .32s ease-in-out infinite alternate; }
+.buddy .b-eyes { transform-box: fill-box; transform-origin: center; animation: buddy-blink 4s ease-in-out infinite; }
 .buddy[data-state="arrived"] .b-body { animation: buddy-hop .9s cubic-bezier(.3, 1.6, .5, 1) 2; }
 .buddy[data-state="arrived"] .b-confetti > * { transform-box: fill-box; transform-origin: center; animation: buddy-confetti 1.6s ease-out infinite; }
 .buddy[data-state="arrived"] .b-confetti > :nth-child(2n) { animation-delay: .4s; }
 @keyframes buddy-step { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
 @keyframes buddy-wave { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
 @keyframes buddy-dot { 0%, 100% { opacity: .3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-2px); } }
-@keyframes buddy-talk { from { transform: scaleY(.45); } to { transform: scaleY(1.1); } }
+@keyframes buddy-talk { from { transform: scaleY(.55); } to { transform: scaleY(1.1); } }
+@keyframes buddy-blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(.1); } }
 @keyframes buddy-hop { 0%, 100% { transform: translateY(0); } 40% { transform: translateY(-9px); } }
 @keyframes buddy-confetti { 0% { opacity: 0; transform: translateY(6px) rotate(0); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-8px) rotate(90deg); } }
 @media (prefers-reduced-motion: reduce) {

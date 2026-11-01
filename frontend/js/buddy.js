@@ -10,22 +10,30 @@
 
 const BUDDY_STATES = ["walking", "listening", "thinking", "speaking", "arrived"];
 
-// One drawing; each state shows its own eyes, mouth and extras (data-s lists the states a part is in).
+// One drawing, always smiling; each state shows its own eyes, mouth and extras (data-s lists the states a
+// part is in). The eyes blink while walking and speaking.
 const BUDDY_SVG = `<svg viewBox="0 0 100 100" focusable="false">
 <g class="b-body">
   <path d="M50 20q-3-10 5-13" fill="none" stroke="#3B7BEA" stroke-width="4" stroke-linecap="round"/>
   <circle cx="57" cy="7" r="5" fill="#FFB3C1"/>
   <circle cx="50" cy="58" r="38" fill="#3B7BEA"/>
-  <circle cx="28" cy="65" r="6" fill="#FF9EB0" fill-opacity=".75"/><circle cx="72" cy="65" r="6" fill="#FF9EB0" fill-opacity=".75"/>
-  <g data-s="walking speaking"><ellipse cx="38" cy="52" rx="4" ry="5.5" fill="#1F1B3A"/><ellipse cx="62" cy="52" rx="4" ry="5.5" fill="#1F1B3A"/></g>
-  <g data-s="listening"><ellipse cx="38" cy="50" rx="5" ry="7" fill="#1F1B3A"/><ellipse cx="62" cy="50" rx="5" ry="7" fill="#1F1B3A"/></g>
-  <g data-s="thinking"><ellipse cx="40" cy="47" rx="4" ry="5.5" fill="#1F1B3A"/><ellipse cx="64" cy="47" rx="4" ry="5.5" fill="#1F1B3A"/></g>
-  <path data-s="arrived" d="M33 52q5-6 10 0M57 52q5-6 10 0" fill="none" stroke="#1F1B3A" stroke-width="3.5" stroke-linecap="round"/>
-  <path data-s="walking" d="M43 67q7 6 14 0" fill="none" stroke="#1F1B3A" stroke-width="3" stroke-linecap="round"/>
-  <circle data-s="listening" cx="50" cy="69" r="3.5" fill="#1F1B3A"/>
-  <path data-s="thinking" d="M44 69h12" stroke="#1F1B3A" stroke-width="3" stroke-linecap="round"/>
-  <ellipse data-s="speaking" class="b-talk" cx="50" cy="69" rx="7" ry="5" fill="#1F1B3A"/>
-  <path data-s="arrived" d="M40 65q10 12 20 0z" fill="#1F1B3A"/>
+  <ellipse cx="33" cy="37" rx="9" ry="5" fill="#fff" fill-opacity=".3" transform="rotate(-35 33 37)"/>
+  <ellipse cx="25" cy="64" rx="7" ry="4.5" fill="#FF9EB0" fill-opacity=".8"/><ellipse cx="75" cy="64" rx="7" ry="4.5" fill="#FF9EB0" fill-opacity=".8"/>
+  <g data-s="walking speaking" class="b-eyes"><ellipse cx="37" cy="51" rx="4.5" ry="6" fill="#1F1B3A"/><ellipse cx="63" cy="51" rx="4.5" ry="6" fill="#1F1B3A"/>
+    <circle cx="38.6" cy="48.4" r="1.8" fill="#fff"/><circle cx="64.6" cy="48.4" r="1.8" fill="#fff"/></g>
+  <g data-s="listening"><ellipse cx="37" cy="50" rx="5.5" ry="7.5" fill="#1F1B3A"/><ellipse cx="63" cy="50" rx="5.5" ry="7.5" fill="#1F1B3A"/>
+    <circle cx="39" cy="46.8" r="2.2" fill="#fff"/><circle cx="65" cy="46.8" r="2.2" fill="#fff"/></g>
+  <g data-s="thinking"><ellipse cx="40" cy="48" rx="4.5" ry="6" fill="#1F1B3A"/><ellipse cx="66" cy="48" rx="4.5" ry="6" fill="#1F1B3A"/>
+    <circle cx="42" cy="45.5" r="1.8" fill="#fff"/><circle cx="68" cy="45.5" r="1.8" fill="#fff"/></g>
+  <path data-s="arrived" d="M31 52q6-7 12 0M57 52q6-7 12 0" fill="none" stroke="#1F1B3A" stroke-width="3.5" stroke-linecap="round"/>
+  <g data-s="walking"><path d="M38 62q12 14 24 0z" fill="#1F1B3A" stroke="#1F1B3A" stroke-width="2" stroke-linejoin="round"/>
+    <ellipse cx="50" cy="67.6" rx="5" ry="2.2" fill="#FF7A93"/></g>
+  <path data-s="listening" d="M44 66q6 5 12 0" fill="none" stroke="#1F1B3A" stroke-width="3" stroke-linecap="round"/>
+  <path data-s="thinking" d="M44 68q7 3 13-3" fill="none" stroke="#1F1B3A" stroke-width="3" stroke-linecap="round"/>
+  <g data-s="speaking" class="b-talk"><path d="M39 62q11 15 22 0z" fill="#1F1B3A" stroke="#1F1B3A" stroke-width="2" stroke-linejoin="round"/>
+    <ellipse cx="50" cy="68" rx="5" ry="2.4" fill="#FF7A93"/></g>
+  <g data-s="arrived"><path d="M37 62q13 17 26 0z" fill="#1F1B3A" stroke="#1F1B3A" stroke-width="2" stroke-linejoin="round"/>
+    <ellipse cx="50" cy="69" rx="6" ry="2.8" fill="#FF7A93"/></g>
 </g>
 <g data-s="listening" class="b-waves" fill="none" stroke="#E9B53A" stroke-width="3" stroke-linecap="round">
   <path d="M86 50q3 8 0 16"/><path d="M92 46q5 12 0 24"/>
