@@ -186,13 +186,17 @@
     padding: 44px 0 0; text-align: center; }
   .hero-copy { display: flex; flex-direction: column; align-items: center; }
   .hero-kicker, .hero-title, .hero-sub, .hero-actions, .hero-note { position: static; }
-  .hero-kicker { font-size: 15px; line-height: 1.35; padding: 0 16px; }
+  /* Over the clouds on a phone white text needs more weight and a darker halo to read */
+  .hero-kicker { font-size: 15px; line-height: 1.35; padding: 0 16px;
+    text-shadow: 0 1px 2px rgba(20, 50, 90, .45), 0 2px 12px rgba(20, 50, 90, .45); }
   .hero-title { margin-top: 10px; padding: 0 12px; font-size: min(51px, 10.6vw); line-height: .92; } /* each line fits one row down to 320 px */
-  .hero-sub { margin-top: 16px; padding: 0 22px; max-width: 30em; font-size: 16.5px; line-height: 1.5; }
+  .hero-sub { margin-top: 16px; padding: 0 22px; max-width: 30em; font-size: 16.5px; line-height: 1.5; font-weight: 600;
+    text-shadow: 0 1px 2px rgba(20, 50, 90, .55), 0 2px 14px rgba(20, 50, 90, .5); }
   .wide-only { display: none; }
   .hero-actions { margin-top: 24px; flex-wrap: wrap; padding: 0 16px; gap: 10px; }
   .hero-actions .pill-white { height: 52px; padding: 0 26px; font-size: 18px; }
-  .hero-note { margin-top: 10px; padding: 0 16px; font-size: 14px; }
+  .hero-note { margin-top: 10px; padding: 0 16px; font-size: 14px; font-weight: 600;
+    text-shadow: 0 1px 2px rgba(20, 50, 90, .55), 0 2px 12px rgba(20, 50, 90, .45); }
   .fair { position: static; width: auto; margin: 48px 16px 0; align-self: stretch; text-align: left; }
   .fair-title { margin: 0 0 12px; font-size: 24px; }
   .fair-card { padding: 16px 16px 14px; border-radius: 14px; }
