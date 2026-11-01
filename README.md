@@ -32,6 +32,7 @@ two-person negotiation, the ranking of the fair meetup options with reasons, and
 | --- | --- | --- | --- | --- |
 | Parse a walk description | both | Muse Glimmer (open weights, our Modal endpoint) when warm, else Muse Spark (`muse-spark-1.3`) | `WalkIntent` | JSON schema + Pydantic; Muse Spark after 3 s or on any error; default on failure |
 | Read wishes as place features ("sit outside", "not a chain") | both | Muse Spark | requirements from a fixed menu, with the quote | menu-limited; the planner scores them on OpenStreetMap data |
+| Read "Something else" under More options (Pass by, Avoid, Stops on the way) | both | Muse Spark | kinds from a fixed list per field, named places, number of stops, what it can't map | words only, no position; named places are looked up in our own map data, else not used; keyword rules without the model; "hills", "lighting" and the like are reported as not supported |
 | Reconcile both people's preferences | with a friend | Muse Spark | `JointPreference` + trade-off | shared vibes must come from both people; never changes time or hard constraints |
 | Rank the fair meetup plan's top 6 | with a friend | Muse Spark | order + reasons | only the supplied candidates; every number must be a measured fact |
 | Invite line | with a friend | Muse Spark | one or two sentences | no place, safety, crowd or weather claims |
