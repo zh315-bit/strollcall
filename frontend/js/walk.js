@@ -320,13 +320,19 @@ function playWalkClose(screen) {
 }
 
 // Once the map is open: the route draws itself from the start, a pulse marks where to begin, and a
-// "Let's go!" card with the buddy pops up in the middle, then flies off to the buddy's corner. About
-// two seconds; a tap or a key skips it. Reduced motion or no Web Animations: none.
-const WALK_START_MS = 2100;
+// "Let's go!" card with the buddy pops up in the middle. Then the card fades to just its buddy, which
+// flies to the corner and becomes the walking buddy (hidden until it lands). About two seconds; a tap
+// or a key skips it. Reduced motion or no Web Animations: none, and the buddy is there from the start.
+const WALK_START_MS = 2100, WALK_START_FLY_MS = 420;
 
-function playWalkStart(map, line, summary) {
+function walkStartPlays() {
+  return typeof document.body.animate === "function" && !matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function playWalkStart(map, line, summary, buddyEl) {
   const screen = map.getContainer().closest(".walk-screen");
-  if (!screen || !screen.animate || matchMedia("(prefers-reduced-motion: reduce)").matches) return Promise.resolve();
+  const show = () => { if (buddyEl) buddyEl.classList.remove("buddy-waiting"); };
+  if (!screen || !walkStartPlays()) { show(); return Promise.resolve(); }
   const anims = [];
   const path = line && line.getElement ? line.getElement() : null;
   if (path && path.getTotalLength) {
@@ -339,36 +345,66 @@ function playWalkStart(map, line, summary) {
     icon: L.divIcon({ className: "walk-start-pulse", iconSize: [26, 26] }) }).addTo(map) : null;
   const face = el("div", { class: "buddy", "data-state": "arrived", "aria-hidden": "true" });
   face.innerHTML = typeof BUDDY_SVG === "string" ? BUDDY_SVG : "";
-  const card = el("div", { class: "walk-start-card", "aria-hidden": "true" },
-    face.innerHTML ? face : null, el("b", { class: "walk-start-title" }, "Let's go!"),
-    el("span", { class: "walk-start-sub" }, summary));
+  const words = [el("b", { class: "walk-start-title" }, "Let's go!"), el("span", { class: "walk-start-sub" }, summary)];
+  const card = el("div", { class: "walk-start-card", "aria-hidden": "true" }, face.innerHTML ? face : null, ...words);
   screen.append(card);
-  const pop = card.animate([
-    { opacity: 0, transform: "translate(-50%, -50%) scale(.6)" },
-    { opacity: 1, transform: "translate(-50%, -50%) scale(1.06)", offset: .7 },
-    { opacity: 1, transform: "translate(-50%, -50%) scale(1)" }],
-    { duration: 420, easing: "cubic-bezier(.2,.8,.2,1)", fill: "both" });
-  const leave = card.animate([
-    { opacity: 1, transform: "translate(-50%, -50%) scale(1)" },
-    { opacity: 0, transform: `translate(calc(-50% - ${Math.round(innerWidth * .3)}px), calc(-50% + ${Math.round(innerHeight * .3)}px)) scale(.3)` }],
-    { duration: 380, delay: WALK_START_MS - 380, easing: "cubic-bezier(.5,0,.8,.4)", fill: "both" });
-  anims.push(pop, leave);
-  let done, ended = false;
+  const at = "translate(-50%, -50%)";
+  anims.push(card.animate([
+    { opacity: 0, transform: `${at} scale(.6)` },
+    { opacity: 1, transform: `${at} scale(1.06)`, offset: .7 },
+    { opacity: 1, transform: `${at} scale(1)` }],
+    { duration: 420, easing: "cubic-bezier(.2,.8,.2,1)", fill: "both" }));
+
+  // The fly: the card's buddy lands on the walking buddy's spot at its size, while the rest fades.
+  // Without a walking buddy on screen (switched off), the card just flies off toward that corner.
+  function fly() {
+    const target = buddyEl && !buddyEl.hidden ? buddyEl.querySelector(".buddy") : null;
+    const t = target ? target.getBoundingClientRect() : null, f = face.getBoundingClientRect(), c = card.getBoundingClientRect();
+    const opts = { duration: WALK_START_FLY_MS, easing: "cubic-bezier(.5,0,.3,1)", fill: "forwards" };
+    if (!t || !t.width || !f.width) {
+      return card.animate([{ opacity: 1, transform: `${at} scale(1)` }, { opacity: 0,
+        transform: `${at} translate(${-Math.round(innerWidth * .3)}px, ${Math.round(innerHeight * .3)}px) scale(.3)` }], opts);
+    }
+    const ox = f.left + f.width / 2 - c.left, oy = f.top + f.height / 2 - c.top;
+    const dx = t.left + t.width / 2 - (c.left + ox), dy = t.top + t.height / 2 - (c.top + oy);
+    card.style.transformOrigin = `${ox}px ${oy}px`;
+    words.forEach((w) => anims.push(w.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: "forwards" })));
+    anims.push(card.animate([{ backgroundColor: getComputedStyle(card).backgroundColor, boxShadow: getComputedStyle(card).boxShadow },
+      { backgroundColor: "rgba(0, 0, 0, 0)", boxShadow: "none" }], { duration: 200, fill: "forwards" }));
+    return card.animate([{ transform: `${at} scale(1)` },
+      { transform: `${at} translate(${dx}px, ${dy}px) scale(${t.width / f.width})` }], opts);
+  }
+
+  let done, ended = false, flying = null;
   const finished = new Promise((r) => { done = r; });
-  const end = () => {
+  const end = (landed) => {
     if (ended) return;
     ended = true;
+    clearTimeout(timer);
     anims.forEach((a) => { try { a.finish(); } catch (e) { /* already done */ } });
     if (path) path.style.strokeDasharray = "";
     try { if (pulse) pulse.remove(); } catch (e) { /* the walk already ended and took the map */ }
     card.remove();
-    screen.removeEventListener("pointerdown", end, true);
-    window.removeEventListener("keydown", end, true);
+    show();
+    if (landed === true && buddyEl && !buddyEl.hidden) {  // the landing: a little squash, then the bubble
+      const real = buddyEl.querySelector(".buddy"), bubble = buddyEl.querySelector(".buddy-bubble");
+      if (real) real.animate([{ transform: "scale(1.18, .86)" }, { transform: "scale(.95, 1.05)" }, { transform: "none" }],
+        { duration: 360, easing: "ease-out" });
+      if (bubble) bubble.animate([{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "none" }],
+        { duration: 260, delay: 120, easing: "ease-out", fill: "backwards" });
+    }
+    screen.removeEventListener("pointerdown", skip, true);
+    window.removeEventListener("keydown", skip, true);
     done();
   };
-  screen.addEventListener("pointerdown", end, true);
-  window.addEventListener("keydown", end, true);
-  settle(leave, WALK_START_MS).then(end);
+  const skip = () => end(false);
+  const timer = setTimeout(() => {
+    flying = fly();
+    anims.push(flying);
+    settle(flying, WALK_START_FLY_MS).then(() => end(true));
+  }, WALK_START_MS - WALK_START_FLY_MS);
+  screen.addEventListener("pointerdown", skip, true);
+  window.addEventListener("keydown", skip, true);
   return finished;
 }
 
@@ -538,6 +574,7 @@ function startWalk(legs, opts = {}) {
   // The walking buddy (js/buddy.js), bottom left: walks along, celebrates arrival.
   const buddy = typeof makeBuddy === "function" ? makeBuddy() : null;
   if (buddy) buddy.el.hidden = true;  // until the server says the companion is on
+  if (buddy && walkStartPlays()) buddy.el.classList.add("buddy-waiting");  // until the "Let's go!" card lands
   const screen = el("div", { class: "walk-screen", role: "dialog", "aria-label": "Walking" }, mapEl, top, side,
     buddy ? buddy.el : null, bar);
   document.body.append(screen);
@@ -768,7 +805,8 @@ function startWalk(legs, opts = {}) {
   const total = follower.legs.reduce((m, l) => m + legM(l), 0), r = formatRemaining(total, mPerMin);
   const loop = follower.legs[0].kind === "turnaround";
   const starting = opening.then(() => (closing ? null : playWalkStart(map, routeLine,
-    `${r.min} min · ${r.dist} · ${loop ? "a loop back here" : `to ${follower.legs[follower.legs.length - 1].name}`}`)));
+    `${r.min} min · ${r.dist} · ${loop ? "a loop back here" : `to ${follower.legs[follower.legs.length - 1].name}`}`,
+    buddy ? buddy.el : null)));
   startBuddy();
   stats(projectOnRoute(follower.current.geometry, follower.current.geometry[0]).total);
   keepAwake();

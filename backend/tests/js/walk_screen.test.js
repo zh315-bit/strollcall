@@ -155,11 +155,15 @@ test("the walking buddy: five states drawn, decorative, replies in a live region
 });
 
 test("the start animation: brief, never blocks a tap, skippable, none under reduced motion", () => {
-  const start = walk.slice(walk.indexOf("function playWalkStart"), walk.indexOf("// Intros written ahead"));
+  const start = walk.slice(walk.indexOf("function walkStartPlays"), walk.indexOf("// Intros written ahead"));
   assert.ok(start.includes("prefers-reduced-motion: reduce") && start.includes("return Promise.resolve()"));
-  assert.ok(start.includes('addEventListener("pointerdown", end, true)') && start.includes('addEventListener("keydown", end, true)'));
-  assert.match(walk, /const WALK_START_MS = (\d+);/);
-  assert.ok(+walk.match(/const WALK_START_MS = (\d+);/)[1] <= 2500, "keep it short");
+  assert.ok(start.includes('addEventListener("pointerdown", skip, true)') && start.includes('addEventListener("keydown", skip, true)'));
+  // The walking buddy waits for the card to land, and every way out of the animation shows it.
+  assert.equal(rule(".walk-buddy.buddy-waiting").visibility, "hidden");
+  assert.ok(walk.includes('if (buddy && walkStartPlays()) buddy.el.classList.add("buddy-waiting")'));
+  assert.ok(/if \(!screen \|\| !walkStartPlays\(\)\) \{ show\(\);/.test(start) && /card\.remove\(\);\s*show\(\);/.test(start));
+  assert.match(walk, /const WALK_START_MS = (\d+)[,;]/);
+  assert.ok(+walk.match(/const WALK_START_MS = (\d+)[,;]/)[1] <= 2500, "keep it short");
   assert.equal(rule(".walk-start-card")["pointer-events"], "none");
   assert.ok(start.includes('"aria-hidden": "true"'), "decorative: the step line already announces the walk");
 });
