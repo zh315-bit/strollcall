@@ -332,6 +332,7 @@ function drawPlan(v) {
   const meet = v.places[c.meeting_place_id], dest = v.places[c.endpoint_place_id];
   layers.push(L.marker([meet.lat, meet.lon]).addTo(map).bindPopup(`Meet: ${meet.name}`),
               L.marker([dest.lat, dest.lon]).addTo(map).bindPopup(dest.name));
+  for (const p of routePoiMarkers([c.a_leg, c.b_leg, c.shared_leg])) layers.push(p.addTo(map));
   // The map may have been hidden until now: measure its size first, then fit the plan.
   map.invalidateSize();
   map.fitBounds(L.featureGroup(layers).getBounds(), { padding: [20, 20] });

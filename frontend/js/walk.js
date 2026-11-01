@@ -418,8 +418,21 @@ async function loadPoiIntros() {
 }
 
 const POI_ICONS = { park: "🌳", garden: "🌷", "historic site": "🏛️", artwork: "🎨", memorial: "🕊️", landmark: "📍",
-  "notable building": "🏢", viewpoint: "🌅", fountain: "⛲", bridge: "🌉", square: "🏙️",
+  "notable building": "🏢", viewpoint: "🌅", fountain: "⛲", bridge: "🌉", square: "🏙️", market: "🧺",
   cafe: "☕", bakery: "🥐", ice_cream: "🍦", bookstore: "📚" };
+
+// The places a planned route passes (its legs' pois), for the plan preview maps: one pin per place,
+// stops left out (the pages number those themselves).
+function routePoiMarkers(legs) {
+  const seen = new Set();
+  return legs.flatMap((leg) => (leg && leg.pois) || []).filter((p) => {
+    const k = p.id || `${p.name}|${p.lat}|${p.lon}`;
+    if (p.stop || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  }).map((p) => L.marker([p.lat, p.lon], { icon: L.divIcon({ className: "poi-pin",
+    html: POI_ICONS[p.category] || "📍", iconSize: [24, 24] }) }).bindPopup(p.name));
+}
 
 function introBlock(intro) {
   if (!intro) return null;

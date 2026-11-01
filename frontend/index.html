@@ -418,6 +418,7 @@ function drawSoloRoute() {
   routeLayers = [L.polyline(c.leg.geometry, { color, weight: 5, opacity: .85 }).addTo(map),
                  L.marker([dest.lat, dest.lon]).addTo(map).bindPopup(dest.name)];
   if (c.return_leg) routeLayers.push(L.polyline(c.return_leg.geometry, { color, weight: 4, opacity: .75, dashArray: "6 8" }).addTo(map));
+  for (const p of routePoiMarkers([c.leg, c.return_leg])) routeLayers.push(p.addTo(map));
   for (const s of c.stops || []) {
     routeLayers.push(L.marker([s.lat, s.lon], { icon: L.divIcon({ className: "poi-pin stop-pin", html: String(s.stop), iconSize: [24, 24] }) })
       .addTo(map).bindPopup(`Stop ${s.stop}: ${s.name}`));
