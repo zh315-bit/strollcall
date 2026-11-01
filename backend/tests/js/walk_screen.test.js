@@ -153,3 +153,13 @@ test("the walking buddy: five states drawn, decorative, replies in a live region
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\s*\.buddy \*, \.buddy \{ animation: none !important; \}/);
   assert.equal(rule(".walk-buddy").position, "absolute");
 });
+
+test("the start animation: brief, never blocks a tap, skippable, none under reduced motion", () => {
+  const start = walk.slice(walk.indexOf("function playWalkStart"), walk.indexOf("// Intros written ahead"));
+  assert.ok(start.includes("prefers-reduced-motion: reduce") && start.includes("return Promise.resolve()"));
+  assert.ok(start.includes('addEventListener("pointerdown", end, true)') && start.includes('addEventListener("keydown", end, true)'));
+  assert.match(walk, /const WALK_START_MS = (\d+);/);
+  assert.ok(+walk.match(/const WALK_START_MS = (\d+);/)[1] <= 2500, "keep it short");
+  assert.equal(rule(".walk-start-card")["pointer-events"], "none");
+  assert.ok(start.includes('"aria-hidden": "true"'), "decorative: the step line already announces the walk");
+});

@@ -319,6 +319,59 @@ function playWalkClose(screen) {
   return settle(circleTo(screen, tapOrigin(), false), WALK_CLOSE_MS);
 }
 
+// Once the map is open: the route draws itself from the start, a pulse marks where to begin, and a
+// "Let's go!" card with the buddy pops up in the middle, then flies off to the buddy's corner. About
+// two seconds; a tap or a key skips it. Reduced motion or no Web Animations: none.
+const WALK_START_MS = 2100;
+
+function playWalkStart(map, line, summary) {
+  const screen = map.getContainer().closest(".walk-screen");
+  if (!screen || !screen.animate || matchMedia("(prefers-reduced-motion: reduce)").matches) return Promise.resolve();
+  const anims = [];
+  const path = line && line.getElement ? line.getElement() : null;
+  if (path && path.getTotalLength) {
+    const len = Math.ceil(path.getTotalLength());
+    path.style.strokeDasharray = `${len} ${len}`;
+    anims.push(path.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }],
+      { duration: 1300, delay: 150, easing: "cubic-bezier(.45,.05,.25,1)", fill: "backwards" }));
+  }
+  const pulse = line ? L.marker(line.getLatLngs()[0], { interactive: false, keyboard: false,
+    icon: L.divIcon({ className: "walk-start-pulse", iconSize: [26, 26] }) }).addTo(map) : null;
+  const face = el("div", { class: "buddy", "data-state": "arrived", "aria-hidden": "true" });
+  face.innerHTML = typeof BUDDY_SVG === "string" ? BUDDY_SVG : "";
+  const card = el("div", { class: "walk-start-card", "aria-hidden": "true" },
+    face.innerHTML ? face : null, el("b", { class: "walk-start-title" }, "Let's go!"),
+    el("span", { class: "walk-start-sub" }, summary));
+  screen.append(card);
+  const pop = card.animate([
+    { opacity: 0, transform: "translate(-50%, -50%) scale(.6)" },
+    { opacity: 1, transform: "translate(-50%, -50%) scale(1.06)", offset: .7 },
+    { opacity: 1, transform: "translate(-50%, -50%) scale(1)" }],
+    { duration: 420, easing: "cubic-bezier(.2,.8,.2,1)", fill: "both" });
+  const leave = card.animate([
+    { opacity: 1, transform: "translate(-50%, -50%) scale(1)" },
+    { opacity: 0, transform: `translate(calc(-50% - ${Math.round(innerWidth * .3)}px), calc(-50% + ${Math.round(innerHeight * .3)}px)) scale(.3)` }],
+    { duration: 380, delay: WALK_START_MS - 380, easing: "cubic-bezier(.5,0,.8,.4)", fill: "both" });
+  anims.push(pop, leave);
+  let done, ended = false;
+  const finished = new Promise((r) => { done = r; });
+  const end = () => {
+    if (ended) return;
+    ended = true;
+    anims.forEach((a) => { try { a.finish(); } catch (e) { /* already done */ } });
+    if (path) path.style.strokeDasharray = "";
+    try { if (pulse) pulse.remove(); } catch (e) { /* the walk already ended and took the map */ }
+    card.remove();
+    screen.removeEventListener("pointerdown", end, true);
+    window.removeEventListener("keydown", end, true);
+    done();
+  };
+  screen.addEventListener("pointerdown", end, true);
+  window.addEventListener("keydown", end, true);
+  settle(leave, WALK_START_MS).then(end);
+  return finished;
+}
+
 // Intros written ahead of time (scripts/make_poi_intros.py); loaded once, no model call here.
 let poiIntros = null;
 async function loadPoiIntros() {
@@ -712,6 +765,10 @@ function startWalk(legs, opts = {}) {
 
   loadPoiIntros();
   showLeg();
+  const total = follower.legs.reduce((m, l) => m + legM(l), 0), r = formatRemaining(total, mPerMin);
+  const loop = follower.legs[0].kind === "turnaround";
+  const starting = opening.then(() => (closing ? null : playWalkStart(map, routeLine,
+    `${r.min} min · ${r.dist} · ${loop ? "a loop back here" : `to ${follower.legs[follower.legs.length - 1].name}`}`)));
   startBuddy();
   stats(projectOnRoute(follower.current.geometry, follower.current.geometry[0]).total);
   keepAwake();
@@ -724,5 +781,5 @@ function startWalk(legs, opts = {}) {
       (e) => notice(e.code === 1 ? "Location permission was denied. Allow it in your browser settings, or use a map app." : "Location unavailable right now. Still trying…", "warn"),
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 20000 });
   }
-  return { follower, finish, opening };
+  return { follower, finish, opening, starting };
 }
