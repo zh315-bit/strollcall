@@ -139,6 +139,7 @@ a { color: var(--accent-deep); }
 .i-users { --i: url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/users.svg); }
 .i-footprints { --i: url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/footprints.svg); }
 .i-mic { --i: url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/mic.svg); }
+.i-refresh { --i: url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/refresh-cw.svg); }
 .i-check { --i: url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/check.svg); }
 .i-heart { --i: url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/heart.svg); }
 .i-info { --i: url(https://cdn.jsdelivr.net/npm/lucide-static@0.460.0/icons/info.svg); }

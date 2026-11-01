@@ -127,6 +127,32 @@ $("text-row").insertBefore(micButton($("text"), (s) => {
   $("voice-source").replaceChildren(el("span", { class: "muted" }, "transcribed"), sourceBadge(s) || "");
 }), $("parse"));
 
+// For someone without an idea yet: each press puts a different example wish in the box, ready to read.
+// Only things the planner can honor (minutes, a loop or an ending, place kinds, stairs, busy avenues).
+const EXAMPLE_WISHES = [
+  "25 minutes, quiet streets, coffee at the end",
+  "A 40 minute loop through a park, back where I started",
+  "30 minutes along the water, somewhere to sit outside at the end",
+  "Half an hour, lots of trees, avoid busy avenues",
+  "20 minutes to a bakery, no stairs",
+  "45 minutes past street art and old buildings",
+  "A short 15 minute walk to stretch my legs",
+  "35 minutes, a nice view on the way, ice cream to finish",
+  "An hour past bookstores, ending at a cafe",
+  "30 minutes, green and quiet, somewhere open now at the end",
+  "25 minutes past a fountain or a square, then coffee",
+];
+let exampleAt = Math.floor(Math.random() * EXAMPLE_WISHES.length);
+$("text").placeholder = `e.g. ${EXAMPLE_WISHES[exampleAt]}`;
+$("text-row").insertBefore(el("button", {
+  type: "button", id: "example", title: "Put a different example wish in the box",
+  onclick: () => {
+    exampleAt = (exampleAt + 1 + Math.floor(Math.random() * (EXAMPLE_WISHES.length - 1))) % EXAMPLE_WISHES.length;
+    $("text").value = EXAMPLE_WISHES[exampleAt];
+    $("text").focus();
+  },
+}, [el("span", { class: "i i-refresh", "aria-hidden": "true" }), " Try an example"]), $("parse"));
+
 function setOrigin(lat, lon) {
   if (marker) marker.setLatLng([lat, lon]); else marker = L.marker([lat, lon]).addTo(map);
   if (inCoverage(lat, lon) === false) {
