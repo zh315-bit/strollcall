@@ -109,6 +109,22 @@ function encodeWav(samples, rate) {
   return new Blob([buffer], { type: "audio/wav" });
 }
 
+// For someone without an idea yet: each press puts a different example wish in `textarea`, ready to
+// read; the placeholder starts on a random one. Examples ask only for what the planner can honor.
+function exampleButton(textarea, examples, prefix, onPick) {
+  let at = Math.floor(Math.random() * examples.length);
+  textarea.placeholder = `${prefix}${examples[at]}`;
+  return el("button", {
+    type: "button", title: "Put a different example wish in the box",
+    onclick: () => {
+      at = (at + 1 + Math.floor(Math.random() * (examples.length - 1))) % examples.length;
+      textarea.value = examples[at];
+      textarea.focus();
+      onPick && onPick();
+    },
+  }, [el("span", { class: "i i-refresh", "aria-hidden": "true" }), " Try an example"]);
+}
+
 // A mic button that fills `textarea` with the transcript (the user can edit it before parsing).
 function micButton(textarea, onSource) {
   let stop = null;
