@@ -1,12 +1,15 @@
 """Speech to text with Muse Voice Transcribe. The browser records and converts to WAV
-(mono 16-bit PCM, 16 or 24 kHz); the transcript is shown for editing before parsing."""
+(mono 16-bit PCM, 16 or 24 kHz); the transcript is shown for editing before parsing.
+Text to speech for the walking buddy with ElevenLabs (services/speech.py)."""
 
-from fastapi import APIRouter, HTTPException, UploadFile
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Response, UploadFile
+from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel, Field
 
 from app.core.errors import ProviderError
 from app.providers import meta_or_mock
 from app.providers.meta import MetaError
+from app.services import speech
 
 router = APIRouter(prefix="/api/voice", tags=["voice"])
 
@@ -32,3 +35,17 @@ async def transcribe(audio: UploadFile) -> Transcript:
     except ProviderError as e:
         raise HTTPException(status_code=503, detail=e.message) from e
     return Transcript(transcript=text, source=source)
+
+
+class SpeakRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=speech.MAX_CHARS)
+
+
+@router.post("/speak")
+async def speak(req: SpeakRequest) -> Response:
+    """The buddy's line as MP3. 503 when ElevenLabs is off or failed: the page then uses the phone's voice."""
+    try:
+        audio = await run_in_threadpool(speech.speak, req.text)
+    except speech.SpeechUnavailable as e:
+        raise HTTPException(status_code=503, detail=e.message) from e
+    return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "no-store"})

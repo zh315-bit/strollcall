@@ -55,6 +55,13 @@ class Settings(BaseSettings):
     # H200 $4.54/h + 4 CPU cores + 16 GiB (modal.com/pricing, 2026-10-31): billed per second warm.
     open_weights_usd_per_hour: float = 4.86
     open_weights_timeout_s: float = 3.0
+    # The walking buddy's voice (services/speech.py): ElevenLabs text to speech. Without a key the
+    # phone's own voice reads the buddy's replies, as before.
+    elevenlabs_api_key: SecretStr = SecretStr("")
+    elevenlabs_voice_id: str = "cgSgspJ2msm6clMCkdW9"  # Jessica: "Playful, Bright, Warm" (premade)
+    elevenlabs_model: str = "eleven_flash_v2_5"  # the low-latency model: a reply is spoken while walking
+    elevenlabs_timeout_s: float = 6.0
+    elevenlabs_daily_char_cap: int = 20000  # characters sent per day, all walkers; past it, the phone's voice
     # Cap on output tokens per Spark call, reasoning included. Truncation is logged.
     meta_max_output_tokens: int = 4096  # 2048 truncated 3 of 10 live intent calls (2026-10-28)
     # Intent parsing at minimal effort used 561-884 output tokens (2026-10-30); room for about twice that.

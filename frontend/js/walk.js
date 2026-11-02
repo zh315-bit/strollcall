@@ -540,28 +540,73 @@ function startWalk(legs, opts = {}) {
     title: "Open in a map app" }, walkIcon("mapApp"), el("span", { class: "walk-btn-label" }, "Open in a map app"));
   const endBtn = el("button", { type: "button", class: "walk-end", onclick: () => finish() }, "End walk");
   // Voice prompts: off unless the walker turned them on (remembered on this phone only).
-  const canSpeak = typeof speechSynthesis !== "undefined" && typeof SpeechSynthesisUtterance !== "undefined";
+  // The buddy's voice is ElevenLabs (/api/voice/speak); the phone's own voice reads a line when that
+  // is off, slow or fails, so no prompt is lost.
+  const phoneVoice = typeof speechSynthesis !== "undefined" && typeof SpeechSynthesisUtterance !== "undefined";
+  const player = typeof Audio !== "undefined" ? new Audio() : null;
+  const canSpeak = phoneVoice || !!player;
+  let cloudVoice = !!player, speakSeq = 0;
   let voiceOn = false;
   try { voiceOn = canSpeak && localStorage.getItem("strollcall:voice") === "on"; } catch (e) { /* default off */ }
   const said = new Set();
-  function say(text) {
-    if (!voiceOn || !text) return;
+  const speaking = (on) => {
+    if (!buddy) return;
+    if (on && buddy.state === "walking") buddy.set("speaking");
+    if (!on && buddy.state === "speaking") buddy.set("walking");
+  };
+  if (player) {
+    player.onplaying = () => speaking(true);
+    player.onended = player.onpause = () => speaking(false);
+  }
+  function hush() {
+    speakSeq++;  // a line still on its way is dropped
+    if (player) player.pause();
+    if (phoneVoice) speechSynthesis.cancel();
+  }
+  function sayOnPhone(text) {
+    if (!phoneVoice) return;
     const u = new SpeechSynthesisUtterance(text);
     u.lang = "en-US";
-    if (buddy) {
-      u.onstart = () => { if (buddy.state === "walking") buddy.set("speaking"); };
-      u.onend = () => { if (buddy.state === "speaking") buddy.set("walking"); };
-    }
-    speechSynthesis.cancel();  // never queue stale prompts behind new ones
+    u.onstart = () => speaking(true);
+    u.onend = () => speaking(false);
     speechSynthesis.speak(u);
+  }
+  async function say(text) {
+    if (!voiceOn || !text) return;
+    hush();  // never queue stale prompts behind new ones
+    const seq = speakSeq;
+    if (cloudVoice) {
+      try {
+        const r = await fetch("/api/voice/speak", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: text.slice(0, 400) }) });
+        if (r.status === 503 && /no ElevenLabs key/.test((await r.clone().json().catch(() => ({}))).detail || "")) cloudVoice = false;
+        if (!r.ok) throw new Error(`voice ${r.status}`);
+        const url = URL.createObjectURL(await r.blob());
+        if (seq !== speakSeq || !voiceOn) { URL.revokeObjectURL(url); return; }
+        const old = player.src;
+        player.src = url;
+        if (old.startsWith("blob:")) URL.revokeObjectURL(old);
+        await player.play();
+        return;
+      } catch (e) {
+        if (seq !== speakSeq) return;
+      }
+    }
+    sayOnPhone(text);
+  }
+  // iPhone plays audio only from a tap: playing a moment of silence inside the tap lets later lines play.
+  function unlockAudio() {
+    if (!player) return;
+    player.src = URL.createObjectURL(encodeWav(new Float32Array(1600), 16000));
+    player.play().catch(() => {});
   }
   const voiceLabel = el("span", { class: "walk-btn-label" });
   const voiceBtn = el("button", { type: "button", class: "walk-btn voice-toggle", onclick: () => {
     voiceOn = !voiceOn;
     showVoice();
     try { localStorage.setItem("strollcall:voice", voiceOn ? "on" : "off"); } catch (e) { /* fine */ }
-    if (voiceOn) say("Voice prompts on.");  // speaking inside the tap unlocks audio on iPhone
-    else speechSynthesis.cancel();
+    if (voiceOn) { unlockAudio(); say("Voice prompts on."); }  // inside the tap: unlocks audio on iPhone
+    else hush();
   } });
   function showVoice() {
     voiceBtn.setAttribute("aria-pressed", String(voiceOn));
@@ -796,7 +841,7 @@ function startWalk(legs, opts = {}) {
 
   function finish(done) {
     if (companion) companion.stop();
-    if (canSpeak) speechSynthesis.cancel();
+    hush();
     if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     watchId = null;
     if (wakeLock) wakeLock.release().catch(() => {});

@@ -37,6 +37,7 @@ two-person negotiation, the ranking of the fair meetup options with reasons, and
 | Rank the fair meetup plan's top 6 | with a friend | Muse Spark | order + reasons | only the supplied candidates; every number must be a measured fact |
 | Invite line | with a friend | Muse Spark | one or two sentences | no place, safety, crowd or weather claims |
 | Speech to text | both | Muse Voice Transcribe | transcript | WAV format check; user edits before parsing |
+| The walking buddy's voice (not Meta) | both | ElevenLabs text to speech (`eleven_flash_v2_5`, voice Jessica) | MP3 | only the line, never a position; 6 s timeout, cache, daily character cap (`ELEVENLABS_DAILY_CHAR_CAP`); the phone's own voice on any failure or without `ELEVENLABS_API_KEY` |
 | Illustrations | both | Muse Image (24 pictures made ahead of time, picked by theme) | image | model and prompt per file in `frontend/illustrations/manifest.json` |
 | Intros of places passed on a walk | both | Muse Spark (ahead of time, `scripts/make_poi_intros.py`) | at most 2 sentences | only from the place's Wikipedia summary; every number, name, feature and evaluative word must be in that text, else dropped |
 

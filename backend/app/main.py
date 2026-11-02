@@ -8,6 +8,7 @@ from app.api import companion, coverage, dev, intents, invites, nearby, open_wei
 from app.core.budget import SpendGuard
 from app.core.config import ROOT_DIR, get_settings
 from app.models.db import health as db_health
+from app.services.speech import status as speech_status
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -197,6 +198,7 @@ def health(check_meta: bool = False) -> dict:
         },
         "meta_models": {"text": s.model_id, "image": s.image_model_id, "voice": s.voice_model_id},
         "open_weights": open_weights_status(s),
+        "buddy_voice": speech_status(s),
         "meta_base_url": s.model_base_url,  # not secret; a wrong base URL shows up as 404s
         "meta_key_fingerprint": key_fingerprint(s.model_api_key.get_secret_value()),
         # Diagnostics (env var names, platform, request shape) only on a DEBUG deployment.

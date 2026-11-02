@@ -62,6 +62,9 @@
         (US), and not sent to Meta's API for that step; the page says which one read it. Every other step still
         uses Meta's API. Typed text is kept in the invite's private record and
         deleted at expiry. Voice recordings are not stored by StrollCall.</td></tr>
+      <tr><th>What the walking buddy says</th><td>With Voice on, the buddy's lines (turns, place names, its
+        replies) are read aloud by ElevenLabs (US): only that text is sent, never your position, and StrollCall
+        doesn't store the audio. If ElevenLabs is unavailable, your phone's own voice reads them.</td></tr>
       <tr><th>Shared recaps</th><td>Only when you tap Share recap: the meeting point, destination, the walk between
         them, minutes walked and places passed, never a start point or a place close to one. Deleted after 30 days.</td></tr>
       <tr><th>After-walk survey</th><td>Only if you tick the consent box: your three answers and, if you give it, your
@@ -69,7 +72,7 @@
       <tr><th>Invites after expiry</th><td>The invite line, the wishes as understood, the meeting point,
         destination, shared route and walking times stay on the server, without start points or routes from them.</td></tr>
     </table>
-    <p class="muted small">The app runs on Render (US) with a Neon database (US East); Muse Glimmer runs on Modal (US West). Planning and routing run on our
+    <p class="muted small">The app runs on Render (US) with a Neon database (US East); Muse Glimmer runs on Modal (US West); the buddy's voice is ElevenLabs (US). Planning and routing run on our
       own server. Your browser also loads map images from OpenStreetMap's tile servers (they see which area the map
       shows), fonts from Google Fonts and scripts from cdnjs and jsDelivr. If a walk ever falls outside our own map,
       place lookups can go to OpenStreetMap's public Overpass service with the start (or, with a friend, the midpoint between you); the app asks for
