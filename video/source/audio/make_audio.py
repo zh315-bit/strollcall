@@ -25,16 +25,20 @@ AUDIO = ROOT / "video" / "assets" / "audio"
 VOICE = os.environ.get("VO_VOICE_ID", "8vqmfub9vtiy1qBBmHeb")
 MODEL = "eleven_v4"
 
+# Final script (revision 3): confident, contrastive, every number from the repo:
+# 6.5x = 3.58 s / 0.55 s median wish reading (benchmarks/2026-10-31-open-weights-run1.md:14); 29 ms median planning
+# (benchmarks/2026-10-31-local.md:16); 139,106 nodes (local.md:3); 4.8 vs 0.6 min apart, 8x = 4.8 / 0.6
+# (fairness_example.json); 12 of 12 (local.md:13); 10 of 10 vs 7 (2026-10-28-ablation-wishes.md:16).
 VO = {
-    "vo_01a": "I'm Chris. Some afternoons I want to go outside, but I don't know where to go.",
-    "vo_01b": "And my friends? Mostly homebodies. 'We should hang out' never turns into a plan.",
-    "vo_02": "So I built StrollCall. Tell it how long you have and what you feel like, and it plans a short walk worth taking: on your own, or with a friend.",
-    "vo_03": "I just say what I want. Muse Voice transcribes it, and Muse Glimmer, an open-weights model I host on Modal, turns it into a plan the route engine understands, in about half a second.",
-    "vo_04": "While I walk, the map fills the screen, and my walking buddy listens. When I ask for a coffee stop, Muse Spark picks a tool, the planner re-routes, and only real, open places come back.",
-    "vo_05": "Walking is better with someone. I send one link. My friend doesn't need an app: one tap, and they can say what they'd like too.",
-    "vo_06": "Muse Spark balances both of our wishes and explains the trade-off. And the meeting point is fair by walking time, not by distance on a map: here, the map's midpoint leaves us 4.8 minutes apart; ours gets us there within a minute.",
-    "vo_07": "Under the hood: a walking graph of New York with 139,106 points, built from OpenStreetMap, plans in milliseconds. Meta models handle the human side: Muse Glimmer reads wishes, Muse Spark negotiates and ranks, Muse Image draws the invite, Muse Voice listens.",
-    "vo_08": "Every evaluation was committed before it ran. 12 of 12 test pairs got the right outcome. Meta's reading caught 10 of 10 wishes, against 7 for keyword rules. And a checker throws out any claim our data can't back up.",
+    "vo_01a": "I'm Chris. Some afternoons I want to get outside, but I never know where to go.",
+    "vo_01b": "And my friends? Total homebodies. 'We should hang out' never becomes a plan.",
+    "vo_02": "So I built StrollCall. Map apps need a destination. StrollCall starts from how you feel: tell it how long you have and what you're in the mood for, and it plans a walk worth taking, solo or with a friend.",
+    "vo_03": "I just say it. Muse Voice transcribes it, and Muse Glimmer, Meta's open-weights model running on my own H200 on Modal, reads it in about half a second, six and a half times faster than the API. And my location never goes to any model.",
+    "vo_04": "And it doesn't stop at directions. While I walk, the map fills the screen, and my buddy listens. Mid-walk, I ask for a coffee stop: Muse Spark calls a tool, the planner re-routes, and only real, open places come back.",
+    "vo_05": "Walking is better together. One link, no app, no sign-up. My friend taps once, and says what they'd like too.",
+    "vo_06": "Muse Spark balances both of our wishes and explains the trade-off. Splitting the distance isn't fair: the map's midpoint leaves us 4.8 minutes apart. StrollCall splits the walking time instead: just 0.6 minutes apart, an eight-times smaller gap.",
+    "vo_07": "Under the hood, our own walking graph of New York: 139,106 points from OpenStreetMap, planning a walk in about 29 milliseconds. Four Meta models do the human side: Muse Glimmer reads wishes, Muse Spark negotiates and ranks, Muse Image draws the invite, Muse Voice listens.",
+    "vo_08": "And unlike a typical chatbot, it's built not to make things up. Every evaluation is pre-registered. 12 out of 12 test pairs, all correct. Meta's reading caught every wish, 10 of 10, where keyword rules caught 7. And a checker throws out any claim our data can't back up.",
     "vo_10": "StrollCall. Less planning. More walking.",
 }
 

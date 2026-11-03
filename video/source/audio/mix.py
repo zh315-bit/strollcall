@@ -75,7 +75,8 @@ def mix(total, out):
             vol = f"volume='{g}*(0.16+0.84*clip((t-{d - 0.3:.3f})/0.3,0,1))':eval=frame"
         else:
             vol = f"volume={g}"
-        f.append(f"[{n}:a]aresample=48000,aformat=channel_layouts=stereo,{vol},adelay={ms}|{ms}[s{n}]")
+        trim = f"atrim=0:{s['end']},afade=t=out:st={s['end'] - 0.12:.3f}:d=0.12," if "end" in s else ""  # cut after a whole sentence
+        f.append(f"[{n}:a]{trim}aresample=48000,aformat=channel_layouts=stereo,{vol},adelay={ms}|{ms}[s{n}]")
         speech.append(f"[s{n}]")
         n += 1
     f.append(f"{''.join(speech)}amix=inputs={len(speech)}:normalize=0,apad=whole_dur={total}[sp]")
@@ -94,7 +95,7 @@ def mix(total, out):
                  f"aformat=channel_layouts=stereo,adelay={int(t * 1000)}|{int(t * 1000)}[h{j}]")
         sfx.append(f"[h{j}]")
     f.append(f"{''.join(sfx)}amix=inputs={len(sfx)}:normalize=0,apad=whole_dur={total}[sfx]")
-    f.append(f"[sp1][duck][sfx]amix=inputs=3:normalize=0,loudnorm=I=-16:TP=-1.5:LRA=11,alimiter=limit=0.9,atrim=0:{total}[out]")
+    f.append(f"[sp1][duck][sfx]amix=inputs=3:normalize=0,loudnorm=I=-16:TP=-1.5:LRA=11,alimiter=limit=0.84:level=0,atrim=0:{total}[out]")
     subprocess.run(["ffmpeg", "-loglevel", "error", "-y", *inputs, "-filter_complex", ";".join(f), "-map", "[out]",
                     "-ar", "48000", str(out)], check=True)
 

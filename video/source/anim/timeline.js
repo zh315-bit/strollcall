@@ -99,7 +99,7 @@ add("s1", (t) => ({ bg: SCENES.s1.draw(t) }));
 // "'We should hang out'" 2.5-3.9 · "never turns into a plan." 4.3-5.6
 add("s2", (t) => {
   // the orange friend at home on the sofa (painted room, art/s2_room.png), with "And my friends? Mostly homebodies."
-  const focus = prog(t, 2.2, 2.9, easeInOut);
+  const focus = prog(t, 2.6, 3.3, easeInOut);
   const breathe = 1 + 0.025 * Math.sin(t * 2.4);
   let inner = contact(800, 742, 1.8, 0.25);
   inner += mascotB({ x: 800, y: 632, s: 1.85, expr: "sleepy", feet: false, sy: breathe, rot: -4 + 2 * Math.sin(t * 0.9) });
@@ -109,15 +109,15 @@ add("s2", (t) => {
   let s = painted("s2_room", t, inner, { z0: zr, z1: zr, cx: lerp(800, 700, focus), cy: 600, dur: 1 });
   s += `<rect width="1920" height="1080" fill="#FBF7EF" opacity="${0.32 * focus}"/>` + artCredit();
   // the group chat (staged, made-up names), from "We should hang out"
-  const chat = springIn(t, 2.35, 0.55);
+  const chat = springIn(t, 2.8, 0.55);
   if (chat > 0) {
-    const px = 1260, py = 110, pw = 500, ph = 800, grey = prog(t, 5.6, 6.3);
+    const px = 1260, py = 110, pw = 500, ph = 800, grey = prog(t, 5.9, 6.5);
     s += `<g opacity="${clamp(chat * 2)}" transform="translate(${px + pw / 2} ${py + ph / 2 + floatY(t, 4, 4.6, 0.4) + (1 - clamp(chat)) * 60}) rotate(${floatR(t, 0.6, 5)}) translate(${-pw / 2} ${-ph / 2})">
       <g filter="url(#shadow)"><rect width="${pw}" height="${ph}" rx="56" fill="#fff"/></g>
       <rect width="${pw}" height="${ph}" rx="56" fill="none" stroke="${C.ink}" stroke-width="12"/>
       <rect x="20" y="30" width="${pw - 40}" height="80" rx="24" fill="#F4F0FA"/>
       ${text(pw / 2, 82, "Weekend crew", { size: 32, family: "Nunito", weight: 800 })}`;
-    const msgs = [{ at: 2.55, who: "Sam", txt: "we should hang out sometime" }, { at: 3.2, who: "Jo", txt: "yes!!" }, { at: 3.75, who: "Riley", txt: "let's plan it", me: true }];
+    const msgs = [{ at: 3.0, who: "Sam", txt: "we should hang out sometime" }, { at: 3.6, who: "Jo", txt: "yes!!" }, { at: 4.1, who: "Riley", txt: "let's plan it", me: true }];
     msgs.forEach((m, i) => {
       const p = springIn(t, m.at, 0.4);
       if (p <= 0) return;
@@ -127,62 +127,84 @@ add("s2", (t) => {
         <rect width="${w}" height="64" rx="32" fill="${m.me ? C.blue : "#EFE9F7"}"/>
         ${text(w / 2, 41, m.txt, { size: 25, family: "Nunito", weight: 700, fill: m.me ? "#fff" : C.ink })}</g>`;
     });
-    const dp = prog(t, 4.2, 4.5) * (1 - prog(t, 5.2, 5.7));
+    const dp = prog(t, 4.55, 4.85) * (1 - prog(t, 5.6, 6.0));
     if (dp > 0) s += `<g opacity="${dp}" transform="translate(40 560)"><rect width="110" height="56" rx="28" fill="#EFE9F7"/>
       ${[0, 1, 2].map((k) => `<circle cx="${30 + k * 25}" cy="${28 - Math.max(0, Math.sin(t * 7 - k)) * 6}" r="7" fill="#8A82A0"/>`).join("")}</g>`;
     if (grey > 0) s += `<rect width="${pw}" height="${ph}" rx="56" fill="#F1EEF6" opacity="${grey * 0.72}"/>`;
     s += `</g>`;
   }
   // calendar pages flip: "3 weeks later…" (after "never turns into a plan")
-  const cp = springIn(t, 5.2, 0.5);
+  const cp = springIn(t, 5.6, 0.5);
   if (cp > 0) {
-    const flips = prog(t, 5.5, 6.9, (x) => x) * 3, week = 1 + Math.floor(flips), ph = flips % 1;
+    const flips = prog(t, 5.9, 7.2, (x) => x) * 3, week = 1 + Math.floor(flips), ph = flips % 1;
     const sq = week < 4 ? Math.abs(Math.cos(ph * Math.PI)) : 1;
     s += `<g opacity="${clamp(cp * 2)}" transform="translate(300 ${300 + floatY(t, 4, 3.6)}) scale(${clamp(cp, 0, 1.1)})"><g filter="url(#shadow)"><rect x="-140" y="-150" width="280" height="300" rx="30" fill="#fff"/></g>
       <rect x="-140" y="-150" width="280" height="80" rx="30" fill="${C.orange}"/><rect x="-140" y="-100" width="280" height="30" fill="${C.orange}"/>
       ${text(0, -92, "WEEK", { size: 30, fill: "#fff" })}<g transform="translate(0 30) scale(1 ${sq})">${text(0, 40, String(Math.min(4, week)), { size: 130 })}</g></g>
-      <g opacity="${prog(t, 6.4, 6.9)}"><rect x="130" y="485" width="340" height="66" rx="33" fill="#fff" opacity=".92"/>${text(300, 532, "3 weeks later…", { size: 40 })}</g>`;
+      <g opacity="${prog(t, 6.8, 7.2)}"><rect x="130" y="485" width="340" height="66" rx="33" fill="#fff" opacity=".92"/>${text(300, 532, "3 weeks later…", { size: 40 })}</g>`;
   }
   return { bg: s };
 });
 
-// 3 · what it is. VO 2 at 16.36: "So I built StrollCall." 0.4-1.6 ("StrollCall" 1.3) · "Tell it how long you have
-// and what you feel like," 2.4-4.6 · "and it plans a short walk worth taking:" 4.8-6.6 · "on your own," 7.1-7.8 ·
-// "or with a friend." 8.0-8.8. A1: click on "Plan my walk" at clip 5.82 lands at t 6.0.
+// 3 · what it is. VO 2 (phrases): "So I built StrollCall." 0.4-1.7 ("StrollCall" 1.2) · "Map apps need a destination."
+// 2.1-3.7 · "StrollCall starts from how you feel:" 3.8-5.5 · "tell it how long you have and what you're in the mood
+// for," 6.3-8.7 · "and it plans a walk worth taking," 9.2-10.8 ("taking" 10.42 = the click on "Plan my walk") ·
+// "solo or with a friend." 13.35-14.6, once the New walk page has loaded (about 2.8 s after the click).
 add("s3", (t) => {
   let s = `<rect width="1920" height="1080" fill="${C.cream}"/>` + ambient(t, ["#FFF1D6", "#E8F1FF", "#E3F5E8", "#FFE9DF"]);
-  const up = prog(t, 1.9, 2.6, easeInOut);  // the logo rises away as the browser comes up
-  const a = prog(t, 0.0, 0.85), b = prog(t, 0.15, 1.0);
+  const up = prog(t, 1.75, 2.3, easeInOut);  // the logo rises away for the contrast cards
   const ly = lerp(0, -560, up), ls = lerp(1, 0.5, up);
   if (up < 1) {
+    const a = prog(t, 0.0, 0.85), b = prog(t, 0.15, 1.0);
     const ha = a < 1 ? hop(t, 12) : { b: Math.max(0, Math.sin((t - 0.85) * 8)) * 12 * Math.max(0, 1 - (t - 0.85) / 0.6), sx: 1, sy: 1 };
     const hb = b < 1 ? hop(t + 0.2, 12) : ha;
     s += `<g transform="translate(960 ${540 + ly}) scale(${ls}) translate(-960 -540)" opacity="${1 - up}">
       ${mascotA({ x: lerp(-200, 840, a), y: 430, s: 1.1, bounce: ha.b, sx: ha.sx, sy: ha.sy, expr: "open", blink: blinkAt(t, 2.5) })}
       ${mascotB({ x: lerp(2120, 1080, b), y: 434, s: 1.05, bounce: hb.b, sx: hb.sx, sy: hb.sy })}
       <path transform="translate(960 300) scale(${1.4 * clamp(springIn(t, 1.0, 0.4), 0, 1.3)})" d="M0 10 c-6 -12 -22 -6 -16 6 l16 16 l16 -16 c6 -12 -10 -18 -16 -6 z" fill="${C.yellow}" stroke="${C.ink}" stroke-width="3"/>
-      <g opacity="${prog(t, 1.2, 1.6)}" transform="translate(0 ${(1 - prog(t, 1.2, 1.6)) * 16})">${text(960, 680, "StrollCall", { size: 150 })}</g></g>`;
+      <g opacity="${prog(t, 1.15, 1.5)}" transform="translate(0 ${(1 - prog(t, 1.15, 1.5)) * 16})">${text(960, 680, "StrollCall", { size: 150 })}</g></g>`;
   }
-  if (t < 1.85) return { bg: s };
+  // the contrast: "Map apps need a destination." / "StrollCall starts from how you feel:" (generic illustrations)
+  const cOut = prog(t, 5.6, 6.1, easeInOut);
+  const card = (x, t0, inner, tone) => {
+    const p = springIn(t, t0, 0.5);
+    if (p <= 0 || cOut >= 1) return "";
+    return `<g opacity="${clamp(p * 2) * (1 - cOut)}" transform="translate(${x} ${560 + floatY(t, 4, 4.4, x / 800) + cOut * 40}) scale(${0.9 + 0.1 * clamp(p, 0, 1.1)})">
+      <g filter="url(#shadow)"><rect x="-330" y="-250" width="660" height="500" rx="40" fill="${tone}"/></g>${inner}</g>`;
+  };
+  s += card(560, 2.05, `${text(0, -175, "Map apps", { size: 44, fill: "#6B6380" })}
+    <rect x="-250" y="-110" width="500" height="76" rx="38" fill="#fff" stroke="#B9B2CC" stroke-width="4"/>
+    <circle cx="-205" cy="-72" r="16" fill="none" stroke="#8A82A0" stroke-width="5"/><path d="M-193 -60 l14 14" stroke="#8A82A0" stroke-width="5" stroke-linecap="round"/>
+    ${text(-170, -60, "Where to?", { size: 32, family: "Nunito", weight: 700, anchor: "start", fill: "#8A82A0" })}
+    <g transform="translate(0 60)"><path d="M0 70 C-46 18 -46 -40 0 -40 C46 -40 46 18 0 70 Z" fill="#E0484D" stroke="${C.ink}" stroke-width="5"/><circle cy="-6" r="16" fill="#fff"/></g>
+    ${text(0, 215, "start from a destination", { size: 32, family: "Nunito", weight: 800, fill: "#6B6380" })}`, "#F1EEF6");
+  if (t > 3.6 && cOut < 1) s += `<g opacity="${prog(t, 3.6, 3.9) * (1 - cOut)}">${text(960, 575, "vs", { size: 54, fill: "#8A82A0" })}</g>`;
+  s += card(1360, 3.75, `${text(0, -175, "StrollCall", { size: 44, fill: C.green })}
+    <g transform="translate(40 -40)"><rect x="-230" y="-55" width="430" height="110" rx="40" fill="#fff" stroke="${C.ink}" stroke-width="4"/>
+      <path d="M-150 55 l-30 40 l60 -40 z" fill="#fff" stroke="${C.ink}" stroke-width="4" stroke-linejoin="round"/><rect x="-170" y="45" width="80" height="14" fill="#fff"/>
+      ${text(-15, -8, "“30 quiet minutes,", { size: 30, family: "Nunito", weight: 800 })}${text(-15, 30, "coffee at the end”", { size: 30, family: "Nunito", weight: 800 })}</g>
+    ${mascotA({ x: -200, y: 120, s: 0.8, expr: "open", bounce: Math.abs(Math.sin(t * 3)) * 6, blink: blinkAt(t, 2.4) })}
+    ${text(60, 215, "start from how you feel", { size: 32, family: "Nunito", weight: 800, fill: C.green })}`, "#E9F7EE");
+  if (t < 5.75) return { bg: s };
   // the live site in a browser, rising in
-  const rise = springIn(t, 1.9, 0.6);
-  const clipT = 5.82 + (t - 6.25);  // the click on "Plan my walk" (clip 5.82) lands on "taking" (t 6.25)
+  const rise = springIn(t, 5.8, 0.6);
+  const clipT = 5.82 + (t - 10.45);  // the click on "Plan my walk" (clip 5.82) lands on "taking" (t 10.45)
   const after = clipT > 8.3;          // the New walk page has loaded (clip 8.0-8.6, about 2 s after the click)
-  const zIn = after ? 1 + 0.1 * prog(t, 9.0, 10.6, easeInOut) : 1 + 0.035 * prog(t, 2.2, 5.6, easeInOut);
+  const zIn = after ? 1 + 0.1 * prog(t, 13.3, 14.7, easeInOut) : 1 + 0.035 * prog(t, 6.3, 9.8, easeInOut);
   const d = dev({ x: 210, y: 160, w: 1500, h: 844, cw: 1920, dy: (1 - clamp(rise)) * 700 + floatY(t, 3, 5), rot: floatR(t, 0.2, 6),
     s: 0.94 + 0.06 * clamp(rise, 0, 1.05), z: zIn, zx: after ? 0.17 : 0.5, zy: after ? 0.16 : 0.62 });
   s += browserChrome(d, "strollcall.onrender.com");
   let fg = "";
-  // "Tell it how long you have and what you feel like": underline the page's own line as it is said
-  const ul = prog(t, 2.4, 4.4, easeInOut) * (1 - prog(t, 5.6, 6.0));
+  // "tell it how long you have and what you're in the mood for": underline the page's own line as it is said
+  const ul = prog(t, 6.4, 8.5, easeInOut) * (1 - prog(t, 9.6, 10.0));
   if (ul > 0) { const p0 = devPt(d, 645, 708), p1 = devPt(d, 1275, 708); fg += `<path d="M${p0[0]} ${p0[1]} L${lerp(p0[0], p1[0], ul)} ${lerp(p0[1], p1[1], ul)}" stroke="${C.yellow}" stroke-width="10" stroke-linecap="round" opacity=".9"/>`; }
-  // "and it plans a short walk worth taking": glow on "Plan my walk", then the click
-  const gp = prog(t, 5.0, 5.5) * (1 - prog(t, 6.35, 6.65));
+  // "and it plans a walk worth taking": glow on "Plan my walk", then the click on "taking"
+  const gp = prog(t, 9.2, 9.7) * (1 - prog(t, 10.55, 10.85));
   if (gp > 0) { const c = devPt(d, 960, 862); fg += `<ellipse cx="${c[0]}" cy="${c[1]}" rx="${150 + 8 * Math.sin(t * 6)}" ry="${52 + 4 * Math.sin(t * 6)}" fill="none" stroke="${C.yellow}" stroke-width="12" opacity="${gp}"/>`; }
-  fg += ripple(devPt(d, 960, 862), t, 6.25);
-  // "on your own, or with a friend": the two modes on the New walk page
-  fg += callout(devPt(d, 320, 196), [760, 470], "Just me", t, 9.25, 11.6, { bg: "#FFF3C4" });
-  fg += callout(devPt(d, 524, 196), [1180, 470], "With a friend", t, 10.05, 11.6, { bg: "#FFE7D9" });
+  fg += ripple(devPt(d, 960, 862), t, 10.45);
+  // "solo or with a friend": the two modes on the New walk page
+  fg += callout(devPt(d, 320, 196), [760, 470], "Just me", t, 13.3, 15.2, { bg: "#FFF3C4" });
+  fg += callout(devPt(d, 524, 196), [1180, 470], "With a friend", t, 14.0, 15.2, { bg: "#FFE7D9" });
   return { bg: s, videos: [devVideo(d, "a1", clipT)], fg };
 });
 
@@ -202,20 +224,24 @@ add("s4", (t) => {
   if (t > 2.3 && t < 6.2) { const m = devPt(d, 80, 471); fg += `<g opacity="${prog(t, 2.3, 2.6) * (1 - prog(t, 5.9, 6.2))}">${waveform(d.x + d.w + 60, m[1], t)}</g>`; }
   fg += callout(devPt(d, 340, 277), [1180, 300], "Muse Voice Transcribe", t, 8.8, 12.6, { bg: "#FFE7D9" });
   fg += chip(1180, 470, "Muse Glimmer reads the wish (open weights, our Modal endpoint)", t, 10.9, 13.3, { bg: "#E4F0FF", size: 24 });
-  fg += callout(devPt(d, 300, 356), [1180, 560], "Read by Muse Glimmer · open weights, on Modal", t, 13.4, 17.3, { bg: "#E4F0FF" });
+  fg += callout(devPt(d, 300, 356), [1180, 560], "Read by Muse Glimmer · open weights, on Modal", t, 13.4, 16.9, { bg: "#E4F0FF" });
   // "turns it into a plan the route engine understands": a bracket over minutes, ending and mood
   const br = prog(t, 14.3, 14.8) * (1 - prog(t, 16.9, 17.3));
   if (br > 0) {
     const a1 = devPt(d, 372, 112), a2 = devPt(d, 372, 318);
     fg += `<g opacity="${br}"><path d="M${a1[0] + 12} ${a1[1]} h22 V${a2[1]} h-22" fill="none" stroke="${C.ink}" stroke-width="4" stroke-linecap="round"/>
       <path d="M${a1[0] + 34} ${(a1[1] + a2[1]) / 2} H${1000}" stroke="${C.ink}" stroke-width="3.5"/></g>`
-      + chip(1180, (a1[1] + a2[1]) / 2, "a plan the planner understands: 25 min · end at cafe · quiet", t, 14.4, 17.2, { bg: "#fff", size: 24 });
+      + chip(1180, (a1[1] + a2[1]) / 2, "the wish as a plan: 25 min · end at cafe · quiet", t, 14.4, 17.2, { bg: "#fff", size: 24 });
   }
-  fg += chip(1180, 820, "0.55 s median wish reading · evaluation run 1", t, 17.5, 21.0, { bg: C.yellow });
+  fg += chip(1180, 700, "0.55 s median wish reading · evaluation run 1", t, 16.7, 20.5, { bg: C.yellow });
+  fg += chip(1180, 790, "6.5x faster than Muse Spark via the API (3.58 s)", t, 17.95, 21.0, { bg: "#E4F0FF" });
+  fg += chip(1180, 880, "your start point stays on our server: never sent to a model", t, 20.65, 99, { bg: "#fff", size: 24 });
   if (!seg1) {
-    fg += callout(devPt(d, 196, 336), [1060, 420], "Find my walk", t, 17.35, 18.9);
-    fg += ripple(devPt(d, 196, 336), t, 17.8);
-    fg += chip(1120, 600, "the real wait: about 3 s", t, 18.3, 20.6, { bg: "#fff" });
+    // the tap (clip 26.19) folds away "Near you", so the button jumps from y 336 to y 625 in the very next frame
+    const fmw = devPt(d, 196, t < 17.8 ? 336 : 625);
+    fg += callout(fmw, [1060, 420], "Find my walk", t, 17.35, 18.9);
+    fg += ripple(fmw, t, 17.8);
+    fg += chip(1120, 560, "the real wait: about 3 s", t, 18.3, 20.6, { bg: "#fff" });
     fg += callout(devPt(d, 300, 230), [1160, 300], "a real route on our walking graph", t, 22.6, 99);
   }
   const ge = t < 2.3 ? "smile" : t < 6 ? "o" : t < 11 ? "smile" : "happy";
@@ -230,49 +256,49 @@ add("s4", (t) => {
 // the buddy's reply appears at 16.68 and its voice from 17.3 (under the VO until 18.75).
 add("s5", (t) => {
   let clip, clipT;
-  if (t < 4) { clip = "a4"; clipT = 1.5 + t; }
-  else if (t < 8.9) { clip = "a4"; clipT = 12.7 + (t - 4); }
-  else if (t < 12.77) { clip = "a5"; clipT = 0.13 + (t - 8.9); }
-  else { clip = "a5"; clipT = Math.min(4.85 + (t - 12.77), 14.0); }
-  const d = phoneDev(300, 70, t, { s: 1 + 0.03 * prog(t, 9.6, 10.4, easeInOut) });
+  if (t < 5.9) { clip = "a4"; clipT = t; }                       // Start walking (clip 1.96), the map, the buddy lands (4.6)
+  else if (t < 10.4) { clip = "a4"; clipT = 12.7 + (t - 5.9); }   // "Voice prompts on." (12.99), the turn prompt (14.16)
+  else if (t < 13.8) { clip = "a5"; clipT = t - 10.4; }           // hold to talk (1.63), "Add a coffee stop."
+  else { clip = "a5"; clipT = Math.min(4.85 + (t - 13.8), 14.0); } // let go (4.96), the reply (8.76), its voice (9.38)
+  const d = phoneDev(300, 70, t, { s: 1 + 0.03 * prog(t, 11.2, 12.0, easeInOut) });
   let bg = softBg(t, "#E9F7EE", C.cream, ["#D6F2DF", "#FFF1D6", "#E8F1FF", "#E3F5E8"]) + devShadow(d);
   let fg = phoneFrame(d);
-  fg += ripple(devPt(d, 194, 462), t, 0.46);
-  fg += callout(devPt(d, 36, 690), [1000, 640], "your walking buddy", t, 3.15, 4.0, { bg: "#E4F0FF" });
-  if (t > 4 && t < 9.0) fg += tag(d.x + d.w + 48, 130, "simulated location");
-  fg += chip(1180, 250, "the app speaks: “Voice prompts on.”", t, 4.25, 5.4, { bg: "#fff", size: 24 });
-  fg += callout(devPt(d, 200, 30), [1180, 200], "next turn, spoken aloud", t, 5.45, 8.8);
-  fg += callout(devPt(d, 58, 785), [1120, 760], "minutes left", t, 6.6, 8.8);
-  fg += callout(devPt(d, 185, 792), [1060, 900], "hold to talk", t, 9.6, 12.9);
-  if (t > 10.5 && t < 12.0) { const m = devPt(d, 185, 792); fg += `<g opacity="${prog(t, 10.5, 10.8) * (1 - prog(t, 11.7, 12.0))}">${waveform(d.x + d.w + 60, m[1] - 120, t)}</g>`; }
-  const steps = [["Muse Spark", 13.0, "#E4F0FF"], ["add_stop", 13.9, "#fff"], ["planner", 14.75, "#fff"], ["real, open place", 16.6, "#D6F2DF"]];
+  fg += ripple(devPt(d, 194, 462), t, 1.96);
+  fg += callout(devPt(d, 36, 690), [1000, 640], "your walking buddy", t, 4.7, 5.9, { bg: "#E4F0FF" });
+  if (t > 5.9 && t < 10.4) fg += tag(d.x + d.w + 48, 330, "simulated location");  // clear of the next-turn leader
+  fg += chip(1180, 250, "the app speaks: “Voice prompts on.”", t, 6.15, 7.3, { bg: "#fff", size: 24 });
+  fg += callout(devPt(d, 200, 30), [1180, 200], "next turn, spoken aloud", t, 7.35, 10.3);
+  fg += callout(devPt(d, 58, 785), [1120, 760], "minutes left", t, 8.6, 10.3);
+  fg += callout(devPt(d, 185, 792), [1060, 900], "hold to talk", t, 11.4, 13.8);
+  if (t > 12.5 && t < 13.75) { const m = devPt(d, 185, 792); fg += `<g opacity="${prog(t, 12.5, 12.8) * (1 - prog(t, 13.45, 13.75))}">${waveform(d.x + d.w + 60, m[1] - 120, t)}</g>`; }
+  const steps = [["Muse Spark", 13.95, "#E4F0FF"], ["add_stop", 14.9, "#fff"], ["planner", 15.7, "#fff"], ["real, open place", 17.7, "#D6F2DF"]];
   steps.forEach(([lab, at, col], i) => {
     const y = 300 + i * 120;
-    if (i) fg += `<g opacity="${1 - prog(t, 21.5, 21.8)}">${drawLine([[1260, y - 90], [1260, y - 30]], prog(t, at - 0.3, at), `stroke="${C.ink}" stroke-width="4" stroke-linecap="round"`)}</g>`;
-    fg += chip(1260, y, lab, t, at, 21.5, { bg: col, size: 30 });
+    if (i) fg += `<g opacity="${1 - prog(t, 22.5, 22.8)}">${drawLine([[1260, y - 90], [1260, y - 30]], prog(t, at - 0.3, at), `stroke="${C.ink}" stroke-width="4" stroke-linecap="round"`)}</g>`;
+    fg += chip(1260, y, lab, t, at, 22.5, { bg: col, size: 30 });
   });
-  fg += callout(devPt(d, 126, 624), [1000, 860], "Undo", t, 17.6, 21.5, { bg: "#FFF3C4" });
-  const ge = t < 9 ? "smile" : t < 12.9 ? "o" : t < 16.7 ? "smile" : "happy";
+  fg += callout(devPt(d, 126, 624), [1000, 860], "Undo", t, 18.4, 22.5, { bg: "#FFF3C4" });
+  const ge = t < 11 ? "smile" : t < 13.9 ? "o" : t < 17.7 ? "smile" : "happy";
   bg += guide(205, 930, t, ge);
   return { bg, videos: [devVideo(d, clip, clipT)], fg };
 });
 
-// 6 · with a friend. "Walking is better with someone." 0.3-1.7 · card at t 1.45 (A6 clip 26.45) · "I send one link"
-// 2.1-2.9 with the paper plane · "My friend doesn't need an app:" 3.8-5.0 as B's phone opens the link ·
-// "one tap" 6.0-6.3 = B taps "Use my location" (clip 3.2 -> t 6.2) · "and they can say what they'd like too." 7.0-8.4,
-// B speaks from t 8.0 (clip 5.97); "I'm in" at t 15.46 (clip 13.43); the plan on both phones from t 16.0.
+// 6 · with a friend. "Walking is better together." 0.3-1.7 · card at t 1.45 (A6 clip 26.45) · "One link, no app,
+// no sign-up." 2.2-4.5 with the paper plane and B's phone opening the link · "My friend taps once," 5.4-6.55 = B taps
+// "Use my location" (clip 3.2 -> t 6.2) · "and says what they'd like too." 6.75-8.2; B speaks from t 8.25 (clip 5.97);
+// "I'm in" at t 15.71 (clip 13.43); "a few seconds later" the plan on both phones from t 16.25.
 add("s6", (t) => {
-  const focusB = prog(t, 3.4, 4.1, easeInOut) * (1 - prog(t, 15.8, 16.4, easeInOut));
+  const focusB = prog(t, 3.4, 4.1, easeInOut) * (1 - prog(t, 15.7, 16.3, easeInOut));
   const pa = phoneDev(300, 110, t, { s: 0.94 - 0.12 * focusB, dx: -70 * focusB, ph: 0.2 });
   const pb = phoneDev(1220, 110, t, { s: 0.94 + 0.06 * focusB, dx: -150 * focusB, ph: 0.6 });
-  const after = t >= 16.0;
+  const after = t >= 16.25;
   let bg = softBg(t, "#FFF1E6", C.cream, ["#FFE7D9", "#E8F1FF", "#FFF1D6", "#E3F5E8"]) + devShadow(pa) + devShadow(pb);
-  const hA = pulse(t, 0.3, 1.2) * 14, hB = pulse(t, 4.0, 1.0) * 16 + (after ? pulse(t, 16.1, 0.8) * 14 : 0);
-  bg += mascotA({ x: pa.x + pa.w / 2 + pa.dx, y: 52, s: 0.42, bounce: hA + (after ? pulse(t, 16.1, 0.8) * 14 : 0), blink: blinkAt(t, 2.9), expr: after ? "happy" : "smile" });
+  const hA = pulse(t, 0.3, 1.2) * 14, hB = pulse(t, 4.0, 1.0) * 16 + (after ? pulse(t, 16.3, 0.8) * 14 : 0);
+  bg += mascotA({ x: pa.x + pa.w / 2 + pa.dx, y: 52, s: 0.42, bounce: hA + (after ? pulse(t, 16.3, 0.8) * 14 : 0), blink: blinkAt(t, 2.9), expr: after ? "happy" : "smile" });
   bg += mascotB({ x: pb.x + pb.w / 2 + pb.dx, y: 54, s: 0.42, bounce: hB, expr: t > 3.8 ? "happy" : "sleepy" });
-  const videos = [devVideo(pa, after ? "a8a" : "a6", after ? t - 16.0 : Math.min(25.0 + t, 31.7))];
-  if (after) videos.push(devVideo(pb, "a8b", t - 16.0));
-  else if (t >= 3.6) videos.push(devVideo(pb, "a7", t < 6.8 ? 0.6 + (t - 3.6) : 5.97 + (t - 8.0)));
+  const videos = [devVideo(pa, after ? "a8a" : "a6", after ? t - 16.25 : Math.min(25.0 + t, 31.7))];
+  if (after) videos.push(devVideo(pb, "a8b", t - 16.25));
+  else if (t >= 3.6) videos.push(devVideo(pb, "a7", t < 6.8 ? 0.6 + (t - 3.6) : 5.97 + (t - 8.25)));
   else bg += devGroup(pb, `<rect width="${pb.w}" height="${pb.h}" rx="50" fill="#F4EEE6"/>${text(pb.w / 2, pb.h / 2, "your friend's phone", { size: 28, family: "Nunito", weight: 700, fill: "#8A82A0" })}`);
   let fg = phoneFrame(pa, C.blue) + phoneFrame(pb, C.orange);
   fg += chip(960, 300, "Illustration by Muse Image", t, 1.55, 3.4, { bg: "#FFF3C4" });
@@ -284,14 +310,15 @@ add("s6", (t) => {
       <path d="M-44 0 L12 0 L12 28" fill="none" stroke="${C.ink}" stroke-width="3"/></g>`
       + drawLine([[s0[0], s0[1]], [x, y]], 1, `stroke="${C.ink}" stroke-width="2" stroke-dasharray="6 10" opacity=".3"`);
   }
-  fg += chip(800, 250, "one link · no app · no account", t, 4.1, 7.4, { bg: "#fff" });
+  // on "One link", in the gap between the phones (which shifts left as B comes forward)
+  fg += chip(lerp(960, 832, focusB), 200, "one link · no app · no sign-up", t, 2.4, 6.4, { bg: "#fff", size: 24 });
   fg += ripple(devPt(pb, 111, 345), t, 6.2);
-  fg += ripple(devPt(pb, 94, 244), t, 8.0);
-  if (t > 8.5 && t < 10.6) { const m = devPt(pb, 94, 244); fg += `<g opacity="${prog(t, 8.5, 8.8) * (1 - prog(t, 10.3, 10.6))}">${waveform(m[0] - 330, m[1] - 70, t, 12, C.orange)}</g>`; }
-  fg += callout(devPt(pb, 70, 496), [960, 640], "I'm in", t, 14.7, 16.0, { bg: "#FFE7D9" });
-  fg += ripple(devPt(pb, 70, 496), t, 15.46);
-  fg += chip(960, 520, "a few seconds later…", t, 15.6, 16.2, { bg: "#fff" });
-  fg += chip(960, 520, "the plan, on both phones", t, 16.3, 99, { bg: "#D6F2DF" });
+  fg += ripple(devPt(pb, 94, 244), t, 8.25);
+  if (t > 8.75 && t < 10.85) { const m = devPt(pb, 94, 244); fg += `<g opacity="${prog(t, 8.75, 9.05) * (1 - prog(t, 10.55, 10.85))}">${waveform(m[0] - 330, m[1] - 70, t, 12, C.orange)}</g>`; }
+  fg += callout(devPt(pb, 70, 496), [960, 640], "I'm in", t, 14.9, 16.2, { bg: "#FFE7D9" });
+  fg += ripple(devPt(pb, 70, 496), t, 15.71);
+  fg += chip(960, 520, "a few seconds later…", t, 15.8, 16.25, { bg: "#fff" });
+  fg += chip(960, 520, "the plan, on both phones", t, 16.35, 99, { bg: "#D6F2DF" });
   return { bg, videos, fg };
 });
 
@@ -329,14 +356,14 @@ add("s8", (t) => {
     s += `<g opacity="${1 - arch}"><clipPath id="sweep"><rect x="0" y="0" width="${1920 * reveal}" height="1080"/></clipPath>
       <g transform="translate(960 540) scale(${zoom * (1 + 0.02 * t / 10)}) translate(${-fx} ${-fy})"><image href="${g.png}" x="0" y="0" width="1920" height="1080" clip-path="url(#sweep)"/>
       ${drawLine(g.route, prog(t, 8.1, 9.2), `stroke="${C.yellow}" stroke-width="${7 / zoom}" stroke-linecap="round" stroke-linejoin="round"`)}</g>`;
-    const n = Math.round(g.nodes_total * prog(t, 3.4, 4.8, (x) => easeOut(x)));
+    const n = Math.round(g.nodes_total * prog(t, 3.45, 4.9, (x) => easeOut(x)));
     s += `<g opacity="${prog(t, 0.3, 0.8)}">${text(120, 140, "Our walking graph of New York", { size: 54, anchor: "start", fill: "#fff" })}
       ${text(120, 205, `${n.toLocaleString("en-US")} nodes`, { size: 40, family: "Nunito", weight: 800, anchor: "start", fill: C.yellow, opacity: prog(t, 3.3, 3.6) })}
       ${text(120 + 30 + `${g.nodes_total.toLocaleString("en-US")} nodes`.length * 21, 205, "· Manhattan shown", { size: 30, family: "Nunito", weight: 700, anchor: "start", fill: "#CFE9D8", opacity: prog(t, 4.6, 5.0) })}</g>`;
     const osm = springIn(t, 6.6, 0.45);
-    s += `<g opacity="${clamp(osm)}" transform="translate(1600 1000) scale(${0.9 + 0.1 * clamp(osm, 0, 1.1)})"><rect x="-260" y="-26" width="520" height="52" rx="26" fill="#2F2850" stroke="#CFE9D8" stroke-width="2"/>
+    s += `<g opacity="${clamp(osm)}" transform="translate(1620 56) scale(${0.9 + 0.1 * clamp(osm, 0, 1.1)})"><rect x="-260" y="-26" width="520" height="52" rx="26" fill="#2F2850" stroke="#CFE9D8" stroke-width="2"/>
       ${text(0, 9, "built from © OpenStreetMap contributors (ODbL)", { size: 22, family: "Nunito", weight: 800, fill: "#CFE9D8" })}</g>`;
-    s += chip(1500, 160, "plans in 0.029 s (median)", t, 8.6, 99, { bg: C.yellow }) + `</g>`;
+    s += chip(1500, 160, "about 29 ms per plan (median)", t, 8.95, 99, { bg: C.yellow }) + `</g>`;
   }
   if (arch > 0) {
     const tt = t;
@@ -356,9 +383,9 @@ add("s8", (t) => {
     a += box(510, 180, 300, 130, "FastAPI", "on Render", 10.5);
     a += arrow(820, 920, 245, 10.75);
     a += box(930, 180, 380, 130, "Planner", "on our walking graph", 10.8, "#E9F7EE");
-    a += `<g opacity="${prog(tt, 10.8, 11.2)}">${text(1610, 150, "Meta models", { size: 40 })}</g>`;
-    const models = [["Muse Glimmer", "reads wishes (open weights, Modal)", "#E4F0FF", 12.6], ["Muse Spark", "negotiates, ranks, calls tools", "#fff", 14.5],
-      ["Muse Image", "draws the invite", "#FFF3C4", 16.9], ["Muse Voice", "listens", "#FFE7D9", 19.05]];
+    a += `<g opacity="${prog(tt, 10.85, 11.25)}">${text(1610, 150, "Four Meta models", { size: 40 })}</g>`;
+    const models = [["Muse Glimmer", "reads wishes (open weights, Modal)", "#E4F0FF", 13.5], ["Muse Spark", "negotiates, ranks, calls tools", "#fff", 15.3],
+      ["Muse Image", "draws the invite", "#FFF3C4", 17.7], ["Muse Voice", "listens", "#FFE7D9", 19.8]];
     let active = -1;
     models.forEach(([n, j, c, at], i) => { a += box(1400, 190 + i * 160, 420, 130, n, j, at, c); if (tt >= at) active = i; });
     if (active >= 0) {
@@ -367,16 +394,17 @@ add("s8", (t) => {
       a += mascotA({ x: 1300, y: y + 8, s: 0.5, expr: "open", bounce: Math.abs(Math.sin(tt * 3)) * 5, rot: -8, blink: blinkAt(tt, 2.7) });
     }
     // the terminal: the warm-up script's real output (A3), with "Muse Glimmer reads wishes"
-    const ti = springIn(tt, 12.3, 0.55), to = prog(tt, 18.6, 19.1);
+    const ti = springIn(tt, 13.2, 0.55), to = prog(tt, 19.3, 19.8);
     if (ti > 0 && to < 1) {
-      const d = dev({ x: 90, y: 400, w: 1120, h: 630, cw: 1920, s: 0.92 + 0.08 * clamp(ti, 0, 1.08), dy: (1 - clamp(ti)) * 120 + floatY(tt, 3, 5), rot: floatR(tt, 0.25, 6), z: 1.18, zx: 0.5, zy: 0.33 });
+      // sized so its bottom (and the "sped up" tag baked into the replay) clears the captions
+      const d = dev({ x: 90, y: 400, w: 1000, h: 562, cw: 1920, s: 0.92 + 0.08 * clamp(ti, 0, 1.08), dy: (1 - clamp(ti)) * 120 + floatY(tt, 3, 5), rot: floatR(tt, 0.25, 6), z: 1.18, zx: 0.5, zy: 0.33 });
       a += `<g opacity="${clamp(ti * 2) * (1 - to)}">${devShadow(d, 20)}</g>`;
-      window._a3 = { d, op: clamp(ti * 2) * (1 - to), clipT: 11.3 + (tt - 12.3) };
-      const sw = prog(tt, 13.6, 14.6, easeInOut);
+      window._a3 = { d, op: clamp(ti * 2) * (1 - to), clipT: 11.3 + (tt - 13.2) };
+      const sw = prog(tt, 14.3, 15.2, easeInOut);
       let over = "";
-      if (sw > 0) { const p0 = devPt(d, 120, 398), p1 = devPt(d, 1820, 462); over += `<g opacity="${1 - to}"><rect x="${p0[0]}" y="${p0[1]}" width="${(p1[0] - p0[0]) * sw}" height="${p1[1] - p0[1]}" fill="${C.yellow}" opacity=".38" rx="6"/></g>`; }
-      over += `<g opacity="${prog(tt, 13.0, 13.4) * (1 - to)}">${drawLine([[d.x + d.w * 0.96, 470], [1392, 255]], prog(tt, 13.0, 13.4), `stroke="${C.ink}" stroke-width="3" stroke-dasharray="8 8" opacity=".5"`)}</g>`;
-      over += chip(650, 380, "Muse Glimmer on our Modal endpoint · BF16 · 1x H200", tt, 13.7, 18.6, { bg: "#E4F0FF", size: 24 });
+      if (sw > 0) { const p0 = devPt(d, 120, 398), p1 = devPt(d, 1820, 462); p1[0] = Math.min(p1[0], d.x + d.dx + d.w / 2 + (d.w * d.s) / 2 - 10); over += `<g opacity="${1 - to}"><rect x="${p0[0]}" y="${p0[1]}" width="${(p1[0] - p0[0]) * sw}" height="${p1[1] - p0[1]}" fill="${C.yellow}" opacity=".38" rx="6"/></g>`; }
+      over += `<g opacity="${prog(tt, 13.7, 14.1) * (1 - to)}">${drawLine([[d.x + d.w * 0.96, 470], [1392, 255]], prog(tt, 13.7, 14.1), `stroke="${C.ink}" stroke-width="3" stroke-dasharray="8 8" opacity=".5"`)}</g>`;
+      over += chip(650, 380, "Muse Glimmer on our Modal endpoint · BF16 · 1x H200", tt, 14.4, 19.3, { bg: "#E4F0FF", size: 24 });
       window._a3over = over;
     } else { window._a3 = null; window._a3over = ""; }
     s += a + `</g>`;
@@ -386,11 +414,28 @@ add("s8", (t) => {
   return { bg: s, videos, fg: arch >= 1 ? window._a3over || "" : "" };
 });
 
-// 9 · honest evaluation. VO 8 at 136.6 (t = word time + 0.3): "committed" 1.6 · "12 of 12" 3.5-4.0 · "10 of 10" 7.5-8.0 ·
-// "against 7" 9.0-9.7 · "And a checker throws out" 11.2-12.0 · "any claim our data can't back up." 12.3-14.1.
+// 9 · built not to make things up. VO 8 (t = word time + 0.3): "unlike a typical chatbot" 0.6-1.9 · "it's built not to
+// make things up" 2.3-3.8 · "Every evaluation is pre-registered." 4.5-6.3 · "12 out of 12 test pairs" 7.06-8.3 ·
+// "all correct" 8.9 · "caught every wish, 10 of 10" 10.7-12.6 · "where keyword rules caught 7" 13.0-14.9 ·
+// "And a checker throws out" 15.0-16.1 · "any claim our data can't back up." 16.4-18.4.
 add("s9", (t) => {
   let s = softBg(t, "#EEF6EF", C.cream, ["#D6F2DF", "#FFF1D6", "#E8F1FF", "#E3F5E8"]);
-  const st = prog(t, 1.35, 1.65), thump = pulse(t, 1.55, 0.35);
+  let fg = "";
+  // the contrast (generic): a typical chatbot can make things up; StrollCall's places and numbers come from data
+  const cOut = prog(t, 4.1, 4.5, easeInOut);
+  const vcard = (x, t0, title, lines, tone, ink) => {
+    const p = springIn(t, t0, 0.5);
+    if (p <= 0 || cOut >= 1) return "";
+    return `<g opacity="${clamp(p * 2) * (1 - cOut)}" transform="translate(${x} ${520 + floatY(t, 4, 4.2, x / 900) - cOut * 30}) scale(${0.9 + 0.1 * clamp(p, 0, 1.1)})">
+      <g filter="url(#shadow)"><rect x="-330" y="-195" width="660" height="390" rx="40" fill="${tone}"/></g>
+      ${text(0, -112, title, { size: 44, fill: ink })}
+      ${lines.map((l, i) => text(-270, -28 + i * 76, l, { size: 32, family: "Nunito", weight: 800, anchor: "start", fill: ink })).join("")}</g>`;
+  };
+  s += vcard(560, 0.6, "A typical chatbot", ["• can make up places", "• can make up numbers", "• sounds sure either way"], "#F1EEF6", "#6B6380");
+  s += vcard(1360, 2.3, "StrollCall", ["• places: OpenStreetMap", "• numbers: measured", "• claims: checked first"], "#E9F7EE", "#17733F");
+  if (t > 2.2 && cOut < 1) s += `<g opacity="${prog(t, 2.2, 2.5) * (1 - cOut)}">${text(960, 535, "vs", { size: 54, fill: "#8A82A0" })}</g>`;
+  // "pre-registered": the stamp
+  const st = prog(t, 5.45, 5.75), thump = pulse(t, 5.7, 0.35);
   if (st > 0) s += `<g opacity="${st}" transform="translate(960 150) rotate(-3) scale(${1.25 - 0.25 * st + 0.04 * thump})">
     <rect x="-520" y="-48" width="1040" height="96" rx="20" fill="#fff" fill-opacity=".6" stroke="${C.green}" stroke-width="6"/>
     ${text(0, 16, "Pre-registered: cases committed before each run", { size: 42, fill: C.green })}</g>`;
@@ -402,48 +447,45 @@ add("s9", (t) => {
       ${text(260, 70, title, { size: 30, family: "Nunito", weight: 800, fill: "#6B6380" })}${val}${text(260, 268, sub, { size: 20, family: "Nunito", weight: 700, fill: "#8A82A0" })}</g>`;
   };
   // 12 of 12 right outcomes (benchmarks/2026-10-31-local.md:13): lands on the second "12"
-  const c1 = prog(t, 3.0, 4.0, (x) => x);
-  s += card(110, "test pairs, right outcome", text(260, 190, `${Math.round(12 * c1)} / 12`, { size: 96, fill: C.green }), "benchmarks/2026-10-31-local.md", 2.8);
-  // wishes read correctly, Muse Spark 10/10 vs keyword rules 7/10 (benchmarks/2026-10-28-ablation-wishes.md:16)
-  const b1 = prog(t, 7.2, 8.0), b2 = prog(t, 9.1, 9.75);
+  const c1 = prog(t, 6.9, 7.95, (x) => x);
+  s += card(110, "test pairs, right outcome", text(260, 190, `${Math.round(12 * c1)} / 12`, { size: 96, fill: C.green }), "benchmarks/2026-10-31-local.md", 6.6);
+  // every wish, 10 of 10, vs keyword rules 7 (benchmarks/2026-10-28-ablation-wishes.md:16)
+  const b1 = prog(t, 11.9, 12.6), b2 = prog(t, 14.0, 14.65);
   const bars = `<g transform="translate(60 100)">${text(0, 22, "Muse Spark", { size: 24, family: "Nunito", weight: 800, anchor: "start" })}
     <rect x="0" y="34" width="${360 * b1}" height="30" rx="15" fill="${C.blue}"/>${text(380, 58, `${Math.round(10 * b1)}/10`, { size: 26, family: "Nunito", weight: 800, anchor: "start" })}
     ${text(0, 104, "keyword rules", { size: 24, family: "Nunito", weight: 800, anchor: "start" })}
     <rect x="0" y="116" width="${252 * b2}" height="30" rx="15" fill="#B9B2CC"/>${text(270, 140, `${Math.round(7 * b2)}/10`, { size: 26, family: "Nunito", weight: 800, anchor: "start" })}</g>`;
-  s += card(700, "wishes read correctly", bars, "benchmarks/2026-10-28-ablation-wishes.md", 6.4);
-  // wish reading, median: Glimmer 0.55 s vs Muse Spark 3.58 s (benchmarks/2026-10-31-open-weights-run1.md:14)
-  const lp = prog(t, 10.0, 10.8, (x) => x);
-  s += card(1290, "reading a wish, median", `${text(260, 160, `${(0.55 * lp).toFixed(2)} s`, { size: 72, fill: C.blue })}${text(260, 218, `Muse Glimmer · Muse Spark ${(3.58 * lp).toFixed(2)} s`, { size: 24, family: "Nunito", weight: 800 })}`, "benchmarks/2026-10-31-open-weights-run1.md", 9.8);
-  // the honesty check: the reason is real (benchmarks/2026-10-30-rejections.md:15); the sentence is illustrative
-  const hp = springIn(t, 10.9, 0.5);
+  s += card(700, "wishes read correctly", bars, "benchmarks/2026-10-28-ablation-wishes.md", 9.9);
+  // how fast Meta's reading is, beside how well ("Meta's reading caught…"). Wish reading, median: Glimmer 0.55 s vs Muse Spark 3.58 s (benchmarks/2026-10-31-open-weights-run1.md:14)
+  s += card(1290, "reading a wish, median", `${text(260, 160, "0.55 s", { size: 72, fill: C.blue })}${text(260, 218, "Muse Glimmer · Muse Spark 3.58 s", { size: 24, family: "Nunito", weight: 800 })}`, "benchmarks/2026-10-31-open-weights-run1.md", 10.4);
+  // the checker: the reason is real (benchmarks/2026-10-30-rejections.md:15); the sentence is illustrative
+  const hp = springIn(t, 15.0, 0.5);
   if (hp > 0) {
-    const strike = prog(t, 11.9, 12.4), repl = prog(t, 13.4, 13.9);  // "throws out" at 12.0-12.3, "can't back up" ~13.6
+    const strike = prog(t, 15.7, 16.2), repl = prog(t, 17.5, 18.0);
     s += `<g opacity="${clamp(hp * 2)}" transform="translate(960 ${818 + (1 - clamp(hp)) * 40}) scale(${0.92 + 0.08 * clamp(hp, 0, 1.08)}) translate(-600 -115)"><g filter="url(#shadow)"><rect width="1200" height="200" rx="30" fill="#fff"/></g>
       ${text(60, 75, "“This street is quiet.”", { size: 42, family: "Nunito", weight: 800, anchor: "start", fill: strike > 0.5 ? "#9C95AE" : C.ink })}
-      <line x1="56" y1="62" x2="${56 + 450 * strike}" y2="62" stroke="#E0484D" stroke-width="7" stroke-linecap="round"/>
-      <g opacity="${prog(t, 12.3, 12.6)}">${tag(560, 70, "rejected: unverifiable claim ‘quiet’ (not in our data)", { bg: "#FFE1E1" })}</g>
-      <g opacity="${repl}" transform="translate(0 ${(1 - repl) * 8})">${text(60, 152, "“Quiet, as B asked.”", { size: 42, family: "Nunito", weight: 800, anchor: "start", fill: C.green })}</g>
+      ${strike > 0 ? `<line x1="56" y1="62" x2="${56 + 450 * strike}" y2="62" stroke="#E0484D" stroke-width="7" stroke-linecap="round"/>` : ""}
+      <g opacity="${prog(t, 16.2, 16.5)}">${tag(560, 70, "rejected: unverifiable claim ‘quiet’ (not in our data)", { bg: "#FFE1E1" })}</g>
+      <g opacity="${repl}" transform="translate(0 ${(1 - repl) * 8})">${text(60, 152, "“Quiet, as you asked.”", { size: 42, family: "Nunito", weight: 800, anchor: "start", fill: C.green })}</g>
       ${text(1170, 188, "illustration of a real rule · reason from benchmarks/2026-10-30-rejections.md", { size: 17, family: "Nunito", weight: 700, anchor: "end", fill: "#8A82A0" })}</g>`;
-    const nod = repl > 0 ? Math.sin(prog(t, 13.4, 14.4, (x) => x) * Math.PI * 2) * 6 : 0;
+    const nod = repl > 0 ? Math.sin(prog(t, 17.7, 18.6, (x) => x) * Math.PI * 2) * 6 : 0;
     s += mascotA({ x: 1740, y: 830, s: 0.7, expr: repl > 0.5 ? "happy" : "smile", bounce: Math.abs(nod), rot: nod, blink: blinkAt(t, 2.6) });
   }
+  // the real report (A10): the whole page first, then a zoom onto the summary with the full "Correct outcome rate"
+  // row in view (zoom origin chosen so the visible area is x 695-1825, y 445-1080 of the recording at z 1.7),
+  // ringed as "12 out of 12" is said
   const videos = [];
-  let fg = "";
-  if (t < 6.2) {
-    // the real report (A10), large and sharp: a still of its summary (clip 3.4); the "Correct outcome rate 12/12"
-    // row is ringed as "12 of 12" is said
-    const p = springIn(t, 0.25, 0.5), o = 1 - prog(t, 5.8, 6.2);
-    // first the whole page, then a zoom onto the summary table, keeping the full "Correct outcome rate" row in view
-    // (zoom origin chosen so the visible area is x 695-1825, y 445-1080 of the recording at z 1.7)
-    const zoom = prog(t, 2.4, 3.3, easeInOut);
+  if (t > 4.4 && t < 9.8) {
+    const p = springIn(t, 4.45, 0.5), o = 1 - prog(t, 9.4, 9.8);
+    const zoom = prog(t, 6.3, 7.1, easeInOut);
     const d = dev({ x: 800, y: 300, w: 1040, h: 585, cw: 1920, s: 0.9 + 0.1 * clamp(p, 0, 1.08), r: 18, dy: floatY(t, 3, 4), rot: 1,
       z: 1 + 0.7 * zoom, zx: 0.88, zy: 1.0 });
     s += `<g opacity="${clamp(p * 2) * o}">${devShadow(d, 18)}</g>`;
     s += `<g opacity="${clamp(p * 2) * o}">${text(1320, 282, "the benchmark report, on GitHub", { size: 26, family: "Nunito", weight: 800, fill: "#6B6380" })}</g>`;
     videos.push(devVideo(d, "a10", 3.4, { opacity: clamp(p * 2) * o }));
-    const ring = prog(t, 3.35, 3.75) * o;
+    const ring = prog(t, 7.1, 7.5) * o;
     if (ring > 0) { const a0 = devPt(d, 695, 696), a1 = devPt(d, 1830, 796);
-      a1[0] = Math.min(a1[0], d.x + d.dx + d.w / 2 + (d.w * d.s) / 2 - 22);  // inside the report's visible edge
+      a1[0] = Math.min(a1[0], d.x + d.dx + d.w / 2 + (d.w * d.s) / 2 - 22);
       fg += `<rect x="${a0[0] - 6}" y="${a0[1] - 6}" width="${a1[0] - a0[0] + 12}" height="${a1[1] - a0[1] + 12}" rx="12" fill="none" stroke="${C.yellow}" stroke-width="7" opacity="${ring}"/>`; }
   }
   return { bg: s, videos, fg };
@@ -452,7 +494,7 @@ add("s9", (t) => {
 // 10 · out in the city at golden hour (music only; no user-test data exists to show)
 add("s10", (t) => {
   // three painted golden-hour shots (art/s10_*.png), crossfading: out past a park; meeting at a corner; a cafe table
-  const L = 11 / 3;
+  const L = 9 / 3;
   const shotAt = (k, tt) => {
     let inner = "";
     if (k === 0) {  // the blue one walks the park path, phone in hand

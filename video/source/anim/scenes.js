@@ -67,8 +67,9 @@ SCENES.s1 = {
 
 // ---- Scene 7 (animation part): the fair meeting point, from fairness_example.json (real streets, routes, minutes).
 // Left runs first (A at 6.0 min, B at 10.8 min -> "4.8 min apart" when VO says "4.8"), right after it
-// (9.9 / 9.3 min -> "0.6 min apart" with "within a minute"), then the dashed shared walk to Abingdon Square.
-const S7 = { T0L: 1.0, T0R: 5.9, SEC: 0.52, dash: [11.4, 13.2], endLine: 14.0 };
+// (9.9 / 9.3 min -> "0.6 min apart" just before "0.6"), then the dashed shared walk to Abingdon Square; each pill is
+// fully in by the time its number is said (pills take ~0.35 s to rise).
+const S7 = { T0L: 0.75, T0R: 6.4, SEC: 0.383, dash: [12.6, 14.2], endLine: 14.6, eight: 12.15 };
 SCENES.s7 = {
   dur: 16,
   draw(t) {
@@ -80,7 +81,7 @@ SCENES.s7 = {
     const sx = panelW / ((Eb - Wb) * k), sy = panelH / (N - S), sc = Math.min(sx, sy) * 0.92;
     const proj = (px) => ([lat, lon]) => [px + panelW / 2 + ((lon - (Wb + Eb) / 2) * k) * sc, top + panelH / 2 - (lat - (S + N) / 2) * sc];
     let s = `<rect width="1920" height="1080" fill="${C.cream}"/>` + ambient(t, ["#FFF1D6", "#E8F1FF", "#E3F5E8", "#FFE9DF"]);
-    s += `<g opacity="${prog(t, 0, 0.5)}">${text(960, 108, "Two friends, one meeting point", { size: 54 })}</g>`;
+    s += `<g opacity="${prog(t, 0, 0.5) * (1 - prog(t, S7.eight - 0.1, S7.eight + 0.2))}">${text(960, 108, "Two friends, one meeting point", { size: 54 })}</g>`;
     panels.forEach((p, i) => {
       const P = proj(p.x);
       const legs = i === 0 ? d.midpoint : d.meeting;
@@ -152,6 +153,8 @@ SCENES.s7 = {
       }
       s += `</g>`;
     });
+    // "an eight-times smaller gap": 4.8 / 0.6 min (fairness_example.json), in place of the title (the captions own the bottom)
+    s += chip7(960, 84, "8x smaller gap: 4.8 min vs 0.6 min", t, S7.eight, 1.1);
     const endLine = prog(t, S7.endLine, S7.endLine + 0.6);
     s += `<g opacity="${endLine}" transform="translate(0 ${(1 - endLine) * 14})">${text(960, 1040, "Halfway by walking time, not by distance.", { size: 46 })}</g>`;
     s += text(1880, 40, "Route data © OpenStreetMap contributors · measured on our walking graph (fairness_example.json)", { size: 18, family: "Nunito", weight: 600, anchor: "end", fill: "#6B6380" });
@@ -159,9 +162,17 @@ SCENES.s7 = {
   },
 };
 
+function chip7(x, y, label, t, t0, k = 1) {
+  const p = springIn(t, t0, 0.45);
+  if (p <= 0) return "";
+  const w = label.length * 15 + 50;
+  return `<g opacity="${clamp(p * 2)}" transform="translate(${x} ${y}) scale(${k * (0.9 + 0.1 * clamp(p, 0, 1.15))})"><rect x="${-w / 2}" y="-27" width="${w}" height="54" rx="27" fill="${C.yellow}" stroke="${C.ink}" stroke-width="3"/>
+    ${text(0, 10, label, { size: 28, family: "Nunito", weight: 800 })}</g>`;
+}
+
 // ---- Scene 11: end card. VO 10 at 1.5: "StrollCall." 1.64 · "Less planning." 2.7 · "More walking." 3.86.
 SCENES.s11 = {
-  dur: 9.5,
+  dur: 8.5,
   draw(t) {
     let s = `<rect width="1920" height="1080" fill="${C.cream}"/>` + ambient(t * 0.6, ["#FFF1D6", "#E8F1FF", "#E3F5E8", "#FFE9DF"]);
     const meet = prog(t, 0.1, 1.5, easeInOut);
@@ -177,15 +188,15 @@ SCENES.s11 = {
     s += `<path transform="translate(960 ${230 + floatY(t, 4, 2.2)}) scale(${1.6 * clamp(heart, 0, 1.3)})" d="M0 10 c-6 -12 -22 -6 -16 6 l16 16 l16 -16 c6 -12 -10 -18 -16 -6 z" fill="${C.yellow}" stroke="${C.ink}" stroke-width="3"/>`;
     const name = prog(t, 1.6, 2.1);
     s += `<g opacity="${name}" transform="translate(0 ${(1 - name) * 16})">${text(960, 660, "StrollCall", { size: 150 })}</g>`;
-    const t1 = prog(t, 2.65, 3.1), t2 = prog(t, 3.8, 4.25);
+    const t1 = prog(t, 2.85, 3.3), t2 = prog(t, 4.0, 4.45);
     s += `<g font-family="Nunito" font-weight="800" font-size="54" fill="${C.green}">
       <text x="955" y="${740 + (1 - t1) * 12}" text-anchor="end" opacity="${t1}">Less planning.</text>
       <text x="975" y="${740 + (1 - t2) * 12}" text-anchor="start" opacity="${t2}">More walking.</text></g>`;
-    const links = prog(t, 4.6, 5.1), built = prog(t, 5.1, 5.6);
+    const links = prog(t, 4.7, 5.2), built = prog(t, 5.2, 5.7);
     s += `<g opacity="${links}">${text(960, 840, "strollcall.onrender.com", { size: 40, family: "Nunito", weight: 800, fill: C.blue })}
       ${text(960, 892, "github.com/zh315-bit/strollcall", { size: 34, family: "Nunito", weight: 700, fill: "#6B6380" })}</g>
       <g opacity="${built}">${text(960, 990, "Built with Muse Spark · Muse Glimmer (open weights) · Muse Image · Muse Voice", { size: 30, family: "Nunito", weight: 700 })}</g>`;
-    const fade = prog(t, 8.7, 9.5, easeIn);
+    const fade = prog(t, 7.8, 8.5, easeIn);
     if (fade > 0) s += `<rect width="1920" height="1080" fill="${C.cream}" opacity="${fade}"/>`;
     return s;
   },
