@@ -107,9 +107,10 @@ SCENES.s7 = {
       const ha = ta > 0 && ta < 1 ? hop(t, 6) : { b: waitingA ? Math.abs(Math.sin(t * 10)) * 5 : 0, sx: 1, sy: 1 };
       const hb = tb > 0 && tb < 1 ? hop(t + 0.2, 6) : { b: 0, sx: 1, sy: 1 };
       const both = ta >= 1 && tb >= 1;
-      s += mascotA({ x: pa[0] - (ta >= 1 ? 26 : 0), y: pa[1] - 40, s: 0.42, bounce: ha.b, sx: ha.sx, sy: ha.sy,
+      const onward = i === 1 && both && t >= S7.dash[0];  // they walk on together: drawn on the dashed line instead
+      if (!onward) s += mascotA({ x: pa[0] - (ta >= 1 ? 26 : 0), y: pa[1] - 40, s: 0.42, bounce: ha.b, sx: ha.sx, sy: ha.sy,
         expr: both && i ? "happy" : waitingA ? "o" : "smile", blink: blinkAt(t, 2.8) });
-      s += mascotB({ x: pb[0] + (tb >= 1 ? 26 : 0), y: pb[1] - 38, s: 0.42, bounce: hb.b, sx: hb.sx, sy: hb.sy, expr: "happy" });
+      if (!onward) s += mascotB({ x: pb[0] + (tb >= 1 ? 26 : 0), y: pb[1] - 38, s: 0.42, bounce: hb.b, sx: hb.sx, sy: hb.sy, expr: "happy" });
       if (waitingA && i === 0) s += `<g transform="translate(${pa[0] - 70} ${pa[1] - 92})" opacity="${prog(t, p.T0 + minA * S7.SEC, p.T0 + minA * S7.SEC + 0.3)}">
         <circle r="18" fill="#fff" stroke="${C.ink}" stroke-width="3"/><path d="M0 -10 V0 L${7 * Math.cos(t * 4)} ${7 * Math.sin(t * 4)}" stroke="${C.ink}" stroke-width="3" fill="none" stroke-linecap="round"/></g>`;
       // timers
@@ -135,9 +136,9 @@ SCENES.s7 = {
           s += `<mask id="reveal" maskUnits="userSpaceOnUse" x="0" y="0" width="1920" height="1080"><path d="${pathD(dPts)}" fill="none"
               stroke="#fff" stroke-width="18" stroke-dasharray="${len} ${len}" stroke-dashoffset="${len * (1 - dd)}"/></mask>
             <path d="${pathD(dPts)}" mask="url(#reveal)" fill="none" stroke="${C.ink}" stroke-width="7" stroke-dasharray="14 12" stroke-linecap="round" opacity=".8"/>`;
-          if (dd > 0 && dd < 1) {  // both walk on together along the dashed line
-            const q = pointAt(dPts, dd), h = hop(t, 5);
-            s += mascotA({ x: q[0] - 18, y: q[1] - 40, s: 0.36, bounce: h.b, sx: h.sx, sy: h.sy, expr: "open" }) + mascotB({ x: q[0] + 18, y: q[1] - 38, s: 0.36, bounce: hop(t + 0.2, 5).b });
+          if (dd > 0) {  // both walk on together along the dashed line, and stay at Abingdon Square
+            const q = pointAt(dPts, dd), h = dd < 1 ? hop(t, 5) : { b: 0, sx: 1, sy: 1 };
+            s += mascotA({ x: q[0] - 22, y: q[1] - 40, s: 0.42, bounce: h.b, sx: h.sx, sy: h.sy, expr: "open" }) + mascotB({ x: q[0] + 22, y: q[1] - 38, s: 0.42, bounce: dd < 1 ? hop(t + 0.2, 5).b : 0 });
           }
           const de = dPts[dPts.length - 1], dl = springIn(t, S7.dash[1] - 0.2, 0.45);
           s += `<g opacity="${clamp(dl)}" transform="translate(${de[0]} ${de[1] - 64}) scale(${0.85 + 0.15 * dl})"><rect x="-150" y="-28" width="300" height="56" rx="28" fill="#fff" stroke="${C.ink}" stroke-width="3"/>

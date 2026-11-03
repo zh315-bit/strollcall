@@ -121,11 +121,11 @@ add("s2", (t) => {
     msgs.forEach((m, i) => {
       const p = springIn(t, m.at, 0.4);
       if (p <= 0) return;
-      const w = m.txt.length * 16.5 + 50, y = 190 + i * 120, x = m.me ? pw - 40 - w : 40;
+      const w = Math.min(m.txt.length * 13.4 + 48, pw - 80), y = 190 + i * 120, x = m.me ? pw - 40 - w : 40;
       s += `<g opacity="${clamp(p * 2)}" transform="translate(${x + (m.me ? w : 0)} ${y + 32}) scale(${clamp(p, 0, 1.12)}) translate(${m.me ? -w : 0} -32)">
         ${m.me ? "" : text(10, -14, m.who, { size: 20, family: "Nunito", weight: 700, anchor: "start", fill: "#8A82A0" })}
         <rect width="${w}" height="64" rx="32" fill="${m.me ? C.blue : "#EFE9F7"}"/>
-        ${text(w / 2, 42, m.txt, { size: 27, family: "Nunito", weight: 700, fill: m.me ? "#fff" : C.ink })}</g>`;
+        ${text(w / 2, 41, m.txt, { size: 25, family: "Nunito", weight: 700, fill: m.me ? "#fff" : C.ink })}</g>`;
     });
     const dp = prog(t, 4.2, 4.5) * (1 - prog(t, 5.2, 5.7));
     if (dp > 0) s += `<g opacity="${dp}" transform="translate(40 560)"><rect width="110" height="56" rx="28" fill="#EFE9F7"/>
@@ -166,9 +166,9 @@ add("s3", (t) => {
   if (t < 1.85) return { bg: s };
   // the live site in a browser, rising in
   const rise = springIn(t, 1.9, 0.6);
-  const clipT = 5.82 + (t - 6.0);
-  const after = clipT > 6.8;  // New walk page
-  const zIn = after ? 1 + 0.28 * prog(t, 7.0, 7.6, easeInOut) : 1 + 0.035 * prog(t, 2.2, 5.6, easeInOut);
+  const clipT = 5.82 + (t - 6.25);  // the click on "Plan my walk" (clip 5.82) lands on "taking" (t 6.25)
+  const after = clipT > 8.3;          // the New walk page has loaded (clip 8.0-8.6, about 2 s after the click)
+  const zIn = after ? 1 + 0.1 * prog(t, 9.0, 10.6, easeInOut) : 1 + 0.035 * prog(t, 2.2, 5.6, easeInOut);
   const d = dev({ x: 210, y: 160, w: 1500, h: 844, cw: 1920, dy: (1 - clamp(rise)) * 700 + floatY(t, 3, 5), rot: floatR(t, 0.2, 6),
     s: 0.94 + 0.06 * clamp(rise, 0, 1.05), z: zIn, zx: after ? 0.17 : 0.5, zy: after ? 0.16 : 0.62 });
   s += browserChrome(d, "strollcall.onrender.com");
@@ -177,12 +177,12 @@ add("s3", (t) => {
   const ul = prog(t, 2.4, 4.4, easeInOut) * (1 - prog(t, 5.6, 6.0));
   if (ul > 0) { const p0 = devPt(d, 645, 708), p1 = devPt(d, 1275, 708); fg += `<path d="M${p0[0]} ${p0[1]} L${lerp(p0[0], p1[0], ul)} ${lerp(p0[1], p1[1], ul)}" stroke="${C.yellow}" stroke-width="10" stroke-linecap="round" opacity=".9"/>`; }
   // "and it plans a short walk worth taking": glow on "Plan my walk", then the click
-  const gp = prog(t, 4.8, 5.3) * (1 - prog(t, 6.1, 6.4));
+  const gp = prog(t, 5.0, 5.5) * (1 - prog(t, 6.35, 6.65));
   if (gp > 0) { const c = devPt(d, 960, 862); fg += `<ellipse cx="${c[0]}" cy="${c[1]}" rx="${150 + 8 * Math.sin(t * 6)}" ry="${52 + 4 * Math.sin(t * 6)}" fill="none" stroke="${C.yellow}" stroke-width="12" opacity="${gp}"/>`; }
-  fg += ripple(devPt(d, 960, 862), t, 6.0);
+  fg += ripple(devPt(d, 960, 862), t, 6.25);
   // "on your own, or with a friend": the two modes on the New walk page
-  fg += callout(devPt(d, 320, 196), [760, 470], "Just me", t, 7.15, 10.8, { bg: "#FFF3C4" });
-  fg += callout(devPt(d, 524, 196), [1180, 470], "With a friend", t, 8.0, 10.8, { bg: "#FFE7D9" });
+  fg += callout(devPt(d, 320, 196), [760, 470], "Just me", t, 9.25, 11.6, { bg: "#FFF3C4" });
+  fg += callout(devPt(d, 524, 196), [1180, 470], "With a friend", t, 10.05, 11.6, { bg: "#FFE7D9" });
   return { bg: s, videos: [devVideo(d, "a1", clipT)], fg };
 });
 
@@ -234,8 +234,7 @@ add("s5", (t) => {
   else if (t < 8.9) { clip = "a4"; clipT = 12.7 + (t - 4); }
   else if (t < 12.77) { clip = "a5"; clipT = 0.13 + (t - 8.9); }
   else { clip = "a5"; clipT = Math.min(4.85 + (t - 12.77), 14.0); }
-  const hold = t > 21.9 ? prog(t, 21.9, 25.3, easeInOut) : 0;
-  const d = phoneDev(300, 70, t, { s: 1 + 0.03 * prog(t, 9.6, 10.4, easeInOut), z: 1 + 0.32 * hold, zx: 0.5, zy: 0.72 });
+  const d = phoneDev(300, 70, t, { s: 1 + 0.03 * prog(t, 9.6, 10.4, easeInOut) });
   let bg = softBg(t, "#E9F7EE", C.cream, ["#D6F2DF", "#FFF1D6", "#E8F1FF", "#E3F5E8"]) + devShadow(d);
   let fg = phoneFrame(d);
   fg += ripple(devPt(d, 194, 462), t, 0.46);
@@ -411,7 +410,7 @@ add("s9", (t) => {
     <rect x="0" y="34" width="${360 * b1}" height="30" rx="15" fill="${C.blue}"/>${text(380, 58, `${Math.round(10 * b1)}/10`, { size: 26, family: "Nunito", weight: 800, anchor: "start" })}
     ${text(0, 104, "keyword rules", { size: 24, family: "Nunito", weight: 800, anchor: "start" })}
     <rect x="0" y="116" width="${252 * b2}" height="30" rx="15" fill="#B9B2CC"/>${text(270, 140, `${Math.round(7 * b2)}/10`, { size: 26, family: "Nunito", weight: 800, anchor: "start" })}</g>`;
-  s += card(700, "wishes read correctly", bars, "benchmarks/2026-10-28-ablation-wishes.md", 6.3);
+  s += card(700, "wishes read correctly", bars, "benchmarks/2026-10-28-ablation-wishes.md", 6.4);
   // wish reading, median: Glimmer 0.55 s vs Muse Spark 3.58 s (benchmarks/2026-10-31-open-weights-run1.md:14)
   const lp = prog(t, 10.0, 10.8, (x) => x);
   s += card(1290, "reading a wish, median", `${text(260, 160, `${(0.55 * lp).toFixed(2)} s`, { size: 72, fill: C.blue })}${text(260, 218, `Muse Glimmer · Muse Spark ${(3.58 * lp).toFixed(2)} s`, { size: 24, family: "Nunito", weight: 800 })}`, "benchmarks/2026-10-31-open-weights-run1.md", 9.8);
@@ -429,14 +428,22 @@ add("s9", (t) => {
     s += mascotA({ x: 1740, y: 830, s: 0.7, expr: repl > 0.5 ? "happy" : "smile", bounce: Math.abs(nod), rot: nod, blink: blinkAt(t, 2.6) });
   }
   const videos = [];
-  if (t < 3.1) {
-    const p = springIn(t, 0.25, 0.5), o = 1 - prog(t, 2.7, 3.1);
-    const d = dev({ x: 1180, y: 300, w: 640, h: 360, cw: 1920, s: 0.9 + 0.1 * clamp(p, 0, 1.08), r: 16, dy: floatY(t, 3, 4), rot: 1.5 });
+  let fg = "";
+  if (t < 6.2) {
+    // the real report (A10), large and sharp: a still of its summary (clip 3.4); the "Correct outcome rate 12/12"
+    // row is ringed as "12 of 12" is said
+    const p = springIn(t, 0.25, 0.5), o = 1 - prog(t, 5.8, 6.2);
+    const d = dev({ x: 800, y: 300, w: 1040, h: 585, cw: 1920, s: 0.9 + 0.1 * clamp(p, 0, 1.08), r: 18, dy: floatY(t, 3, 4), rot: 1,
+      z: 1.42 + 0.06 * prog(t, 0.3, 6), zx: 0.66, zy: 0.64 });
     s += `<g opacity="${clamp(p * 2) * o}">${devShadow(d, 18)}</g>`;
-    s += `<g opacity="${clamp(p * 2) * o}">${text(1500, 280, "the report, on GitHub", { size: 24, family: "Nunito", weight: 800, fill: "#6B6380" })}</g>`;
-    videos.push(devVideo(d, "a10", 3 + t, { opacity: clamp(p * 2) * o }));
+    s += `<g opacity="${clamp(p * 2) * o}">${text(1320, 282, "the benchmark report, on GitHub", { size: 26, family: "Nunito", weight: 800, fill: "#6B6380" })}</g>`;
+    videos.push(devVideo(d, "a10", 3.4, { opacity: clamp(p * 2) * o }));
+    const ring = prog(t, 3.3, 3.7) * o;
+    if (ring > 0) { const a0 = devPt(d, 695, 698), a1 = devPt(d, 1830, 772);
+      a1[0] = Math.min(a1[0], d.x + d.dx + d.w / 2 + (d.w * d.s) / 2 - 22);  // inside the report's visible edge
+      fg += `<rect x="${a0[0] - 6}" y="${a0[1] - 6}" width="${a1[0] - a0[0] + 12}" height="${a1[1] - a0[1] + 12}" rx="12" fill="none" stroke="${C.yellow}" stroke-width="7" opacity="${ring}"/>`; }
   }
-  return { bg: s, videos };
+  return { bg: s, videos, fg };
 });
 
 // 10 · out in the city at golden hour (music only; no user-test data exists to show)

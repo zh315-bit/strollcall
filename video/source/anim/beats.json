@@ -4,7 +4,10 @@
   "vo": [
     {"vo": "vo_01a", "from": 0, "to": "end", "word_at": 0.6},
     {"vo": "vo_01b", "from": 0, "to": "end", "word_at": 8.3},
-    {"vo": "vo_02", "from": 0, "to": "end", "word_at": 16.36},
+    {"vo": "vo_02", "from": 0, "to": 3, "word_at": 16.4},
+    {"vo": "vo_02", "from": 4, "to": 14, "word_at": 18.3},
+    {"vo": "vo_02", "from": 15, "to": 22, "word_at": 20.75},
+    {"vo": "vo_02", "from": 23, "to": "end", "word_at": 25.1},
     {"vo": "vo_03", "from": 0, "to": 5, "word_at": 28.3},
     {"vo": "vo_03", "from": 6, "to": 9, "word_at": 36.63},
     {"vo": "vo_03", "from": 10, "to": 19, "word_at": 38.8},
@@ -35,6 +38,6 @@
     {"file": "phone/05_buddy_add_stop_voice00.mp3", "at": 68.9, "gain": 0.9, "duck_until": 70.35, "speech": [1.45, 7.8], "caption": "Buddy: “…Starbucks, open when you get there, per OpenStreetMap. It's on your way: no extra time.”"},
     {"file": "wav/voice2.wav", "at": 85.05, "gain": 0.9, "speech": [0.40, 2.34], "caption": "“Green space. Avoid traffic.”"}
   ],
-  "clicks": [29.85, 35.55, 38.82, 45.79, 52.06, 62.0, 83.1, 84.9, 92.36],
+  "clicks": [22.25, 29.85, 35.55, 38.82, 45.79, 52.06, 62.0, 83.1, 84.9, 92.36],
   "chimes": [92.9]
 }
