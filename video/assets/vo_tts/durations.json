@@ -1,15 +1,15 @@
 {
  "vo_01a": {
   "text": "I'm Chris. Some afternoons I want to go outside, but I don't know where to go.",
-  "seconds": 4.96
+  "seconds": 5.28
  },
  "vo_01b": {
   "text": "And my friends? Mostly homebodies. 'We should hang out' never turns into a plan.",
-  "seconds": 5.6
+  "seconds": 5.44
  },
  "vo_02": {
   "text": "So I built StrollCall. Tell it how long you have and what you feel like, and it plans a short walk worth taking: on your own, or with a friend.",
-  "seconds": 8.64
+  "seconds": 8.48
  },
  "vo_03": {
   "text": "I just say what I want. Muse Voice transcribes it, and Muse Glimmer, an open-weights model I host on Modal, turns it into a plan the route engine understands, in about half a second.",
@@ -25,18 +25,18 @@
  },
  "vo_06": {
   "text": "Muse Spark balances both of our wishes and explains the trade-off. And the meeting point is fair by walking time, not by distance on a map: here, the map's midpoint leaves us 4.8 minutes apart; ours gets us there within a minute.",
-  "seconds": 14.4
+  "seconds": 14.8
  },
  "vo_07": {
   "text": "Under the hood: a walking graph of New York with 139,106 points, built from OpenStreetMap, plans in milliseconds. Meta models handle the human side: Muse Glimmer reads wishes, Muse Spark negotiates and ranks, Muse Image draws the invite, Muse Voice listens.",
-  "seconds": 20.4
+  "seconds": 20.16
  },
  "vo_08": {
   "text": "Every evaluation was committed before it ran. 12 of 12 test pairs got the right outcome. Meta's reading caught 10 of 10 wishes, against 7 for keyword rules. And a checker throws out any claim our data can't back up.",
-  "seconds": 14.08
+  "seconds": 14.56
  },
  "vo_10": {
   "text": "StrollCall. Less planning. More walking.",
-  "seconds": 3.28
+  "seconds": 3.44
  }
 }

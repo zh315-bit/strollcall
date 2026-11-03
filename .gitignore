@@ -32,3 +32,4 @@ video/assets/data/*.local.json
 video/assets/data/walking_graph_manhattan.json
 video/assets/art/*.png
 video/assets/art/*.webp
+video/assets/vo_tts/premade_chris/

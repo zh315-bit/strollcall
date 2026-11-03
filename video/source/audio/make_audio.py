@@ -20,7 +20,9 @@ ROOT = Path(__file__).resolve().parents[3]
 load_dotenv(ROOT / ".env", override=True)
 VO_DIR = ROOT / "video" / "assets" / "vo_tts"
 AUDIO = ROOT / "video" / "assets" / "audio"
-VOICE = "iP95p4xoKVk53GoZ742B"  # premade "Chris - Charming, Down-to-Earth" (American, conversational)
+# The narrator's own voice, cloned by the user in their ElevenLabs account ("个人声音", instant voice clone).
+# Earlier takes used the premade "Chris - Charming, Down-to-Earth" (iP95p4xoKVk53GoZ742B); kept in vo_tts/premade_chris/.
+VOICE = os.environ.get("VO_VOICE_ID", "8vqmfub9vtiy1qBBmHeb")
 MODEL = "eleven_v4"
 
 VO = {
@@ -54,7 +56,7 @@ def make_vo(client, only=None):
         if only and k not in only:
             continue
         audio = client.text_to_speech.convert(VOICE, text=text, model_id=MODEL, output_format="mp3_44100_128",
-                                              voice_settings=VoiceSettings(stability=0.5, similarity_boost=0.75),
+                                              voice_settings=VoiceSettings(stability=0.5, similarity_boost=0.85),
                                               apply_text_normalization="on")
         f = VO_DIR / f"{k}.mp3"
         f.write_bytes(b"".join(audio))

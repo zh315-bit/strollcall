@@ -418,11 +418,11 @@ add("s9", (t) => {
   // the honesty check: the reason is real (benchmarks/2026-10-30-rejections.md:15); the sentence is illustrative
   const hp = springIn(t, 10.9, 0.5);
   if (hp > 0) {
-    const strike = prog(t, 11.6, 12.1), repl = prog(t, 13.2, 13.7);
+    const strike = prog(t, 11.9, 12.4), repl = prog(t, 13.4, 13.9);  // "throws out" at 12.0-12.3, "can't back up" ~13.6
     s += `<g opacity="${clamp(hp * 2)}" transform="translate(960 ${818 + (1 - clamp(hp)) * 40}) scale(${0.92 + 0.08 * clamp(hp, 0, 1.08)}) translate(-600 -115)"><g filter="url(#shadow)"><rect width="1200" height="200" rx="30" fill="#fff"/></g>
       ${text(60, 75, "“This street is quiet.”", { size: 42, family: "Nunito", weight: 800, anchor: "start", fill: strike > 0.5 ? "#9C95AE" : C.ink })}
       <line x1="56" y1="62" x2="${56 + 450 * strike}" y2="62" stroke="#E0484D" stroke-width="7" stroke-linecap="round"/>
-      <g opacity="${prog(t, 12.0, 12.3)}">${tag(560, 70, "rejected: unverifiable claim ‘quiet’ (not in our data)", { bg: "#FFE1E1" })}</g>
+      <g opacity="${prog(t, 12.3, 12.6)}">${tag(560, 70, "rejected: unverifiable claim ‘quiet’ (not in our data)", { bg: "#FFE1E1" })}</g>
       <g opacity="${repl}" transform="translate(0 ${(1 - repl) * 8})">${text(60, 152, "“Quiet, as B asked.”", { size: 42, family: "Nunito", weight: 800, anchor: "start", fill: C.green })}</g>
       ${text(1170, 188, "illustration of a real rule · reason from benchmarks/2026-10-30-rejections.md", { size: 17, family: "Nunito", weight: 700, anchor: "end", fill: "#8A82A0" })}</g>`;
     const nod = repl > 0 ? Math.sin(prog(t, 13.4, 14.4, (x) => x) * Math.PI * 2) * 6 : 0;
