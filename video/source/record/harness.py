@@ -93,23 +93,25 @@ class Recorder:
         except Exception:  # noqa: BLE001 - the page may be closing
             pass
 
-    def _on_response(self, resp):
-        if "/api/voice/speak" in resp.url and resp.ok and self.t0:
-            try:
-                body = resp.body()
-            except Exception:  # noqa: BLE001
-                return
-            n = len(self.audio_log)
+    def _on_speak(self, route):
+        """The app's spoken lines (/api/voice/speak): fetched on the page's behalf, saved with their time, and
+        handed to the page unchanged (reading resp.body() afterwards returns nothing for media)."""
+        resp = route.fetch()
+        body = resp.body()
+        if self.t0 and not self.stopped and resp.ok and body:
+            n = len([e for e in self.audio_log if "file" in e])
             f = self.out.with_name(f"{self.out.stem}_voice{n:02d}.mp3")
             f.write_bytes(body)
-            self.audio_log.append({"file": f.name, "t": round(time.time() - self.t0, 2)})
+            req = route.request.post_data_json or {}
+            self.audio_log.append({"file": f.name, "t": round(time.time() - self.t0, 2), "text": req.get("text", "")})
+        route.fulfill(response=resp, body=body)
 
     def start(self):
         shutil.rmtree(self.frames_dir, ignore_errors=True)
         self.frames_dir.mkdir(parents=True)
         self.cdp = self.page.context.new_cdp_session(self.page)
         self.cdp.on("Page.screencastFrame", self._on_frame)
-        self.page.on("response", self._on_response)
+        self.page.route("**/api/voice/speak", self._on_speak)
         self.t0 = time.time()
         _active.append(self)
         self.cdp.send("Page.startScreencast", {"format": "jpeg", "quality": 90, "maxWidth": self.max_size[0],
@@ -127,7 +129,7 @@ class Recorder:
         _active.remove(self)
         self.stopped = True
         time.sleep(0.3)
-        self.page.remove_listener("response", self._on_response)
+        self.page.unroute("**/api/voice/speak", self._on_speak)
         if not self.frames:
             raise RuntimeError(f"{self.out.name}: no frames")
         # concat list: each frame held until the next one (wall-clock timestamps from Chrome)

@@ -1,0 +1,40 @@
+{
+  "_note": "Absolute placements (seconds into the video) shared by the picture (timeline.js), the captions and the mix (mix.py). vo: a phrase of a voiceover file, words from..to (indexes into vo_tts/words.json), placed so its first word starts at word_at. sounds: other speech heard in the video: the wish spoken into the app's real Speak button (the TTS WAVs Chrome's fake microphone played), and the app's own spoken lines captured from /api/voice/speak during the recordings.",
+  "scenes": [["s1", 8], ["s2", 8], ["s3", 12], ["s4", 23.6], ["s5", 25.3], ["s6", 18.5], ["s7", 20], ["s8", 20.8], ["s9", 15], ["s10", 11], ["s11", 9.5]],
+  "vo": [
+    {"vo": "vo_01a", "from": 0, "to": "end", "word_at": 0.6},
+    {"vo": "vo_01b", "from": 0, "to": "end", "word_at": 8.3},
+    {"vo": "vo_02", "from": 0, "to": "end", "word_at": 16.36},
+    {"vo": "vo_03", "from": 0, "to": 5, "word_at": 28.3},
+    {"vo": "vo_03", "from": 6, "to": 9, "word_at": 36.63},
+    {"vo": "vo_03", "from": 10, "to": 19, "word_at": 38.8},
+    {"vo": "vo_03", "from": 20, "to": 28, "word_at": 42.2},
+    {"vo": "vo_03", "from": 29, "to": "end", "word_at": 45.2},
+    {"vo": "vo_04", "from": 0, "to": 7, "word_at": 51.44},
+    {"vo": "vo_04", "from": 8, "to": 12, "word_at": 54.18},
+    {"vo": "vo_04", "from": 13, "to": 19, "word_at": 60.6},
+    {"vo": "vo_04", "from": 20, "to": "end", "word_at": 64.6},
+    {"vo": "vo_05", "from": 0, "to": 4, "word_at": 77.2},
+    {"vo": "vo_05", "from": 5, "to": 8, "word_at": 78.98},
+    {"vo": "vo_05", "from": 9, "to": 14, "word_at": 80.7},
+    {"vo": "vo_05", "from": 15, "to": 16, "word_at": 82.86},
+    {"vo": "vo_05", "from": 17, "to": "end", "word_at": 83.85},
+    {"vo": "vo_06", "from": 0, "to": 10, "word_at": 95.7},
+    {"vo": "vo_06", "from": 11, "to": 24, "word_at": 99.4},
+    {"vo": "vo_06", "from": 25, "to": 32, "word_at": 104.18},
+    {"vo": "vo_06", "from": 33, "to": "end", "word_at": 109.68},
+    {"vo": "vo_07", "from": 0, "to": "end", "word_at": 115.78},
+    {"vo": "vo_08", "from": 0, "to": "end", "word_at": 136.6},
+    {"vo": "vo_10", "from": 0, "to": "end", "word_at": 163.84}
+  ],
+  "sounds": [
+    {"file": "wav/voice1.wav", "at": 30.0, "gain": 0.9, "speech": [0.40, 3.90], "caption": "“25 minutes, quiet streets, coffee at the end.”"},
+    {"file": "phone/04_walking_voice00.mp3", "at": 55.89, "gain": 0.85, "speech": [0.0, 1.0], "caption": "App: “Voice prompts on.”"},
+    {"file": "phone/04_walking_voice01.mp3", "at": 57.06, "gain": 0.85, "speech": [0.0, 2.85], "caption": "App: “In about 100 meters, turn left onto West 40th Street.”"},
+    {"file": "wav/voice3.wav", "at": 62.15, "gain": 0.9, "speech": [0.41, 1.44], "caption": "“Add a coffee stop.”"},
+    {"file": "phone/05_buddy_add_stop_voice00.mp3", "at": 68.9, "gain": 0.9, "duck_until": 70.35, "speech": [1.45, 7.8], "caption": "Buddy: “…Starbucks, open when you get there, per OpenStreetMap. It's on your way: no extra time.”"},
+    {"file": "wav/voice2.wav", "at": 85.05, "gain": 0.9, "speech": [0.40, 2.34], "caption": "“Green space. Avoid traffic.”"}
+  ],
+  "clicks": [29.85, 35.55, 38.82, 45.79, 52.06, 62.0, 83.1, 84.9, 92.36],
+  "chimes": [92.9]
+}

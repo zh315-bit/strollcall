@@ -5,22 +5,23 @@
 html,body{margin:0;background:#FBF7EF;overflow:hidden}
 #stage{position:relative;width:1920px;height:1080px;overflow:hidden;transform-origin:0 0}
 #stage svg{position:absolute;inset:0}
-.vid{position:absolute;overflow:hidden;background:#fff}
+.vid{position:absolute;overflow:hidden;background:#fff;transform-origin:50% 50%}
 .vid video{width:100%;height:100%;object-fit:cover;display:block}
 </style></head><body>
 <div id="stage"><svg id="bg" width="1920" height="1080" viewBox="0 0 1920 1080"></svg><div id="vids"></div>
 <svg id="fg" width="1920" height="1080" viewBox="0 0 1920 1080"></svg></div>
-<script src="lib.js"></script><script src="scenes.js"></script><script src="timeline.js"></script>
+<script src="lib.js"></script><script src="scenes.js"></script>
 <script>
-// Clips: the real recordings, transcoded for frame-accurate seeking (build_clips.py).
-const CLIPS = { a1: "screen/01_home", a2: "phone/02_solo_voice_glimmer", a3: "screen/03_terminal_glimmer", a4: "phone/04_walking",
-  a5: "phone/05_buddy_add_stop", a6: "phone/06_invite_A", a7: "phone/07_accept_B", a8a: "phone/08_plan_A", a8b: "phone/08_plan_B",
-  a10: "screen/10_reports_1" };
+// Clips: the real recordings, transcoded for frame-accurate seeking (build_clips.py); a8b2 is a second player for
+// the same file (scenes 6 and 7 show it at once during their transition).
+const CLIPS = { a1: "01_home", a2: "02_solo_voice_glimmer", a3: "03_terminal_glimmer", a4: "04_walking",
+  a5: "05_buddy_add_stop", a6: "06_invite_A", a7: "07_accept_B", a8a: "08_plan_A", a8b: "08_plan_B", a8b2: "08_plan_B",
+  a10: "10_reports_1" };
 const els = {};
 window.DATA = {};
 
 function drawGraph(raw, fair) {
-  // the Manhattan walking graph, turned so the avenues run across the frame, fitted around Midtown-Downtown
+  // the Manhattan walking graph (real geometry), turned so the avenues run across the frame
   const ang = -61 * Math.PI / 180, k = Math.cos(40.75 * Math.PI / 180);
   const rot = ([lat, lon]) => { const x = lon * k, y = -lat; return [x * Math.cos(ang) - y * Math.sin(ang), x * Math.sin(ang) + y * Math.cos(ang)]; };
   const box = [[40.700, -74.02], [40.700, -73.97], [40.790, -73.93], [40.790, -73.99]].map(rot);
@@ -29,24 +30,25 @@ function drawGraph(raw, fair) {
   const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
   const P = (ll) => { const [x, y] = rot(ll); return [960 + (x - cx) * sc, 560 + (y - cy) * sc]; };
   const cv = document.createElement("canvas"); cv.width = 1920; cv.height = 1080;
-  const g = cv.getContext("2d"); g.strokeStyle = "rgba(34,163,90,0.75)"; g.lineWidth = 1.1; g.beginPath();
-  for (const line of raw.lines) { line.forEach((ll, i) => { const [x, y] = P(ll); i ? g.lineTo(x, y) : g.moveTo(x, y); }); }
+  const g = cv.getContext("2d"); g.strokeStyle = "rgba(34,163,90,0.8)"; g.lineWidth = 1.1; g.beginPath();
+  for (const line of raw.lines) line.forEach((ll, i) => { const [x, y] = P(ll); i ? g.lineTo(x, y) : g.moveTo(x, y); });
   g.stroke();
   const route = [...fair.meeting.a_route, ...fair.destination.route].map(P);
   const focus = route.reduce((a, p) => [a[0] + p[0] / route.length, a[1] + p[1] / route.length], [0, 0]);
   return { png: cv.toDataURL("image/png"), route, focus, nodes_total: raw.graph_nodes_total };
 }
+const getJSON = (u) => fetch(u).then((r) => r.json());
 
 window.ready = (async () => {
-  const [fair, graph, durs] = await Promise.all(["fairness_example.json", "walking_graph_manhattan.json"].map((f) =>
-    fetch("../../assets/data/" + f).then((r) => r.json())).concat([fetch("../../assets/vo_tts/durations.json").then((r) => r.json())]));
-  DATA.fair = fair; DATA.graph = drawGraph(graph, fair);
-  window.CAPS = captionChunks(durs);
+  const [fair, graph, words, beats] = await Promise.all([getJSON("../../assets/data/fairness_example.json"),
+    getJSON("../../assets/data/walking_graph_manhattan.json"), getJSON("../../assets/vo_tts/words.json"), getJSON("beats.json")]);
+  DATA.fair = fair; DATA.graph = drawGraph(graph, fair); window.BEATS = beats;
+  await new Promise((r) => { const s = document.createElement("script"); s.src = "timeline.js"; s.onload = r; document.body.appendChild(s); });
+  window.CAPS = buildCaptions(words, beats);
   await document.fonts.load('700 40px Fredoka'); await document.fonts.load('800 40px Nunito'); await document.fonts.ready;
   for (const [id, f] of Object.entries(CLIPS)) {
     const d = document.createElement("div"); d.className = "vid"; d.style.display = "none";
-    // the whole clip in memory (a blob URL), so every seek is exact without HTTP range requests
-    const blob = await (await fetch("../../assets/clips/" + f.split("/")[1] + ".mp4")).blob();
+    const blob = await (await fetch("../../assets/clips/" + f + ".mp4")).blob();  // in memory: exact seeks without range requests
     const v = document.createElement("video"); v.src = URL.createObjectURL(blob); v.muted = true; v.preload = "auto";
     d.appendChild(v); document.getElementById("vids").appendChild(d); els[id] = { d, v };
     await new Promise((r) => (v.readyState >= 1 ? r() : v.addEventListener("loadedmetadata", r, { once: true })));
@@ -60,25 +62,40 @@ function seek(v, t) {
   return new Promise((r) => { v.addEventListener("seeked", () => r(), { once: true }); v.currentTime = t; });
 }
 
-window.renderFrame = async (t) => {
-  const sc = T.find((s) => t >= s.start && t < s.start + s.dur) || T[T.length - 1];
-  const out = sc.draw(t - sc.start);
-  document.getElementById("bg").innerHTML = DEFS + (out.bg || "");
-  document.getElementById("fg").innerHTML = DEFS + (out.fg || "") + wipe(t) + captionSvg(t);
-  const used = new Set();
-  const waits = [];
-  for (const vd of out.videos || []) {
-    const e = els[vd.clip]; used.add(vd.clip);
-    const s = vd.scale || 1;
-    Object.assign(e.d.style, { display: "block", left: vd.x + "px", top: vd.y + "px", width: vd.w + "px", height: vd.h + "px",
-      borderRadius: (vd.r || 0) + "px", opacity: vd.opacity ?? 1,
-      transform: `scale(${s})`, transformOrigin: `${50 + 100 * (vd.ox || 0)}% ${50 - 100 * (0.5 - (vd.oy ?? 0.5))}%` });
-    e.v.style.objectPosition = `50% ${vd.top ? "0%" : "50%"}`;
-    waits.push(seek(e.v, vd.t));
+function layersAt(t) {
+  const tr = transitionAt(t);
+  if (!tr) {
+    const sc = T.find((s) => t >= s.start && t < s.start + s.dur) || T[T.length - 1];
+    return [{ out: sc.draw(t - sc.start), dx: 0, id: sc.id }];
   }
+  const a = T[tr.i - 1], b = T[tr.i];
+  return [{ out: a.draw(t - a.start), dx: -1920 * tr.e, id: a.id }, { out: b.draw(t - b.start), dx: 1920 * (1 - tr.e), id: b.id, seamAt: 1920 * (1 - tr.e) }];
+}
+
+window.renderFrame = async (t) => {
+  const layers = layersAt(t);
+  let bg = DEFS, fg = DEFS;
+  const used = new Set(), waits = [];
+  for (const L of layers) {
+    bg += `<g transform="translate(${L.dx} 0)">${L.out.bg || ""}</g>`;
+    fg += `<g transform="translate(${L.dx} 0)">${L.out.fg || ""}</g>`;
+    for (const vd of L.out.videos || []) {
+      const e = els[vd.clip]; used.add(vd.clip);
+      Object.assign(e.d.style, { display: "block", left: vd.x + "px", top: vd.y + "px", width: vd.w + "px", height: vd.h + "px",
+        borderRadius: (vd.r || 0) + "px", opacity: vd.opacity ?? 1,
+        transform: `translate(${(vd.dx || 0) + L.dx}px, ${vd.dy || 0}px) rotate(${vd.rot || 0}deg) scale(${vd.s || 1})` });
+      Object.assign(e.v.style, { transform: `scale(${vd.z || 1})`, transformOrigin: `${(vd.zx ?? 0.5) * 100}% ${(vd.zy ?? 0.5) * 100}%` });
+      waits.push(seek(e.v, vd.t));
+    }
+  }
+  const sm = layers.find((L) => L.seamAt !== undefined);
+  if (sm) fg += seam(sm.seamAt, t);
+  fg += captionSvg(t);
+  document.getElementById("bg").innerHTML = bg;
+  document.getElementById("fg").innerHTML = fg;
   for (const [id, e] of Object.entries(els)) if (!used.has(id)) e.d.style.display = "none";
   await Promise.all(waits);
   await new Promise((r) => setTimeout(r, 0));
-  return sc.id;
+  return layers.map((L) => L.id).join("+");
 };
 </script></body></html>

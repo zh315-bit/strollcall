@@ -68,3 +68,28 @@ Not used: user-test results (none in the repo or data), so Scene 10 has no resul
 HTML/SVG scenes in `video/source/anim/` driven by a time variable, rendered frame by frame in headless Chrome
 (Playwright), recordings composited in the same page as `<video>` elements seeked per frame, then muxed with
 the audio by ffmpeg. Data scenes read `video/assets/data/` directly.
+
+## Revision 2 (after the first preview): picture follows the words
+
+Feedback: the picture felt stiff, and several moments did not match the voice. Changes:
+
+- **Word-level sync.** ElevenLabs forced alignment gives every voiceover word's start and end
+  (`video/assets/vo_tts/words.json`, `source/audio/align.py`). Each voiceover file is cut into phrases between
+  words and each phrase is placed on its picture beat (`source/anim/beats.json`, shared by the picture, the
+  captions and the mix). Examples: "Muse Voice transcribes it" lands as the transcript appears; "Muse Glimmer"
+  as the chips come in; "4.8 minutes apart" as the 4.8 pill appears; each Meta model card as its name is said;
+  "12 of 12" as the counter lands. Captions now follow the spoken words phrase by phrase.
+- **The real voices in the shots.** The wish heard in the Speak shots is the WAV Chrome's fake microphone played
+  into the app's real Speak button; the app's own spoken lines ("Voice prompts on.", the turn prompt, the
+  buddy's reply about the coffee stop) were re-captured from `/api/voice/speak` in a new take of A4/A5
+  (the first take's audio files were empty). They play at the moments the app played them.
+- **Motion.** Devices float and push in on the beats; callouts pulse a ring on their target, draw a leader
+  line and lift their label; chips spring in; drifting pastel shapes behind every product shot; mascots blink,
+  squash and stretch, react (listening, thinking, happy) and a small blue guide sits beside the phone; scenes
+  push into each other with a green route line (white dashed centre, a pin) along the seam.
+- **Timeline** (2:51.7): s1 8 · s2 8 · s3 12 · s4 23.6 · s5 25.3 · s6 18.5 · s7 20 · s8 20.8 · s9 15 · s10 11 · s11 9.5.
+  Scene 2 now opens on the orange homebody (with "And my friends? Mostly homebodies"), then the chat
+  (with "'We should hang out'"). Scene 3 underlines the page's own "Tell us how long you have…" as it is said,
+  clicks "Plan my walk" on "worth taking", and points at "Just me" / "With a friend" as they are said.
+  Scene 8 shows the real terminal (A3) beside the Muse Glimmer card instead of after the cards.
+  Scene 10 is shorter (no data to show) with parallax, falling leaves and the two mascots meeting.

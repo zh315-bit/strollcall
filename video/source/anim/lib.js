@@ -14,7 +14,7 @@ const prog = (t, a, b, ease = easeOut) => ease(clamp((t - a) / (b - a)));
 
 // ---- mascots ----
 // A: the round blue one with the antenna (also the walking buddy). Drawn around (0,0), body radius ~52.
-function mascotA({ x = 0, y = 0, s = 1, expr = "smile", blink = false, feet = true, look = 0, bounce = 0, flip = false } = {}) {
+function mascotA({ x = 0, y = 0, s = 1, expr = "smile", blink = false, feet = true, look = 0, bounce = 0, flip = false, sx = 1, sy = 1, rot = 0 } = {}) {
   const eyeRy = blink ? 1.2 : 7.5;
   const eyes = expr === "happy"
     ? `<path d="M-24 -6 q8 -9 16 0 M8 -6 q8 -9 16 0" fill="none" stroke="${C.ink}" stroke-width="5" stroke-linecap="round"/>`
@@ -26,7 +26,7 @@ function mascotA({ x = 0, y = 0, s = 1, expr = "smile", blink = false, feet = tr
     : `<path d="M-10 12 q10 10 20 0" fill="none" stroke="${C.ink}" stroke-width="4.5" stroke-linecap="round"/>`;
   const f = feet ? `<ellipse cx="-18" cy="50" rx="13" ry="7" fill="#2E5FC0" stroke="${C.ink}" stroke-width="3.5"/>
     <ellipse cx="18" cy="50" rx="13" ry="7" fill="#2E5FC0" stroke="${C.ink}" stroke-width="3.5"/>` : "";
-  return `<g transform="translate(${x} ${y - bounce}) scale(${flip ? -s : s} ${s})">${f}
+  return `<g transform="translate(${x} ${y - bounce}) rotate(${rot}) scale(${(flip ? -s : s) * sx} ${s * sy})">${f}
     <path d="M2 -48 q-4 -22 14 -30" fill="none" stroke="${C.ink}" stroke-width="5" stroke-linecap="round"/>
     <circle cx="17" cy="-80" r="8" fill="${C.pink}" stroke="${C.ink}" stroke-width="3.5"/>
     <ellipse cx="0" cy="0" rx="54" ry="50" fill="${C.blue}" stroke="${C.ink}" stroke-width="5"/>
@@ -36,7 +36,7 @@ function mascotA({ x = 0, y = 0, s = 1, expr = "smile", blink = false, feet = tr
 }
 
 // B: the orange one with ears. Same scale as A.
-function mascotB({ x = 0, y = 0, s = 1, expr = "happy", blink = false, feet = true, bounce = 0, flip = false } = {}) {
+function mascotB({ x = 0, y = 0, s = 1, expr = "happy", blink = false, feet = true, bounce = 0, flip = false, sx = 1, sy = 1, rot = 0 } = {}) {
   const eyes = expr === "happy"
     ? `<path d="M-24 -4 q7 -9 14 0 M10 -4 q7 -9 14 0" fill="none" stroke="${C.ink}" stroke-width="5" stroke-linecap="round"/>`
     : `<ellipse cx="-15" cy="-4" rx="6" ry="${blink ? 1.2 : 7.5}" fill="${C.ink}"/><ellipse cx="15" cy="-4" rx="6" ry="${blink ? 1.2 : 7.5}" fill="${C.ink}"/>
@@ -45,7 +45,7 @@ function mascotB({ x = 0, y = 0, s = 1, expr = "happy", blink = false, feet = tr
     : `<path d="M-10 10 q10 14 20 0 z" fill="${C.ink}"/>`;
   const f = feet ? `<ellipse cx="-17" cy="46" rx="12" ry="7" fill="#C9672F" stroke="${C.ink}" stroke-width="3.5"/>
     <ellipse cx="17" cy="46" rx="12" ry="7" fill="#C9672F" stroke="${C.ink}" stroke-width="3.5"/>` : "";
-  return `<g transform="translate(${x} ${y - bounce}) scale(${flip ? -s : s} ${s})">${f}
+  return `<g transform="translate(${x} ${y - bounce}) rotate(${rot}) scale(${(flip ? -s : s) * sx} ${s * sy})">${f}
     <path d="M-34 -30 l-12 -24 l26 8 z M34 -30 l12 -24 l-26 8 z" fill="${C.orange}" stroke="${C.ink}" stroke-width="5" stroke-linejoin="round"/>
     <ellipse cx="0" cy="0" rx="50" ry="46" fill="${C.orange}" stroke="${C.ink}" stroke-width="5"/>
     <ellipse cx="-20" cy="-22" rx="13" ry="7" fill="#fff" opacity=".25" transform="rotate(-30 -20 -22)"/>
@@ -114,4 +114,34 @@ const DEFS = `<defs>
 function text(x, y, str, { size = 40, weight = 700, fill = C.ink, family = "Fredoka", anchor = "middle", opacity = 1, extra = "" } = {}) {
   return `<text x="${x}" y="${y}" font-family="${family}" font-weight="${weight}" font-size="${size}" fill="${fill}"
     text-anchor="${anchor}" opacity="${opacity}" style="font-variant-numeric: tabular-nums" ${extra}>${str}</text>`;
+}
+
+// ---- motion helpers (liveliness) ----
+const easeOutBack = (t, k = 1.7) => { t = clamp(t); const c = k + 1; return 1 + c * Math.pow(t - 1, 3) + k * Math.pow(t - 1, 2); };
+const springIn = (t, a, d = 0.45) => easeOutBack((t - a) / d);           // 0 -> 1 with a small overshoot (shapes only)
+const pulse = (t, a, d = 0.9) => { const p = (t - a) / d; return p < 0 || p > 1 ? 0 : Math.sin(p * Math.PI); };
+// a gentle idle float for devices and cards
+const floatY = (t, amp = 5, period = 4.2, ph = 0) => amp * Math.sin((t / period + ph) * 2 * Math.PI);
+const floatR = (t, amp = 0.35, period = 5.3, ph = 0) => amp * Math.sin((t / period + ph) * 2 * Math.PI);
+// periodic blink: true for ~0.12 s every few seconds
+const blinkAt = (t, every = 3.4, off = 0) => ((t + off) % every) < 0.12;
+// squash & stretch for a hop of height h (returns {b, sx, sy})
+function hop(t, h = 10, hz = 2.2) {
+  const ph = (t * hz) % 1, b = Math.sin(ph * Math.PI) * h;
+  const land = ph < 0.12 || ph > 0.92 ? 1 : 0;
+  return { b, sx: land ? 1.06 : 0.97, sy: land ? 0.93 : 1.04 };
+}
+// drifting pastel shapes behind product shots, so the frame never sits still
+function ambient(t, cols = ["#FFE7A8", "#CFE6FF", "#D6F2DF", "#FFD9C7"]) {
+  const blobs = [[260, 220, 210, 0], [1650, 260, 240, 1], [1500, 860, 200, 2], [420, 880, 230, 3], [980, 120, 150, 1]];
+  let s = "";
+  blobs.forEach(([x, y, r, c], i) => {
+    const dx = 30 * Math.sin(t / (6 + i) + i), dy = 22 * Math.cos(t / (7 + i) + i * 2);
+    s += `<circle cx="${x + dx}" cy="${y + dy}" r="${r}" fill="${cols[c % cols.length]}" opacity=".55" filter="url(#soft)"/>`;
+  });
+  for (let i = 0; i < 14; i++) {  // tiny floating dots
+    const x = (i * 263 + t * (8 + i % 5)) % 1960 - 20, y = 140 + (i * 157) % 820 + 10 * Math.sin(t + i);
+    s += `<circle cx="${x}" cy="${y}" r="${3 + i % 3}" fill="${i % 2 ? C.yellow : "#BFE3C9"}" opacity=".7"/>`;
+  }
+  return s;
 }
