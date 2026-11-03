@@ -433,13 +433,16 @@ add("s9", (t) => {
     // the real report (A10), large and sharp: a still of its summary (clip 3.4); the "Correct outcome rate 12/12"
     // row is ringed as "12 of 12" is said
     const p = springIn(t, 0.25, 0.5), o = 1 - prog(t, 5.8, 6.2);
+    // first the whole page, then a zoom onto the summary table, keeping the full "Correct outcome rate" row in view
+    // (zoom origin chosen so the visible area is x 695-1825, y 445-1080 of the recording at z 1.7)
+    const zoom = prog(t, 2.4, 3.3, easeInOut);
     const d = dev({ x: 800, y: 300, w: 1040, h: 585, cw: 1920, s: 0.9 + 0.1 * clamp(p, 0, 1.08), r: 18, dy: floatY(t, 3, 4), rot: 1,
-      z: 1.42 + 0.06 * prog(t, 0.3, 6), zx: 0.66, zy: 0.64 });
+      z: 1 + 0.7 * zoom, zx: 0.88, zy: 1.0 });
     s += `<g opacity="${clamp(p * 2) * o}">${devShadow(d, 18)}</g>`;
     s += `<g opacity="${clamp(p * 2) * o}">${text(1320, 282, "the benchmark report, on GitHub", { size: 26, family: "Nunito", weight: 800, fill: "#6B6380" })}</g>`;
     videos.push(devVideo(d, "a10", 3.4, { opacity: clamp(p * 2) * o }));
-    const ring = prog(t, 3.3, 3.7) * o;
-    if (ring > 0) { const a0 = devPt(d, 695, 698), a1 = devPt(d, 1830, 772);
+    const ring = prog(t, 3.35, 3.75) * o;
+    if (ring > 0) { const a0 = devPt(d, 695, 696), a1 = devPt(d, 1830, 796);
       a1[0] = Math.min(a1[0], d.x + d.dx + d.w / 2 + (d.w * d.s) / 2 - 22);  // inside the report's visible edge
       fg += `<rect x="${a0[0] - 6}" y="${a0[1] - 6}" width="${a1[0] - a0[0] + 12}" height="${a1[1] - a0[1] + 12}" rx="12" fill="none" stroke="${C.yellow}" stroke-width="7" opacity="${ring}"/>`; }
   }
