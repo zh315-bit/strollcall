@@ -5,8 +5,8 @@
 //   thinking  while Muse Spark picks a tool and the route updates
 //   speaking  while a reply shows (and is read out, when voice is on)
 //   arrived   at the meetup point or the end of the walk
-// The character is decorative (aria-hidden); the bubble's text is a live region, so screen readers
-// hear every reply. The animations are CSS and stop under prefers-reduced-motion.
+// The drawing is decorative (aria-hidden), inside a button that hides or shows the bubble; the bubble's
+// text is a live region, so screen readers hear every reply. The animations are CSS and stop under prefers-reduced-motion.
 
 const BUDDY_STATES = ["walking", "listening", "thinking", "speaking", "arrived"];
 
@@ -52,13 +52,22 @@ function makeBuddy() {
   const text = el("p", { class: "buddy-text", role: "status", "aria-live": "polite" });
   const chips = el("div", { class: "buddy-chips" });
   const bubble = el("div", { class: "buddy-bubble" }, text, chips);
-  const root = el("div", { class: "walk-buddy" }, face, bubble);
+  // Tapping the character hides the bubble, so it never has to cover the map; tapping again brings it back.
+  const toggle = el("button", { type: "button", class: "buddy-toggle", onclick: () => showBubble(root.classList.contains("bubble-closed")) }, face);
+  const root = el("div", { class: "walk-buddy" }, toggle, bubble);
+  function showBubble(on) {
+    root.classList.toggle("bubble-closed", !on);
+    toggle.setAttribute("aria-expanded", String(on));
+    toggle.setAttribute("aria-label", on ? "Hide your walking buddy's messages" : "Show your walking buddy's messages");
+  }
+  showBubble(true);
   let chipsShown = [];
   return {
     el: root,
     get state() { return face.dataset.state; },
     set(state) { if (BUDDY_STATES.includes(state)) face.dataset.state = state; },
     say(parts, newChips) {
+      showBubble(true);  // every line answers something the walker just did, so it must be seen (and read out)
       text.replaceChildren(...[].concat(parts || []).map((p) => (p && p.b ? el("strong", {}, p.b) : String(p))));
       if (newChips) this.chips(newChips);
     },

@@ -350,6 +350,9 @@ body.walking { overflow: hidden; }
   bottom: calc(var(--bar-h) + var(--pad-b) + 22px); display: flex; align-items: flex-end; gap: 8px; pointer-events: none; }
 .walk-buddy > * { pointer-events: auto; }
 .walk-buddy[hidden] { display: none; }
+.buddy-toggle { flex: none; display: block; margin: 0; padding: 0; border: 0; border-radius: 50%; background: none; box-shadow: none;
+  cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+.walk-buddy.bubble-closed .buddy-bubble { display: none; }
 .buddy { flex: none; width: 64px; height: 64px; filter: drop-shadow(0 6px 10px rgba(43, 35, 64, .22)); }
 .buddy svg { width: 100%; height: 100%; display: block; overflow: visible; }
 .buddy [data-s] { display: none; }
@@ -373,7 +376,8 @@ body.walking { overflow: hidden; }
 
 /* The walking screen's own buttons: no thick bottom edge or press-down from the global button style */
 .walk-screen .walk-btn:active:not(:disabled), .walk-screen .walk-end:active:not(:disabled),
-.walk-screen .buddy-chip:active:not(:disabled) { transform: scale(.96); margin-bottom: 0; }
+.walk-screen .buddy-chip:active:not(:disabled), .walk-screen .buddy-toggle:active:not(:disabled) { transform: scale(.96); margin-bottom: 0; }
+.walk-screen .buddy-toggle:active:not(:disabled) { border-bottom-width: 0; }
 .walk-screen .walk-end:active:not(:disabled) { border-bottom-width: 2px; }
 .walk-screen .buddy-chip:active:not(:disabled) { border-bottom-width: 1px; }
 

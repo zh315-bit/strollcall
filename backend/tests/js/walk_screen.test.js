@@ -154,6 +154,26 @@ test("the walking buddy: five states drawn, decorative, replies in a live region
   assert.equal(rule(".walk-buddy").position, "absolute");
 });
 
+test("the walking buddy: tapping it hides the bubble, tapping again shows it, and a new line always shows", () => {
+  const buddy = read("js/buddy.js");
+  const seen = {};
+  const node = () => ({ dataset: {}, attrs: {}, listeners: {}, setAttribute(k, v) { this.attrs[k] = v; }, replaceChildren() {},
+    classList: { names: new Set(), contains(n) { return this.names.has(n); }, toggle(n, on) { on ? this.names.add(n) : this.names.delete(n); } } });
+  const el = (tag, attrs = {}) => { const n = node(); n.className = attrs.class; n.onclick = attrs.onclick; seen[attrs.class] = n; return n; };
+  const made = new Function("el", `${buddy.slice(buddy.indexOf("const BUDDY_STATES"), buddy.indexOf("// Hold to talk records"))}; return makeBuddy();`)(el);
+  const closed = () => made.el.classList.contains("bubble-closed");
+  assert.equal(closed(), false, "open at the start");
+  seen["buddy-toggle"].onclick();
+  assert.equal(closed(), true);
+  assert.equal(seen["buddy-toggle"].attrs["aria-expanded"], "false");
+  seen["buddy-toggle"].onclick();
+  assert.equal(closed(), false);
+  seen["buddy-toggle"].onclick();
+  made.say("Added a coffee stop.");
+  assert.equal(closed(), false, "a reply is never hidden");
+  assert.equal(rule(".walk-buddy.bubble-closed .buddy-bubble").display, "none");
+});
+
 test("the start animation: brief, never blocks a tap, skippable, none under reduced motion", () => {
   const start = walk.slice(walk.indexOf("function walkStartPlays"), walk.indexOf("// Intros written ahead"));
   assert.ok(start.includes("prefers-reduced-motion: reduce") && start.includes("return Promise.resolve()"));
