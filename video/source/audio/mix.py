@@ -34,6 +34,8 @@ def vo_segments():
     for p in BEATS["vo"]:
         ws, f = WORDS[p["vo"]], A / "vo_tts" / f"{p['vo']}.mp3"
         a, b = p["from"], len(ws) - 1 if p["to"] == "end" else p["to"]
+        if not ws[b]["w"].rstrip("'\"”’").endswith((".", ",", ":", ";", "?", "!")):  # a phrase must end on a clause boundary
+            raise SystemExit(f"beats.json: {p['vo']} words {a}-{b} end mid-sentence at '{ws[b]['w']}'")
         s0 = 0.0 if a == 0 else (ws[a - 1]["e"] + ws[a]["s"]) / 2
         s1 = dur(f) if b == len(ws) - 1 else (ws[b]["e"] + ws[b + 1]["s"]) / 2
         out.append((f, s0, s1, p["word_at"] - (ws[a]["s"] - s0)))

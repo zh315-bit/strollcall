@@ -23,9 +23,9 @@
     {"vo": "vo_05", "from": 15, "to": 16, "word_at": 82.86},
     {"vo": "vo_05", "from": 17, "to": "end", "word_at": 83.85},
     {"vo": "vo_06", "from": 0, "to": 10, "word_at": 95.7},
-    {"vo": "vo_06", "from": 11, "to": 24, "word_at": 99.4},
-    {"vo": "vo_06", "from": 25, "to": 32, "word_at": 104.18},
-    {"vo": "vo_06", "from": 33, "to": "end", "word_at": 109.68},
+    {"vo": "vo_06", "from": 11, "to": 25, "word_at": 99.4},
+    {"vo": "vo_06", "from": 26, "to": 34, "word_at": 104.1},
+    {"vo": "vo_06", "from": 35, "to": "end", "word_at": 109.66},
     {"vo": "vo_07", "from": 0, "to": "end", "word_at": 115.78},
     {"vo": "vo_08", "from": 0, "to": "end", "word_at": 136.6},
     {"vo": "vo_10", "from": 0, "to": "end", "word_at": 163.84}
