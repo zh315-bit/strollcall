@@ -8,20 +8,45 @@
   <img src="docs/screenshots/home.jpg" alt="StrollCall home page: Step outside." width="860">
 </p>
 
-StrollCall is about getting outside. You say how long you have and what you feel like ("25 minutes,
-quiet streets, coffee at the end"), and it plans a short walk worth taking in New York: a route past
-places nearby, ending somewhere good, with turn-by-turn directions in the browser.
+**Map apps need a destination. StrollCall starts from how you feel.** Say "25 minutes, quiet streets,
+coffee at the end" and it plans a real walk in New York worth taking, guides you turn by turn right in the
+browser, and keeps you company on the way with a walking buddy you can talk to.
 
-Walking on your own is the default. If you want company, invite a friend with one link: StrollCall
-finds a meeting point that is fair in **walking time** for both of you, then a shared walk to a
-destination you both like.
+**Better with a friend.** Send one link: no app, no sign-up. StrollCall finds the meeting point that is fair
+in **walking time**, not in distance on a map, then a shared walk on to a place you will both like.
 
-Meta models read what you ask for (and, with a friend, reconcile both people's wishes); a
-deterministic planner on our own walking map checks that every plan is real and feasible. Models never
-invent a route, a time or a place: every number on screen is measured on the map.
+**Built not to make things up.** Four Meta models handle the human side: Muse Glimmer and Muse Spark read
+wishes, Muse Spark negotiates between two people and ranks the options, Muse Image draws the invites, Muse
+Voice listens. Our own walking graph of New York handles the facts: every route, minute, place and opening
+hour comes from measured data, and a checker throws out any model claim the data can't back up.
 
 Built for the Meta Global AI Developer Hackathon (Oct 28 – Nov 4, 2026). All code in this
 repository was written during the event; no code from earlier projects was reused.
+
+## Why not a map app, or just ask a chatbot?
+
+| | A map app | A general-purpose AI chatbot | **StrollCall** |
+| --- | --- | --- | --- |
+| Where you start | a destination you already know | a prompt | **how you feel**: minutes, mood, how the walk should end, typed or spoken |
+| The route | real, the fastest way to that destination | can be made up | **real and measured** on our own 139,106-node OpenStreetMap walking graph, in about 29 ms |
+| Places and opening hours | real, if you search for them | can be made up, and sound sure either way | **only real places**, called "open" only when OpenStreetMap's hours say so for the time you arrive |
+| Meeting a friend | you pick the spot | a guess | **fair by walking time**: an 8× smaller arrival gap than the map's midpoint in our example pair |
+| When a walk can't work | – | answers anyway | **says so**: an honest "too far apart" instead of a made-up plan |
+| On the way | directions | – | **turn by turn in the browser**, plus a buddy that adds a coffee stop, re-routes around something or tells you what's nearby; every route change is planned on the same graph and can be undone |
+
+## By the numbers
+
+Every figure links to the file it comes from. Every evaluation ran on cases committed before the run.
+
+| | |
+| --- | --- |
+| **6.5× faster** | Meta's open-weights **Muse Glimmer**, on our own H200 on Modal, reads a wish in **0.55 s** (median) against 3.58 s for Muse Spark via the API, for about half the cost per read ($0.00222 vs $0.00416). Muse Spark takes over after 3 s or on any error. ([run 1](benchmarks/2026-10-31-open-weights-run1.md?plain=1#L14)) |
+| **8× smaller gap** | In the example pair on the home page, the map's midpoint leaves two friends **4.8 min** apart; our meeting point, **0.6 min** (6.0 / 10.8 vs 9.9 / 9.3 min, [`fairness_example.json`](frontend/data/fairness_example.json)). Across the benchmark pairs, the median arrival gap is **0.2 min** ([benchmark](benchmarks/2026-10-31-local.md?plain=1#L14)). |
+| **12 / 12** | benchmark pairs with the right outcome: a plan where one exists, an honest no-plan where the pair is too far apart ([benchmark](benchmarks/2026-10-31-local.md?plain=1#L13)). |
+| **10 / 10** | wishes read correctly by Muse Spark, against 7 / 10 for keyword rules ([ablation](benchmarks/2026-10-28-ablation-wishes.md?plain=1#L16)). |
+| **139,106** | nodes in our own walking graph of New York, built from OpenStreetMap; a plan takes **29 ms** (median, first run) ([benchmark](benchmarks/2026-10-31-local.md?plain=1#L3)). |
+| **0** | coordinates in any Meta request: a test records every request from solo walks, invites, voice, the buddy and the ranking, and fails on anything that looks like one ([`test_meta_privacy.py`](backend/tests/test_meta_privacy.py)). |
+| **296** | offline Python tests, plus JavaScript tests for the walking screen; they run with no network. |
 
 ## Contents
 
@@ -109,7 +134,8 @@ planner's meeting point. The numbers and routes are measured once on the local w
 `scripts/build_fairness_example.py` and saved to `frontend/data/fairness_example.json`; the page reads
 only that file (no planning at load) and hides the section without it. The current example is pair
 **p2** (Christopher Street-Stonewall station and 14th Street-Union Square station), generated
-2026-11-01: 6 and 11 minutes to the map midpoint, 10 and 9 minutes to our meeting point.
+2026-11-01: 6.0 and 10.8 minutes to the map midpoint (4.8 apart), 9.9 and 9.3 minutes to our meeting point
+(0.6 apart).
 
 **My walks and recaps.** Finished walks are kept on the phone (My walks); a recap can be shared as a link
 without any start point.
