@@ -1,0 +1,50 @@
+{
+  "case": "w2",
+  "a_text": "Coffee at the end, about 30 minutes",
+  "b_text": "A coffee on a patio in the sun would be perfect",
+  "expected_wishes": [
+    [
+      "B",
+      "outdoor_seating"
+    ]
+  ],
+  "muse_glimmer": {
+    "wishes": [
+      {
+        "requirement": "outdoor_seating",
+        "who": "B",
+        "quote": "A coffee on a patio in the sun would be perfect"
+      },
+      {
+        "requirement": "outdoor_seating",
+        "who": "A",
+        "quote": "Coffee at the end, about 30 minutes"
+      }
+    ],
+    "source": "glimmer",
+    "note": null,
+    "raw": "{\"wishes\": [{\"requirement\": \"outdoor_seating\", \"who\": \"B\", \"quote\": \"A coffee on a patio in the sun would be perfect\"}, {\"requirement\": \"outdoor_seating\", \"who\": \"A\", \"quote\": \"Coffee at the end, about 30 minutes\"}]}",
+    "latency_s": 0.588,
+    "cost_usd": 0.000791,
+    "expected_found": 1,
+    "expected": 1,
+    "extra": 1
+  },
+  "muse_spark_1_3": {
+    "wishes": [
+      {
+        "requirement": "outdoor_seating",
+        "who": "B",
+        "quote": "A coffee on a patio in the sun would be perfect"
+      }
+    ],
+    "source": "meta",
+    "note": null,
+    "raw": null,
+    "latency_s": 1.026,
+    "cost_usd": 0.001488,
+    "expected_found": 1,
+    "expected": 1,
+    "extra": 0
+  }
+}

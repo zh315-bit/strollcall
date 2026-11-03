@@ -1,0 +1,69 @@
+{
+  "text": "Anywhere for coffee as long as it's not Starbucks",
+  "expected": {
+    "duration_min": 25,
+    "endpoint_type": "cafe"
+  },
+  "muse_glimmer": {
+    "raw": "{\n  \"duration_min\": 25,\n  \"duration_strict\": false,\n  \"vibes\": [],\n  \"endpoint_type\": \"cafe\",\n  \"avoid\": [\"starbucks\"],\n  \"hard_constraints\": [],\n  \"inferred_fields\": [\"duration_min\", \"duration_min\"]\n}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 25,
+      "duration_strict": false,
+      "vibes": [],
+      "endpoint_type": "cafe",
+      "avoid": [
+        "starbucks"
+      ],
+      "hard_constraints": []
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [
+      "duration_min",
+      "duration_min"
+    ],
+    "latency_s": 0.53,
+    "cost_usd": 0.000713,
+    "glimmer": {
+      "prompt_tokens": 385,
+      "completion_tokens": 62,
+      "reasoning_chars": null,
+      "finish_reason": "stop"
+    },
+    "score": {
+      "duration": true,
+      "endpoint": true
+    }
+  },
+  "muse_spark_1_3": {
+    "raw": "{\"avoid\": [\"starbucks\"], \"duration_min\": 25, \"duration_strict\": false, \"endpoint_type\": \"cafe\", \"hard_constraints\": [], \"inferred_fields\": [\"duration_min\", \"vibes\", \"hard_constraints\", \"duration_min\", \"vibes\", \"hard_constraints\"], \"vibes\": []}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 25,
+      "duration_strict": false,
+      "vibes": [],
+      "endpoint_type": "cafe",
+      "avoid": [
+        "starbucks"
+      ],
+      "hard_constraints": []
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [
+      "duration_min",
+      "vibes",
+      "hard_constraints",
+      "duration_min",
+      "vibes",
+      "hard_constraints"
+    ],
+    "latency_s": 2.585,
+    "cost_usd": 0.00313,
+    "score": {
+      "duration": true,
+      "endpoint": true
+    }
+  }
+}

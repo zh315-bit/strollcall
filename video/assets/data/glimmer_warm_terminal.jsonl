@@ -1,0 +1,27 @@
+{"t": 1793723952.448212, "line": "Modal this month: $0.00. This window: up to $2.05. Stop at $20."}
+{"t": 1793723952.448456, "line": "Muse Glimmer 30B (meta-models/Muse-Glimmer-30B@f84ecc3) \u00b7 BF16 \u00b7 Modal \u00b7 1x H200 \u00b7 endpoint ep-ez0BAxZPNiSL3x40VCpbFi"}
+{"t": 1793723952.448479, "line": "11:39:12  waking the endpoint (cold start is about 3 minutes)..."}
+{"t": 1793724151.239518, "line": "11:42:31  READY in 199 s (last answer 0.27 s) - Muse Glimmer 30B (meta-models/Muse-Glimmer-30B@f84ecc3) \u00b7 BF16 \u00b7 Modal \u00b7 1x H200 \u00b7 endpoint ep-ez0BAxZPNiSL3x40VCpbFi"}
+{"t": 1793724152.2224672, "line": "11:42:31  wish-reading check: valid JSON in 0.76 s, reasoning off"}
+{"t": 1793724153.023678, "line": "11:42:32  live site: window open until 17:02:32 UTC"}
+{"t": 1793724213.35358, "line": "11:43:33  warm (0.33 s), 19 min left"}
+{"t": 1793724273.6333, "line": "11:44:33  warm (0.28 s), 18 min left"}
+{"t": 1793724333.959745, "line": "11:45:33  warm (0.32 s), 17 min left"}
+{"t": 1793724394.254962, "line": "11:46:34  warm (0.29 s), 16 min left"}
+{"t": 1793724454.553185, "line": "11:47:34  warm (0.30 s), 15 min left"}
+{"t": 1793724514.835022, "line": "11:48:34  warm (0.28 s), 14 min left"}
+{"t": 1793724575.146574, "line": "11:49:35  warm (0.31 s), 13 min left"}
+{"t": 1793724635.42992, "line": "11:50:35  warm (0.28 s), 12 min left"}
+{"t": 1793724695.729634, "line": "11:51:35  warm (0.30 s), 11 min left"}
+{"t": 1793724756.0188632, "line": "11:52:36  warm (0.28 s), 10 min left"}
+{"t": 1793724816.320106, "line": "11:53:36  warm (0.30 s), 9 min left"}
+{"t": 1793724876.611289, "line": "11:54:36  warm (0.29 s), 8 min left"}
+{"t": 1793724936.923219, "line": "11:55:36  warm (0.31 s), 7 min left"}
+{"t": 1793724997.210201, "line": "11:56:37  warm (0.28 s), 6 min left"}
+{"t": 1793725057.52094, "line": "11:57:37  warm (0.31 s), 5 min left"}
+{"t": 1793725117.8135319, "line": "11:58:37  warm (0.29 s), 4 min left"}
+{"t": 1793725178.120942, "line": "11:59:38  warm (0.30 s), 3 min left"}
+{"t": 1793725238.411602, "line": "12:00:38  warm (0.29 s), 2 min left"}
+{"t": 1793725298.738854, "line": "12:01:38  warm (0.32 s), 1 min left"}
+{"t": 1793725353.1734242, "line": "12:02:33  live site: window closed"}
+{"t": 1793725353.173852, "line": "12:02:33  done; the endpoint scales to zero after 2 idle minutes."}

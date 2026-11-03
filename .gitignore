@@ -17,3 +17,16 @@ __pycache__/
 cache/
 
 .DS_Store
+
+# demo video: large media stays local (sources and small data are committed)
+video/assets/screen/
+video/assets/phone/
+video/assets/wav/
+video/assets/audio/
+video/assets/frames/
+video/renders/
+video/**/*.mp4
+video/**/*.wav
+video/**/*.mp3
+video/assets/data/*.local.json
+video/assets/data/walking_graph_manhattan.json

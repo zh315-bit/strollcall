@@ -1,0 +1,45 @@
+{
+  "case": "w5",
+  "a_text": "I need to answer a few emails on my laptop afterwards",
+  "b_text": "Somewhere nice, about 30 minutes",
+  "expected_wishes": [
+    [
+      "A",
+      "wifi"
+    ]
+  ],
+  "muse_glimmer": {
+    "wishes": [
+      {
+        "requirement": "wifi",
+        "who": "A",
+        "quote": "I need to answer a few emails on my laptop afterwards"
+      }
+    ],
+    "source": "glimmer",
+    "note": null,
+    "raw": "{\"wishes\": [{\"requirement\": \"wifi\", \"who\": \"A\", \"quote\": \"I need to answer a few emails on my laptop afterwards\"}]}",
+    "latency_s": 0.392,
+    "cost_usd": 0.000527,
+    "expected_found": 1,
+    "expected": 1,
+    "extra": 0
+  },
+  "muse_spark_1_3": {
+    "wishes": [
+      {
+        "requirement": "wifi",
+        "who": "A",
+        "quote": "I need to answer a few emails on my laptop afterwards"
+      }
+    ],
+    "source": "meta",
+    "note": null,
+    "raw": null,
+    "latency_s": 1.891,
+    "cost_usd": 0.001466,
+    "expected_found": 1,
+    "expected": 1,
+    "extra": 0
+  }
+}

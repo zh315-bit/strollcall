@@ -1,0 +1,45 @@
+{
+  "case": "w6",
+  "a_text": "Coffee at the end, about 30 minutes",
+  "b_text": "I'll want to get online for a bit once we sit down",
+  "expected_wishes": [
+    [
+      "B",
+      "wifi"
+    ]
+  ],
+  "muse_glimmer": {
+    "wishes": [
+      {
+        "requirement": "wifi",
+        "who": "B",
+        "quote": "I'll want to get online for a bit once we sit down"
+      }
+    ],
+    "source": "glimmer",
+    "note": null,
+    "raw": "{\"wishes\": [{\"requirement\": \"wifi\", \"who\": \"B\", \"quote\": \"I'll want to get online for a bit once we sit down\"}]}",
+    "latency_s": 0.394,
+    "cost_usd": 0.000529,
+    "expected_found": 1,
+    "expected": 1,
+    "extra": 0
+  },
+  "muse_spark_1_3": {
+    "wishes": [
+      {
+        "requirement": "wifi",
+        "who": "B",
+        "quote": "I'll want to get online for a bit once we sit down"
+      }
+    ],
+    "source": "meta",
+    "note": null,
+    "raw": null,
+    "latency_s": 0.954,
+    "cost_usd": 0.001506,
+    "expected_found": 1,
+    "expected": 1,
+    "extra": 0
+  }
+}

@@ -1,0 +1,65 @@
+{
+  "text": "I'll want to get online for a bit once we sit down",
+  "expected": {
+    "duration_min": 25,
+    "endpoint_type": "not scored"
+  },
+  "muse_glimmer": {
+    "raw": "{\n  \"duration_min\": 25,\n  \"duration_strict\": false,\n  \"vibes\": [],\n  \"endpoint_type\": null,\n  \"avoid\": [],\n  \"hard_constraints\": [],\n  \"inferred_fields\": [\n    \"duration_min\",\n    \"duration_min\"\n  ]\n}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 25,
+      "duration_strict": false,
+      "vibes": [],
+      "endpoint_type": null,
+      "avoid": [],
+      "hard_constraints": []
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [
+      "duration_min",
+      "duration_min"
+    ],
+    "latency_s": 0.498,
+    "cost_usd": 0.000669,
+    "glimmer": {
+      "prompt_tokens": 387,
+      "completion_tokens": 63,
+      "reasoning_chars": null,
+      "finish_reason": "stop"
+    },
+    "score": {
+      "duration": true,
+      "endpoint": null
+    }
+  },
+  "muse_spark_1_3": {
+    "raw": "{\"avoid\": [], \"duration_min\": 25, \"duration_strict\": false, \"endpoint_type\": null, \"hard_constraints\": [], \"inferred_fields\": [\"duration_min\", \"vibes\", \"endpoint_type\", \"avoid\", \"hard_constraints\", \"duration_min\"], \"vibes\": []}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 25,
+      "duration_strict": false,
+      "vibes": [],
+      "endpoint_type": null,
+      "avoid": [],
+      "hard_constraints": []
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [
+      "duration_min",
+      "vibes",
+      "endpoint_type",
+      "avoid",
+      "hard_constraints",
+      "duration_min"
+    ],
+    "latency_s": 4.113,
+    "cost_usd": 0.004989,
+    "score": {
+      "duration": true,
+      "endpoint": null
+    }
+  }
+}

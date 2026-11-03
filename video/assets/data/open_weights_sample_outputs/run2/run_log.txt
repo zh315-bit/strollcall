@@ -1,0 +1,10 @@
+2026-10-31T15:00:55 muse-glimmer, BF16, Modal, H200 | meta-models/Muse-Glimmer-30B@f84ecc3 deployment=ep-ez0BAxZPNiSL3x40VCpbFi | job=wishes ok latency=0.45s in=375 out=40 est=$0.00060
+2026-10-31T15:00:56 muse-glimmer, BF16, Modal, H200 | meta-models/Muse-Glimmer-30B@f84ecc3 deployment=ep-ez0BAxZPNiSL3x40VCpbFi | job=wishes ok latency=0.59s in=374 out=68 est=$0.00079
+2026-10-31T15:00:56 muse-glimmer, BF16, Modal, H200 | meta-models/Muse-Glimmer-30B@f84ecc3 deployment=ep-ez0BAxZPNiSL3x40VCpbFi | job=wishes ok latency=0.41s in=372 out=36 est=$0.00055
+2026-10-31T15:00:56 muse-glimmer, BF16, Modal, H200 | meta-models/Muse-Glimmer-30B@f84ecc3 deployment=ep-ez0BAxZPNiSL3x40VCpbFi | job=wishes ok latency=0.26s in=373 out=7 est=$0.00035
+2026-10-31T15:00:57 muse-glimmer, BF16, Modal, H200 | meta-models/Muse-Glimmer-30B@f84ecc3 deployment=ep-ez0BAxZPNiSL3x40VCpbFi | job=wishes ok latency=0.40s in=373 out=35 est=$0.00054
+2026-10-31T15:00:57 muse-glimmer, BF16, Modal, H200 | meta-models/Muse-Glimmer-30B@f84ecc3 deployment=ep-ez0BAxZPNiSL3x40VCpbFi | job=wishes ok latency=0.40s in=375 out=36 est=$0.00055
+2026-10-31T15:00:58 muse-glimmer, BF16, Modal, H200 | meta-models/Muse-Glimmer-30B@f84ecc3 deployment=ep-ez0BAxZPNiSL3x40VCpbFi | job=wishes ok latency=0.53s in=375 out=63 est=$0.00072
+2026-10-31T15:00:58 muse-glimmer, BF16, Modal, H200 | meta-models/Muse-Glimmer-30B@f84ecc3 deployment=ep-ez0BAxZPNiSL3x40VCpbFi | job=wishes ok latency=0.40s in=373 out=36 est=$0.00055
+2026-10-31T15:00:59 muse-glimmer, BF16, Modal, H200 | meta-models/Muse-Glimmer-30B@f84ecc3 deployment=ep-ez0BAxZPNiSL3x40VCpbFi | job=wishes ok latency=0.68s in=371 out=35 est=$0.00091
+2026-10-31T15:00:59 muse-glimmer, BF16, Modal, H200 | meta-models/Muse-Glimmer-30B@f84ecc3 deployment=ep-ez0BAxZPNiSL3x40VCpbFi | job=wishes ok latency=0.56s in=374 out=64 est=$0.00076

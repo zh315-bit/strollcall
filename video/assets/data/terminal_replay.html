@@ -1,0 +1,25 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+body{margin:0;background:#FBF7EF;display:grid;place-items:center;height:100vh;font-family:Menlo,monospace}
+.win{width:1360px;height:700px;background:#1f1b2e;border-radius:18px;box-shadow:0 30px 60px rgba(43,35,64,.35);overflow:hidden}
+.bar{height:44px;background:#2b2340;display:flex;align-items:center;gap:10px;padding:0 18px;color:#b9b2cc;font-size:15px}
+.dot{width:13px;height:13px;border-radius:50%}
+pre{margin:0;padding:26px 30px;color:#e9e6f2;font-size:21px;line-height:1.55;white-space:pre-wrap}
+.cmd{color:#FFD970}.ok{color:#7be0a3}.tag{position:absolute;right:300px;bottom:150px;background:#FFD970;color:#2B2340;
+font:700 18px system-ui;padding:8px 14px;border-radius:999px;display:none}
+</style></head><body><div class="win"><div class="bar"><span class="dot" style="background:#ff6b6b"></span>
+<span class="dot" style="background:#FFD970"></span><span class="dot" style="background:#22A35A"></span>
+<span style="margin-left:12px">strollcall - zsh</span></div><pre id="out"><span class="cmd">$ python scripts/glimmer_warm.py --minutes 20</span>
+</pre></div><div class="tag" id="tag"></div><script>
+const EV = [{"at": 1.5, "line": "Modal this month: $0.00. This window: up to $2.05. Stop at $20.", "real_gap": 0.0}, {"at": 1.5, "line": "Muse Glimmer 30B (meta-models/Muse-Glimmer-30B@f84ecc3) \u00b7 BF16 \u00b7 Modal \u00b7 1x H200 \u00b7 endpoint ep-ez0BAxZPNiSL3x40VCpbFi", "real_gap": 0.0}, {"at": 1.5, "line": "11:39:12  waking the endpoint (cold start is about 3 minutes)...", "real_gap": 0.0}, {"at": 1.5002670288085938, "fast_from": 198.8}, {"at": 11.44, "line": "11:42:31  READY in 199 s (last answer 0.27 s) - Muse Glimmer 30B (meta-models/Muse-Glimmer-30B@f84ecc3) \u00b7 BF16 \u00b7 Modal \u00b7 1x H200 \u00b7 endpoint ep-ez0BAxZPNiSL3x40VCpbFi", "real_gap": 198.8}, {"at": 12.42, "line": "11:42:31  wish-reading check: valid JSON in 0.76 s, reasoning off", "real_gap": 1.0}, {"at": 13.22, "line": "11:42:32  live site: window open until 17:02:32 UTC", "real_gap": 0.8}, {"at": 13.223979115486145, "fast_from": 60.3}, {"at": 16.24, "line": "11:43:33  warm (0.33 s), 19 min left", "real_gap": 60.3}, {"at": 16.240474212169648, "fast_from": 60.3}, {"at": 19.25, "line": "11:44:33  warm (0.28 s), 18 min left", "real_gap": 60.3}]; const out = document.getElementById('out'), tag = document.getElementById('tag');
+let t0 = null, i = 0, fast = null; window.go = () => { t0 = performance.now(); };
+function tick(){ if (t0 === null) return; const now = (performance.now() - t0) / 1000;
+  while (i < EV.length && EV[i].at <= now) { const e = EV[i++];
+    if (e.fast_from) { fast = {start: now, real: e.fast_from}; continue; }
+    fast = null; tag.style.display = 'none';
+    const s = document.createElement('span'); if (/READY|valid JSON|window open/.test(e.line)) s.className = 'ok';
+    s.textContent = e.line + '\n'; out.appendChild(s); }
+  if (fast) { const el = Math.min((now - fast.start) * 20, fast.real);
+    tag.style.display = 'block'; tag.textContent = 'sped up 20x · waiting ' + Math.floor(el) + ' s'; }
+  }
+setInterval(tick, 33);
+</script></body></html>

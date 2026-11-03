@@ -1,0 +1,50 @@
+{
+  "case": "w7",
+  "a_text": "I use a wheelchair, so the cafe has to work for that",
+  "b_text": "Somewhere nice, about 30 minutes",
+  "expected_wishes": [
+    [
+      "A",
+      "wheelchair_access"
+    ]
+  ],
+  "muse_glimmer": {
+    "wishes": [
+      {
+        "requirement": "wheelchair_access",
+        "who": "A",
+        "quote": "I use a wheelchair, so the cafe has to work for that"
+      },
+      {
+        "requirement": "green_meetup",
+        "who": "B",
+        "quote": "Somewhere nice"
+      }
+    ],
+    "source": "glimmer",
+    "note": null,
+    "raw": "{\"wishes\": [{\"requirement\": \"wheelchair_access\", \"who\": \"A\", \"quote\": \"I use a wheelchair, so the cafe has to work for that\"}, {\"requirement\": \"green_meetup\", \"who\": \"B\", \"quote\": \"Somewhere nice\"}]}",
+    "latency_s": 0.534,
+    "cost_usd": 0.000718,
+    "expected_found": 1,
+    "expected": 1,
+    "extra": 1
+  },
+  "muse_spark_1_3": {
+    "wishes": [
+      {
+        "requirement": "wheelchair_access",
+        "who": "A",
+        "quote": "I use a wheelchair, so the cafe has to work for that"
+      }
+    ],
+    "source": "meta",
+    "note": null,
+    "raw": null,
+    "latency_s": 0.91,
+    "cost_usd": 0.001464,
+    "expected_found": 1,
+    "expected": 1,
+    "extra": 0
+  }
+}

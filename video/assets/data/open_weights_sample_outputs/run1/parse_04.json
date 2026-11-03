@@ -1,0 +1,66 @@
+{
+  "text": "A coffee on a patio in the sun would be perfect",
+  "expected": {
+    "duration_min": 25,
+    "endpoint_type": "cafe"
+  },
+  "muse_glimmer": {
+    "raw": "{\n  \"duration_min\": 25,\n  \"duration_strict\": false,\n  \"vibes\": [\n    \"sunny\",\n    \"outdoor\"\n  ],\n  \"endpoint_type\": \"cafe\",\n  \"avoid\": [],\n  \"hard_constraints\": [],\n  \"inferred_fields\": [\n    \"duration_min\",\n    \"duration_min\",\n    \"vibes\",\n    \"vibes\"\n  ]\n}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 25,
+      "duration_strict": false,
+      "vibes": [
+        "sunny",
+        "outdoor"
+      ],
+      "endpoint_type": "cafe",
+      "avoid": [],
+      "hard_constraints": []
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [
+      "duration_min",
+      "duration_min",
+      "vibes",
+      "vibes"
+    ],
+    "latency_s": 0.887,
+    "cost_usd": 0.001194,
+    "glimmer": {
+      "prompt_tokens": 386,
+      "completion_tokens": 88,
+      "reasoning_chars": null,
+      "finish_reason": "stop"
+    },
+    "score": {
+      "duration": true,
+      "endpoint": true
+    }
+  },
+  "muse_spark_1_3": {
+    "raw": "{\"avoid\": [], \"duration_min\": 25, \"duration_strict\": false, \"endpoint_type\": \"cafe\", \"hard_constraints\": [], \"inferred_fields\": [\"duration_min\", \"endpoint_type\"], \"vibes\": []}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 25,
+      "duration_strict": false,
+      "vibes": [],
+      "endpoint_type": "cafe",
+      "avoid": [],
+      "hard_constraints": []
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [
+      "duration_min",
+      "endpoint_type"
+    ],
+    "latency_s": 4.072,
+    "cost_usd": 0.005587,
+    "score": {
+      "duration": true,
+      "endpoint": true
+    }
+  }
+}

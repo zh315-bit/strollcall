@@ -1,0 +1,51 @@
+{
+  "text": "A coffee on a patio in the sun would be perfect",
+  "expected": {
+    "duration_min": 25,
+    "endpoint_type": "cafe"
+  },
+  "muse_glimmer": {
+    "raw": null,
+    "json_valid": false,
+    "intent": null,
+    "intent_valid": false,
+    "error": "model_unavailable: Muse Glimmer: BadRequestError, HTTP 400, Failed to compile json grammar: JSON Schema at #/properties/inferred_fields is not supported by xgrammar: keyword(s) uniqueItems would be ignored",
+    "latency_s": 0.185,
+    "cost_usd": 0.0,
+    "glimmer": {
+      "prompt_tokens": null,
+      "completion_tokens": null,
+      "reasoning_chars": null,
+      "finish_reason": null
+    },
+    "score": {
+      "duration": null,
+      "endpoint": null
+    }
+  },
+  "muse_spark_1_3": {
+    "raw": "{\"avoid\": [], \"duration_min\": 25, \"duration_strict\": false, \"endpoint_type\": \"cafe\", \"hard_constraints\": [], \"inferred_fields\": [\"duration_min\"], \"vibes\": [\"sunny\"]}",
+    "json_valid": true,
+    "intent": {
+      "duration_min": 25,
+      "duration_strict": false,
+      "vibes": [
+        "sunny"
+      ],
+      "endpoint_type": "cafe",
+      "avoid": [],
+      "hard_constraints": []
+    },
+    "intent_valid": true,
+    "error": null,
+    "inferred_fields": [
+      "duration_min"
+    ],
+    "latency_s": 3.967,
+    "cost_usd": 0.00472,
+    "score": {
+      "duration": true,
+      "endpoint": true
+    }
+  }
+}
