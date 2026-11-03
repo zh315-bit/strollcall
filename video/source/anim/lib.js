@@ -10,7 +10,7 @@ const easeOut = (t) => 1 - Math.pow(1 - clamp(t), 3);
 const easeIn = (t) => Math.pow(clamp(t), 3);
 const easeInOut = (t) => (t = clamp(t), t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 // progress of t within [a, b], eased
-const prog = (t, a, b, ease = easeOut) => ease((t - a) / (b - a));
+const prog = (t, a, b, ease = easeOut) => ease(clamp((t - a) / (b - a)));
 
 // ---- mascots ----
 // A: the round blue one with the antenna (also the walking buddy). Drawn around (0,0), body radius ~52.
