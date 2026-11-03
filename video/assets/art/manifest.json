@@ -1,0 +1,40 @@
+{
+ "pictures": {
+  "s10_park": {
+   "model": "muse-image-1.0",
+   "prompt": "Golden hour in a Manhattan park: a wide paved path runs straight across the lower third of the picture, lined with autumn trees, benches and old lamp posts; the city skyline glows beyond the trees; long soft shadows, falling leaves. Richly detailed hand-painted anime background art, like a frame from a gentle animated film: soft painterly brushwork, warm natural light, gentle colours, clean shapes, depth and atmosphere. Wide 16:9 landscape composition. Absolutely no people, no animals, no characters, no text, no letters, no numbers, no logos, no signs with writing.",
+   "size": "2048,1152",
+   "generated_at": "2026-11-03T20:23:19+00:00",
+   "sha256": "b74a878da61b05439418de2eb9042eacdf79e0ff5fb769269b4f6e205a0eda22"
+  },
+  "s1_street": {
+   "model": "muse-image-1.0",
+   "prompt": "A sunny morning on a quiet New York brownstone street, seen from across the street at eye level. A row of brownstones with stoops, cornices and window boxes; one green front door at street level near the left third; street trees; a small corner cafe with a striped yellow awning on the right. The empty sidewalk runs straight across the lower third of the picture. Blue sky with soft clouds. Richly detailed hand-painted anime background art, like a frame from a gentle animated film: soft painterly brushwork, warm natural light, gentle colours, clean shapes, depth and atmosphere. Wide 16:9 landscape composition. Absolutely no people, no animals, no characters, no text, no letters, no numbers, no logos, no signs with writing.",
+   "size": "2048,1152",
+   "generated_at": "2026-11-03T20:23:48+00:00",
+   "sha256": "5bde07a37f2cc11f5217d207c0a0a57ec9a65d772e2956dc1b76809a57ebae41"
+  },
+  "s2_room": {
+   "model": "muse-image-1.0",
+   "prompt": "A cozy small apartment living room in the late afternoon, seen straight on. A soft lilac sofa with a folded blue blanket and cushions in the centre, facing the viewer, empty. A window behind it with a view of city rooftops, a floor lamp, a plant, a rug, warm light. Richly detailed hand-painted anime background art, like a frame from a gentle animated film: soft painterly brushwork, warm natural light, gentle colours, clean shapes, depth and atmosphere. Wide 16:9 landscape composition. Absolutely no people, no animals, no characters, no text, no letters, no numbers, no logos, no signs with writing.",
+   "size": "2048,1152",
+   "generated_at": "2026-11-03T20:23:59+00:00",
+   "sha256": "87634ca4645bbd62d270d1ee21071f0aa2a15aabd436588e42ccb4b044eb035c"
+  },
+  "s10_corner": {
+   "model": "muse-image-1.0",
+   "prompt": "Golden hour at a quiet New York street corner seen from the middle of the street: two sidewalks meet at a corner with a crosswalk in the foreground, brownstones and a corner building with warm windows, street trees with autumn leaves, long soft shadows. Richly detailed hand-painted anime background art, like a frame from a gentle animated film: soft painterly brushwork, warm natural light, gentle colours, clean shapes, depth and atmosphere. Wide 16:9 landscape composition. Absolutely no people, no animals, no characters, no text, no letters, no numbers, no logos, no signs with writing.",
+   "size": "2240,1120",
+   "generated_at": "2026-11-03T20:24:09+00:00",
+   "sha256": "8b7c06d527e4624c2fb081090f9339f3d0d895384e4af378642c8bd1a2cd2577"
+  },
+  "s10_cafe": {
+   "model": "muse-image-1.0",
+   "prompt": "Golden hour at a small sidewalk cafe terrace in New York: one small round table in the centre foreground with two coffee cups on it, two empty chairs on either side, a cafe window and striped awning behind, string lights, flower pots, warm glow. Richly detailed hand-painted anime background art, like a frame from a gentle animated film: soft painterly brushwork, warm natural light, gentle colours, clean shapes, depth and atmosphere. Wide 16:9 landscape composition. Absolutely no people, no animals, no characters, no text, no letters, no numbers, no logos, no signs with writing.",
+   "size": "2048,1152",
+   "generated_at": "2026-11-03T20:24:19+00:00",
+   "sha256": "a4eafad6b4b753d2fb7e89542c0eb88a696d80074b2b667ba87e75ab8d1b7611"
+  }
+ },
+ "note": "Backgrounds for the StrollCall demo video, generated with Meta Muse Image; no people or characters."
+}

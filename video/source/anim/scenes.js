@@ -14,59 +14,53 @@ function swayTree(x, y, s, tone, t, ph = 0) {
   return `<g transform="rotate(${1.4 * Math.sin(t * 1.3 + ph)} ${x} ${y})">${tree(x, y, s, tone)}</g>`;
 }
 
-// ---- Scene 1: cold open. VO 1a at 0.5: "I'm Chris." 0.6 · "…want to go outside," 2.3-3.6 ·
-// "but I don't know where to go." 3.9-5.3. Title at 0:03; the route draws as the answer from 5.4.
+// ---- Scene 1: cold open, on a painted street (Muse Image, art/s1_street.png). VO 1a at 0.5: "I'm Chris." 0.6 ·
+// "…want to go outside," 2.3-3.6 · "but I don't know where to go." 3.9-5.3. The blue mascot peeks from the window
+// above the green door, comes out on the stoop, looks around ("?"), then follows the green route down the sidewalk.
 SCENES.s1 = {
   dur: 8,
   draw(t) {
-    const W = 1920, H = 1080, ground = 820;
-    let s = `<rect width="${W}" height="${H}" fill="url(#sky)"/>`;
-    s += `<circle cx="1660" cy="150" r="${70 + 4 * Math.sin(t * 2)}" fill="#FFF3B8" opacity=".9"/><circle cx="1660" cy="150" r="110" fill="#FFF3B8" opacity=".25"/>`;
-    s += cloud(260 + t * 14, 170, 1.1) + cloud(1220 + t * 9, 110, 0.9, 0.9) + cloud(1660 + t * 16, 320, 0.7, 0.85);
-    s += birds(t, 200, 250);
-    s += `<g fill="#9CC7F2" opacity=".75">${[[60, 380], [220, 300], [330, 420], [520, 340], [1240, 360], [1400, 280], [1560, 400], [1740, 320]]
-      .map(([x, h]) => `<rect x="${x}" y="${ground - 40 - h}" width="150" height="${h}" rx="10"/>`).join("")}</g>`;
-    s += brownstone(120, ground, 300, 470, "#C97B5A") + brownstone(420, ground, 300, 540, "#B86B4E", { door: true })
-      + brownstone(720, ground, 290, 450, "#D28B66") + brownstone(1010, ground, 300, 500, "#C27455");
-    s += `<rect x="1330" y="${ground - 330}" width="440" height="330" rx="12" fill="#FBEBD3" stroke="${C.ink}" stroke-width="4"/>
-      <rect x="1370" y="${ground - 210}" width="200" height="150" rx="10" fill="#FFF7E6" stroke="${C.ink}" stroke-width="3"/>
-      <rect x="1600" y="${ground - 230}" width="110" height="230" rx="10" fill="#8FB6E8" stroke="${C.ink}" stroke-width="3"/>
-      ${Array.from({ length: 8 }, (_, i) => `<path d="M${1330 + i * 55} ${ground - 300} h55 v${46 + 3 * Math.sin(t * 2 + i)} q-27.5 22 -55 0 z" fill="${i % 2 ? C.cream : C.yellow}" stroke="${C.ink}" stroke-width="3"/>`).join("")}
-      ${text(1550, ground - 316, "CAFE", { size: 34, fill: C.ink })}`;
-    const doorX = 570, doorY = ground - 20;
-    const open = prog(t, 1.9, 2.6);
-    s += `<rect x="${doorX - 46}" y="${doorY - 150}" width="92" height="150" rx="40" fill="#5A2E22" stroke="${C.ink}" stroke-width="4"/>
-      <rect x="${doorX - 46}" y="${doorY - 150}" width="${92 * (1 - open * 0.85)}" height="150" rx="40" fill="#7A3E2C" stroke="${C.ink}" stroke-width="4"/>
-      <rect x="${doorX - 80}" y="${doorY}" width="160" height="22" rx="6" fill="#C9B9A6" stroke="${C.ink}" stroke-width="3"/>`;
-    s += `<rect x="0" y="${ground}" width="${W}" height="70" fill="#EFE5D6"/><rect x="0" y="${ground + 70}" width="${W}" height="${H - ground - 70}" fill="#AAB4BE"/>
-      <path d="M0 ${ground + 70} H${W}" stroke="${C.ink}" stroke-width="4"/>
-      ${Array.from({ length: 9 }, (_, i) => `<rect x="${(i * 260 + 60 - t * 40) % 2200 - 140}" y="${ground + 150}" width="120" height="12" rx="6" fill="#fff" opacity=".8"/>`).join("")}`;
-    s += swayTree(1230, ground + 4, 1.05, 0, t) + swayTree(60, ground + 4, 0.95, 1, t, 1) + swayTree(1840, ground + 4, 1, 2, t, 2);
-    // the green route: the answer to "where to go", drawn along the sidewalk
-    const route = [[doorX + 40, ground + 40], [900, ground + 40], [1250, ground + 40], [1480, ground + 40]];
-    s += drawLine(route, prog(t, 5.4, 7.6, easeInOut), `stroke="${C.green}" stroke-width="16" stroke-linecap="round" opacity=".95"`);
-    if (t > 5.4) { const hp = pointAt(route, prog(t, 5.4, 7.6, easeInOut)); s += `<circle cx="${hp[0]}" cy="${hp[1]}" r="${12 + 3 * Math.sin(t * 8)}" fill="${C.green}" stroke="#fff" stroke-width="5"/>`; }
+    const DOOR = { x: 236, y: 560, w: 68, h: 160 }, WIN = { x: 241, y: 244, w: 68, h: 124 };
+    let inner = "";
+    // the door swings open (a dark doorway growing over the painted door)
+    const open = prog(t, 1.9, 2.5);
+    if (open > 0) inner += `<rect x="${DOOR.x + 4}" y="${DOOR.y + 6}" width="${(DOOR.w - 8) * open}" height="${DOOR.h - 10}" rx="6" fill="#2A1A14" opacity=".92"/>`;
+    // the route (the answer to "where to go"), along the sidewalk
+    const route = [[300, 735], [345, 780], [400, 840], [455, 905], [520, 975], [900, 985], [1300, 990], [1520, 992]];
+    const rp = prog(t, 5.3, 7.7, easeInOut);
+    inner += drawLine(route, rp, `stroke="${C.green}" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" opacity=".92"`);
+    if (rp > 0 && rp < 1) { const hp = pointAt(route, rp); inner += `<circle cx="${hp[0]}" cy="${hp[1]}" r="${11 + 3 * Math.sin(t * 8)}" fill="${C.green}" stroke="#fff" stroke-width="5"/>`; }
     if (t < 2.4) {
-      // at the window, looking out
-      const peek = prog(t, 0.1, 0.8);
-      s += `<g>${mascotA({ x: 570, y: ground - 540 + 46 + 90 + 70 - peek * 30, s: 0.55, feet: false, look: 5 * Math.sin(t * 2.4), blink: blinkAt(t, 2.2) })}</g>`;
+      // in the window above the door, looking out
+      const peek = prog(t, 0.15, 0.8);
+      inner += `<clipPath id="win"><rect x="${WIN.x}" y="${WIN.y}" width="${WIN.w}" height="${WIN.h}" rx="6"/></clipPath>
+        <g clip-path="url(#win)">${mascotA({ x: WIN.x + WIN.w / 2, y: WIN.y + WIN.h + 22 - peek * 70, s: 0.58, feet: false, look: 6 * Math.sin(t * 2.4), blink: blinkAt(t, 2.2) })}</g>`;
     } else {
-      const step = springIn(t, 2.5, 0.5);
-      const walk = prog(t, 5.6, 8, easeInOut);
-      const h = walk > 0 && walk < 1 ? hop(t, 9) : { b: 0, sx: 1, sy: 1 };
+      // out of the door, down the stoop, along the sidewalk
+      const path = [[270, 700], [300, 712], [345, 770], [400, 832], [455, 896], [520, 958], [900, 968], [1300, 972]];
+      const out = springIn(t, 2.45, 0.5);
+      const w = prog(t, 5.4, 8.0, easeInOut);
+      const [x, y] = w > 0 ? pointAt(path, w) : path[0];
+      const sc = lerp(0.62, 0.95, clamp((y - 700) / 270));
+      const h = w > 0 && w < 1 ? hop(t, 8) : { b: 0, sx: 1, sy: 1 };
       const confused = t > 3.9 && t < 5.4;
       const look = confused ? 7 * Math.sign(Math.sin((t - 3.9) * 4)) : 0;
-      const x = doorX + walk * 420;
-      s += mascotA({ x, y: doorY - 60 + (1 - clamp(step)) * 30 + 26, s: 0.9 + 0.1 * step, blink: blinkAt(t, 2.6, 0.7),
-        expr: walk > 0 ? "open" : confused ? "o" : "smile", look, bounce: h.b, sx: h.sx, sy: h.sy });
+      inner += contact(x, y + 46 * sc, sc * 0.9);
+      inner += mascotA({ x, y: y + (1 - clamp(out)) * 20, s: sc * (0.9 + 0.1 * clamp(out, 0, 1.1)), blink: blinkAt(t, 2.6, 0.7),
+        expr: w > 0 ? "open" : confused ? "o" : "smile", look, bounce: h.b, sx: h.sx, sy: h.sy });
       const q = springIn(t, 4.0, 0.4) * (1 - prog(t, 5.2, 5.5));
-      if (q > 0.01) s += `<g transform="translate(${x + 70} ${doorY - 190}) scale(${q})"><circle r="38" fill="#fff" stroke="${C.ink}" stroke-width="4"/>
-        <circle cx="-30" cy="44" r="8" fill="#fff" stroke="${C.ink}" stroke-width="3"/>${text(0, 16, "?", { size: 50 })}</g>`;
+      if (q > 0.01) inner += `<g transform="translate(${x + 62} ${y - 105}) scale(${q})"><circle r="34" fill="#fff" stroke="${C.ink}" stroke-width="4"/>
+        <circle cx="-26" cy="40" r="7" fill="#fff" stroke="${C.ink}" stroke-width="3"/>${text(0, 15, "?", { size: 44 })}</g>`;
     }
-    // "Step outside." at 0:03, word by word (fade + rise, no bounce)
+    inner += birds(t, 1000, 120);
+    const pull = prog(t, 4.9, 7.4, easeInOut);
+    const z = lerp(1.62 + 0.05 * prog(t, 0, 4.9), 1.04, pull);
+    let s = painted("s1_street", t, inner, { z0: z, z1: z, cx: lerp(275, 760, pull), cy: lerp(480, 640, pull), dur: 1 });
+    s += motes(t * 0.6, 10) + artCredit();
+    // "Step outside." at 0:03, word by word (fade + rise), in the sky
     const w1 = prog(t, 2.9, 3.3), w2 = prog(t, 3.3, 3.7);
-    s += `<g font-family="Fredoka" font-weight="700" font-size="150" fill="#fff" style="paint-order: stroke" stroke="${C.ink}" stroke-opacity=".12" stroke-width="10">
-      <text x="905" y="${215 + (1 - w1) * 24}" opacity="${w1}" text-anchor="end">Step</text><text x="945" y="${215 + (1 - w2) * 24}" opacity="${w2}" text-anchor="start">outside.</text></g>`;
+    s += `<g font-family="Fredoka" font-weight="700" font-size="124" fill="#fff" style="paint-order: stroke" stroke="#2B2340" stroke-opacity=".28" stroke-width="12" filter="url(#tshadow)">
+      <text x="1170" y="${190 + (1 - w1) * 22}" opacity="${w1}" text-anchor="end">Step</text><text x="1205" y="${190 + (1 - w2) * 22}" opacity="${w2}" text-anchor="start">outside.</text></g>`;
     return s;
   },
 };

@@ -98,28 +98,20 @@ add("s1", (t) => ({ bg: SCENES.s1.draw(t) }));
 // 2 · the problem. VO 1b at 8.3: "And my friends?" 0.3-0.7 · "Mostly homebodies." 1.5-2.3 ·
 // "'We should hang out'" 2.5-3.9 · "never turns into a plan." 4.3-5.6
 add("s2", (t) => {
-  let s = softBg(t, "#F3ECFF", C.cream, ["#EDE4FF", "#FFE7D9", "#E8F1FF", "#FFF1D6"]);
-  // the orange mascot at home on the sofa (with "friends?" / "homebodies")
-  const sofa = springIn(t, 0.2, 0.55);
-  if (sofa > 0) {
-    const breathe = 1 + 0.03 * Math.sin(t * 2.4);
-    s += `<g opacity="${clamp(sofa * 2)}" transform="translate(470 ${600 + floatY(t, 4, 4)}) scale(${0.85 + 0.15 * clamp(sofa, 0, 1.1)})">
-      <g filter="url(#shadow)"><rect x="-260" y="-230" width="520" height="440" rx="48" fill="#FFF6EA"/></g>
-      <rect x="-230" y="-200" width="160" height="120" rx="16" fill="#CFE6FF" stroke="${C.ink}" stroke-width="3"/>
-      <path d="M-230 -140 h160 M-150 -200 v120" stroke="${C.ink}" stroke-width="3"/>
-      <rect x="-200" y="30" width="400" height="110" rx="34" fill="#B07A9E" stroke="${C.ink}" stroke-width="4"/>
-      <rect x="-222" y="-30" width="64" height="170" rx="26" fill="#B07A9E" stroke="${C.ink}" stroke-width="4"/>
-      <rect x="158" y="-30" width="64" height="170" rx="26" fill="#B07A9E" stroke="${C.ink}" stroke-width="4"/>
-      ${mascotB({ x: 0, y: 4, s: 1.15, expr: "sleepy", feet: false, sy: breathe })}
-      <path d="M-150 40 q150 -50 300 0 v80 h-300 z" fill="#8FB6E8" stroke="${C.ink}" stroke-width="4"/>
-      <g transform="rotate(-12 50 30)"><rect x="30" y="0" width="42" height="68" rx="9" fill="${C.ink}"/><rect x="35" y="6" width="32" height="52" rx="6" fill="#BFE3FF"/></g>
-      ${[0, 1, 2].map((i) => { const zt = (t * 0.6 + i / 3) % 1; return t > 1.4 ? `<text x="${70 + zt * 60 + i * 6}" y="${-90 - zt * 90}" font-family="Fredoka" font-weight="700" font-size="${26 + i * 6}" fill="#8A82A0" opacity="${(1 - zt) * prog(t, 1.4, 1.8)}">z</text>` : ""; }).join("")}
-    </g>`;
-  }
+  // the orange friend at home on the sofa (painted room, art/s2_room.png), with "And my friends? Mostly homebodies."
+  const focus = prog(t, 2.2, 2.9, easeInOut);
+  const breathe = 1 + 0.025 * Math.sin(t * 2.4);
+  let inner = contact(800, 742, 1.8, 0.25);
+  inner += mascotB({ x: 800, y: 632, s: 1.85, expr: "sleepy", feet: false, sy: breathe, rot: -4 + 2 * Math.sin(t * 0.9) });
+  inner += `<g transform="rotate(-14 915 640)"><rect x="885" y="595" width="56" height="90" rx="12" fill="${C.ink}"/><rect x="892" y="603" width="42" height="70" rx="7" fill="#BFE3FF" opacity="${0.75 + 0.25 * Math.sin(t * 3)}"/></g>`;
+  inner += [0, 1, 2].map((i) => { const zt = (t * 0.55 + i / 3) % 1; return t > 1.3 ? `<text x="${890 + zt * 80 + i * 8}" y="${470 - zt * 120}" font-family="Fredoka" font-weight="700" font-size="${36 + i * 8}" fill="#6B6380" opacity="${(1 - zt) * prog(t, 1.3, 1.7)}">z</text>` : ""; }).join("");
+  const zr = 1.1 + 0.08 * prog(t, 0, 2.2, easeInOut) - 0.1 * focus;
+  let s = painted("s2_room", t, inner, { z0: zr, z1: zr, cx: lerp(800, 700, focus), cy: 600, dur: 1 });
+  s += `<rect width="1920" height="1080" fill="#FBF7EF" opacity="${0.32 * focus}"/>` + artCredit();
   // the group chat (staged, made-up names), from "We should hang out"
   const chat = springIn(t, 2.35, 0.55);
   if (chat > 0) {
-    const px = 860, py = 120, pw = 500, ph = 800, grey = prog(t, 5.6, 6.3);
+    const px = 1260, py = 110, pw = 500, ph = 800, grey = prog(t, 5.6, 6.3);
     s += `<g opacity="${clamp(chat * 2)}" transform="translate(${px + pw / 2} ${py + ph / 2 + floatY(t, 4, 4.6, 0.4) + (1 - clamp(chat)) * 60}) rotate(${floatR(t, 0.6, 5)}) translate(${-pw / 2} ${-ph / 2})">
       <g filter="url(#shadow)"><rect width="${pw}" height="${ph}" rx="56" fill="#fff"/></g>
       <rect width="${pw}" height="${ph}" rx="56" fill="none" stroke="${C.ink}" stroke-width="12"/>
@@ -146,10 +138,10 @@ add("s2", (t) => {
   if (cp > 0) {
     const flips = prog(t, 5.5, 6.9, (x) => x) * 3, week = 1 + Math.floor(flips), ph = flips % 1;
     const sq = week < 4 ? Math.abs(Math.cos(ph * Math.PI)) : 1;
-    s += `<g opacity="${clamp(cp * 2)}" transform="translate(1600 ${330 + floatY(t, 4, 3.6)}) scale(${clamp(cp, 0, 1.1)})"><g filter="url(#shadow)"><rect x="-140" y="-150" width="280" height="300" rx="30" fill="#fff"/></g>
+    s += `<g opacity="${clamp(cp * 2)}" transform="translate(300 ${300 + floatY(t, 4, 3.6)}) scale(${clamp(cp, 0, 1.1)})"><g filter="url(#shadow)"><rect x="-140" y="-150" width="280" height="300" rx="30" fill="#fff"/></g>
       <rect x="-140" y="-150" width="280" height="80" rx="30" fill="${C.orange}"/><rect x="-140" y="-100" width="280" height="30" fill="${C.orange}"/>
       ${text(0, -92, "WEEK", { size: 30, fill: "#fff" })}<g transform="translate(0 30) scale(1 ${sq})">${text(0, 40, String(Math.min(4, week)), { size: 130 })}</g></g>
-      <g opacity="${prog(t, 6.4, 6.9)}">${text(1600, 560, "3 weeks later…", { size: 46 })}</g>`;
+      <g opacity="${prog(t, 6.4, 6.9)}"><rect x="130" y="485" width="340" height="66" rx="33" fill="#fff" opacity=".92"/>${text(300, 532, "3 weeks later…", { size: 40 })}</g>`;
   }
   return { bg: s };
 });
@@ -449,46 +441,40 @@ add("s9", (t) => {
 
 // 10 · out in the city at golden hour (music only; no user-test data exists to show)
 add("s10", (t) => {
-  const shotLen = 11 / 3, shot = Math.min(2, Math.floor(t / shotLen)), tt = t - shot * shotLen;
-  const ground = 820, pan = tt * 40;
-  let s = `<rect width="1920" height="1080" fill="url(#gold)"/>`;
-  s += `<circle cx="1500" cy="${300 + tt * 6}" r="110" fill="#FFE7A8" opacity=".95"/><circle cx="1500" cy="${300 + tt * 6}" r="190" fill="#FFE7A8" opacity=".25"/>`;
-  s += cloud(300 + t * 12, 160, 1, 0.7) + cloud(1300 + t * 9, 120, 0.8, 0.6) + birds(t, 400 + shot * 300, 220);
-  // far skyline (slow), mid trees (faster): parallax as the camera pans with the walkers
-  s += `<g fill="#F2B98A" opacity=".55">${[[0, 300], [160, 380], [300, 260], [520, 420], [760, 330], [980, 400], [1220, 300], [1420, 380], [1640, 280], [1820, 360]]
-    .map(([x, h]) => `<rect x="${(x - pan * 0.25 + 2000) % 2000 - 80}" y="${ground - h}" width="170" height="${h}" rx="12"/>`).join("")}</g>`;
-  s += `<rect x="0" y="${ground}" width="1920" height="80" fill="#EBDCC4"/><rect x="0" y="${ground + 80}" width="1920" height="200" fill="#C9B79E"/>
-    <path d="M0 ${ground} H1920" stroke="${C.ink}" stroke-width="3" opacity=".25"/>`;
-  for (let i = 0; i < 9; i++) {  // falling leaves
-    const lx = (i * 233 + t * 30) % 1960, ly = (i * 97 + t * (60 + i * 7)) % 900, r = t * 90 + i * 40;
-    s += `<ellipse cx="${lx}" cy="${ly}" rx="9" ry="5" fill="${i % 2 ? "#E8894B" : "#F2C14E"}" transform="rotate(${r} ${lx} ${ly})" opacity=".85"/>`;
-  }
-  const fadeIn = prog(tt, 0, 0.35), fadeOut = shot < 2 ? prog(tt, shotLen - 0.3, shotLen) : 0;
-  if (shot === 0) {  // the blue one, out past a park, phone in hand
-    s += `<rect x="0" y="${ground - 230}" width="1920" height="230" fill="#A7DBA9"/>`;
-    [[160, 0], [560, 2], [980, 1], [1380, 0], [1780, 2]].forEach(([x, tone], i) => { s += swayTree((x - pan + 2000) % 2000 - 40, ground, 1.15, tone, t, i); });
-    const x = 520 + tt * 120, h = hop(t, 10);
-    s += mascotA({ x, y: ground + 8, s: 1.05, bounce: h.b, sx: h.sx, sy: h.sy, expr: "open", blink: blinkAt(t, 2.4) })
-      + `<g transform="translate(${x + 54} ${ground - 24 - h.b}) rotate(12)"><rect width="34" height="56" rx="8" fill="${C.ink}"/><rect x="4" y="5" width="26" height="42" rx="5" fill="#BFE3FF"/></g>`;
-  } else if (shot === 1) {  // from opposite streets to one corner, a wave
-    s += brownstone(40 - pan * 0.5, ground, 520, 560, "#D9926E") + brownstone(1360 - pan * 0.5, ground, 520, 600, "#C97B5A");
-    const a = prog(tt, 0, 2.2, easeInOut), b = prog(tt, 0.15, 2.4, easeInOut);
-    const ha = a < 1 ? hop(t, 10) : { b: pulse(tt, 2.3, 0.6) * 18, sx: 1, sy: 1 }, hb = b < 1 ? hop(t + 0.3, 10) : { b: pulse(tt, 2.5, 0.6) * 18, sx: 1, sy: 1 };
-    s += mascotA({ x: lerp(-100, 830, a), y: ground + 10, s: 1.0, bounce: ha.b, sx: ha.sx, sy: ha.sy, expr: a >= 1 ? "open" : "smile" });
-    s += mascotB({ x: lerp(2020, 1090, b), y: ground + 14, s: 0.95, bounce: hb.b, sx: hb.sx, sy: hb.sy });
-    if (tt > 2.4) s += `<g transform="rotate(${Math.sin(tt * 14) * 18} 890 ${ground - 50})"><ellipse cx="890" cy="${ground - 92}" rx="14" ry="22" fill="${C.blue}" stroke="${C.ink}" stroke-width="4"/></g>`;
-    const hp = springIn(tt, 2.6, 0.4);
-    if (hp > 0) s += `<path transform="translate(960 ${ground - 170}) scale(${1.6 * clamp(hp, 0, 1.2)})" d="M0 10 c-6 -12 -22 -6 -16 6 l16 16 l16 -16 c6 -12 -10 -18 -16 -6 z" fill="${C.yellow}" stroke="${C.ink}" stroke-width="3"/>`;
-  } else {  // a cafe table, two cups
-    s += `<rect x="560" y="${ground - 420}" width="800" height="420" rx="14" fill="#FBEBD3" stroke="${C.ink}" stroke-width="4"/>
-      ${Array.from({ length: 8 }, (_, i) => `<path d="M${560 + i * 100} ${ground - 400} h100 v${60 + 4 * Math.sin(t * 2 + i)} q-50 30 -100 0 z" fill="${i % 2 ? C.cream : C.yellow}" stroke="${C.ink}" stroke-width="3"/>`).join("")}
-      <rect x="760" y="${ground - 90}" width="400" height="22" rx="10" fill="#8A5A3C" stroke="${C.ink}" stroke-width="3"/><rect x="950" y="${ground - 70}" width="20" height="80" fill="#8A5A3C"/>`;
-    const laugh = Math.abs(Math.sin(tt * 4)) * 6;
-    s += mascotA({ x: 700, y: ground - 60, s: 0.9, expr: "happy", feet: false, bounce: laugh, rot: 3 * Math.sin(tt * 3) }) + mascotB({ x: 1220, y: ground - 56, s: 0.88, feet: false, bounce: laugh * 0.8, rot: -3 * Math.sin(tt * 3) });
-    s += `<rect x="830" y="${ground - 130}" width="46" height="42" rx="8" fill="#fff" stroke="${C.ink}" stroke-width="3"/><rect x="1040" y="${ground - 130}" width="46" height="42" rx="8" fill="#fff" stroke="${C.ink}" stroke-width="3"/>
-      ${[0, 1].map((k) => `<path d="M${853 + k * 210} ${ground - 150 - ((tt * 20) % 20)} q8 -12 0 -24" fill="none" stroke="#fff" stroke-width="4" opacity=".8"/>`).join("")}`;
-  }
-  s += `<rect width="1920" height="1080" fill="#FFE7C2" opacity="${Math.max(1 - fadeIn, fadeOut) * 0.9}"/>`;
+  // three painted golden-hour shots (art/s10_*.png), crossfading: out past a park; meeting at a corner; a cafe table
+  const L = 11 / 3;
+  const shotAt = (k, tt) => {
+    let inner = "";
+    if (k === 0) {  // the blue one walks the park path, phone in hand
+      const x = 300 + tt * 170, y = 900, h = hop(t, 11);
+      inner += contact(x, y + 78, 1.55) + mascotA({ x, y, s: 1.55, bounce: h.b, sx: h.sx, sy: h.sy, expr: "open", blink: blinkAt(t, 2.4) })
+        + `<g transform="translate(${x + 80} ${y - 46 - h.b}) rotate(12)"><rect width="50" height="84" rx="11" fill="${C.ink}"/><rect x="6" y="7" width="38" height="64" rx="7" fill="#BFE3FF"/></g>`;
+      return painted("s10_park", tt, inner + leaves(t, 12), { z0: 1.02, z1: 1.08, cx: 760, cy: 760, dur: L, px: -30 });
+    }
+    if (k === 1) {  // from opposite sides onto the crosswalk; a wave, a heart
+      const a = prog(tt, 0, 2.2, easeInOut), b = prog(tt, 0.1, 2.3, easeInOut);
+      const ha = a < 1 ? hop(t, 9) : { b: pulse(tt, 2.3, 0.6) * 18, sx: 1, sy: 1 }, hb = b < 1 ? hop(t + 0.3, 9) : { b: pulse(tt, 2.5, 0.6) * 18, sx: 1, sy: 1 };
+      const ax = lerp(-160, 820, a), bx = lerp(2080, 1110, b);
+      inner += contact(ax, 1000, 1.45) + contact(bx, 1000, 1.4);
+      inner += mascotA({ x: ax, y: 922, s: 1.45, bounce: ha.b, sx: ha.sx, sy: ha.sy, expr: a >= 1 ? "open" : "smile", blink: blinkAt(t, 2.7) });
+      inner += mascotB({ x: bx, y: 928, s: 1.4, bounce: hb.b, sx: hb.sx, sy: hb.sy, flip: true });
+      const hp = springIn(tt, 2.55, 0.4);
+      if (hp > 0) inner += `<path transform="translate(965 ${745 + floatY(t, 4, 2)}) scale(${2.2 * clamp(hp, 0, 1.2)})" d="M0 10 c-6 -12 -22 -6 -16 6 l16 16 l16 -16 c6 -12 -10 -18 -16 -6 z" fill="${C.yellow}" stroke="${C.ink}" stroke-width="3"/>`;
+      return painted("s10_corner", tt, inner + leaves(t + 3, 14), { z0: 1.0, z1: 1.05, cx: 960, cy: 900, dur: L });
+    }
+    // a cafe table, two cups (the painting's), steam rising
+    const laugh = Math.abs(Math.sin(tt * 4)) * 5;
+    inner += mascotA({ x: 598, y: 848, s: 1.22, expr: "happy", feet: false, bounce: laugh, rot: 3 * Math.sin(tt * 3), blink: blinkAt(t, 2.9) });
+    inner += mascotB({ x: 1140, y: 806, s: 1.15, feet: false, bounce: laugh * 0.8, rot: -3 * Math.sin(tt * 3) });
+    inner += [790, 910].map((cx, k) => [0, 1].map((j) => { const ph = ((tt * 0.6 + j * 0.5 + k * 0.25) % 1);
+      return `<path d="M${cx + j * 10 - 5} ${745 - ph * 70} q10 -14 0 -28 q-10 -14 0 -28" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round" opacity="${0.55 * Math.sin(ph * Math.PI)}"/>`; }).join("")).join("");
+    return painted("s10_cafe", tt, inner, { z0: 1.0, z1: 1.06, cx: 860, cy: 760, dur: L });
+  };
+  const k = Math.min(2, Math.floor(t / L)), tt = t - k * L;
+  let s = shotAt(k, tt);
+  const xf = k < 2 ? prog(tt, L - 0.45, L) : 0;  // crossfade into the next shot
+  if (xf > 0) s += `<g opacity="${xf}">${shotAt(k + 1, tt - L)}</g>`;
+  s += warmLight(0.16) + motes(t, 18) + artCredit();
   return { bg: s };
 });
 

@@ -106,6 +106,7 @@ function drawLine(pts, f, attrs) {
 
 const DEFS = `<defs>
   <filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="6"/></filter>
+  <filter id="tshadow" x="-10%" y="-30%" width="120%" height="160%"><feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#2B2340" flood-opacity=".35"/></filter>
   <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#2B2340" flood-opacity=".18"/></filter>
   <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4E9BF0"/><stop offset=".65" stop-color="#A9D7FF"/><stop offset="1" stop-color="#DDF0FF"/></linearGradient>
   <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F7B267"/><stop offset=".6" stop-color="#FFD9A0"/><stop offset="1" stop-color="#FFEBC9"/></linearGradient>
@@ -145,3 +146,39 @@ function ambient(t, cols = ["#FFE7A8", "#CFE6FF", "#D6F2DF", "#FFD9C7"]) {
   }
   return s;
 }
+
+// ---- painted backgrounds (Muse Image, video/assets/art) ----
+// A full-frame painting with a slow camera drift (zoom z0 -> z1 around cx, cy over dur seconds). Everything placed
+// "in" the picture (mascots, shadows, overlays) goes inside the same group so it stays attached as the camera moves.
+const ART = "../../assets/art/";
+function painted(name, t, inner = "", { z0 = 1.0, z1 = 1.06, cx = 960, cy = 540, dur = 8, px = 0 } = {}) {
+  // (cx, cy) in the painting is brought to the frame centre, clamped so the painting always covers the frame
+  const z = Math.max(1, lerp(z0, z1, clamp(t / dur)));
+  const fx = clamp(cx - px * clamp(t / dur), 960 / z, 1920 - 960 / z), fy = clamp(cy, 540 / z, 1080 - 540 / z);
+  return `<g transform="translate(960 540) scale(${z}) translate(${-fx} ${-fy})">
+    <image href="${ART}${name}.png" x="0" y="0" width="1920" height="1080" preserveAspectRatio="xMidYMid slice"/>${inner}</g>`;
+}
+// a soft contact shadow so a mascot sits on the painted ground
+function contact(x, y, s = 1, o = 0.32) {
+  return `<ellipse cx="${x}" cy="${y}" rx="${58 * s}" ry="${12 * s}" fill="#2B2340" opacity="${o}" filter="url(#soft)"/>`;
+}
+function leaves(t, n = 14, cols = ["#E8894B", "#F2C14E", "#D9643A"]) {
+  let s = "";
+  for (let i = 0; i < n; i++) {
+    const x = (i * 211 + t * (26 + i % 4 * 8)) % 2000 - 40, y = (i * 137 + t * (70 + i * 6)) % 1140 - 40, r = t * (80 + i * 7) + i * 40;
+    const sw = 18 * Math.sin(t * 1.7 + i);
+    s += `<ellipse cx="${x + sw}" cy="${y}" rx="${8 + i % 3 * 2}" ry="${4.5 + i % 2}" fill="${cols[i % cols.length]}" transform="rotate(${r} ${x + sw} ${y})" opacity=".9"/>`;
+  }
+  return s;
+}
+function motes(t, n = 16) {
+  let s = "";
+  for (let i = 0; i < n; i++) {
+    const x = (i * 173 + 20 * Math.sin(t * 0.7 + i)) % 1920, y = (i * 89 + 900 - t * (8 + i % 5 * 3)) % 1080;
+    s += `<circle cx="${x}" cy="${y}" r="${2 + i % 3}" fill="#FFF3C4" opacity="${0.35 + 0.35 * Math.sin(t * 2 + i)}"/>`;
+  }
+  return s;
+}
+const warmLight = (o = 0.18) => `<defs><radialGradient id="sunglow" cx="0.85" cy="0.25" r="0.9"><stop offset="0" stop-color="#FFE3A3" stop-opacity="${o * 2}"/><stop offset="0.5" stop-color="#FFB86B" stop-opacity="${o}"/><stop offset="1" stop-color="#FFB86B" stop-opacity="0"/></radialGradient></defs><rect width="1920" height="1080" fill="url(#sunglow)"/>`;
+// small credit on scenes painted with Muse Image
+const artCredit = () => `<g opacity=".85"><rect x="1636" y="22" width="262" height="34" rx="17" fill="#FBF7EF" opacity=".8"/>${text(1767, 45, "Illustration: Muse Image", { size: 18, family: "Nunito", weight: 800, fill: "#5A4F6E" })}</g>`;

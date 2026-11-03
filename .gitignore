@@ -30,3 +30,5 @@ video/**/*.wav
 video/**/*.mp3
 video/assets/data/*.local.json
 video/assets/data/walking_graph_manhattan.json
+video/assets/art/*.png
+video/assets/art/*.webp

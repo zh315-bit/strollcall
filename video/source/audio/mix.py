@@ -1,6 +1,6 @@
 """Mix the soundtrack and write the captions, then mux with the rendered picture.
 
-    python mix.py 720     # renders/silent_720.mp4 -> renders/preview_720.mp4 (burned-in timecode)
+    python mix.py 720     # renders/silent_720.mp4 -> renders/preview_720.mp4
     python mix.py 1080    # renders/silent_1080.mp4 -> renders/strollcall_demo.mp4 + .srt
 
 Every placement comes from source/anim/beats.json (the same file the picture and captions use):
@@ -105,11 +105,8 @@ if __name__ == "__main__":
     mix(total, wav)
     write_srt(R / "strollcall_demo.srt")
     if height == "720":
-        tc = R / "frames720_tc"
-        subprocess.run(["uv", "run", "-q", "--with", "pillow", "python", str(Path(__file__).with_name("timecode.py")),
-                        str(R / "frames720"), str(tc)], check=True)
         out = R / "preview_720.mp4"
-        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-framerate", "30", "-i", str(tc / "%06d.jpg"), "-i", str(wav),
+        subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-framerate", "30", "-i", str(R / "frames720" / "%06d.jpg"), "-i", str(wav),
                         "-c:v", "libx264", "-crf", "21", "-preset", "medium", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
                         "-shortest", "-movflags", "+faststart", str(out)], check=True)
     else:
