@@ -560,7 +560,7 @@ function startWalk(legs, opts = {}) {
   }
   function hush() {
     speakSeq++;  // a line still on its way is dropped
-    if (player) player.pause();
+    if (player && player.src !== silence) player.pause();  // pausing the silence could undo the unlock
     if (phoneVoice) speechSynthesis.cancel();
   }
   function sayOnPhone(text) {
@@ -585,7 +585,7 @@ function startWalk(legs, opts = {}) {
         if (seq !== speakSeq || !voiceOn) { URL.revokeObjectURL(url); return; }
         const old = player.src;
         player.src = url;
-        if (old.startsWith("blob:")) URL.revokeObjectURL(old);
+        if (old.startsWith("blob:") && old !== silence) URL.revokeObjectURL(old);
         await player.play();
         return;
       } catch (e) {
@@ -594,11 +594,16 @@ function startWalk(legs, opts = {}) {
     }
     sayOnPhone(text);
   }
-  // iPhone plays audio only from a tap: playing a moment of silence inside the tap lets later lines play.
+  // iPhone plays sound only from a tap, and a line arrives after the tap (it is fetched first): inside the
+  // tap, play a moment of silence on the player and say nothing on the phone's voice, so both may speak later.
+  let silence = "";
   function unlockAudio() {
-    if (!player) return;
-    player.src = URL.createObjectURL(encodeWav(new Float32Array(1600), 16000));
-    player.play().catch(() => {});
+    if (player) {
+      silence = silence || URL.createObjectURL(encodeWav(new Float32Array(1600), 16000));
+      player.src = silence;
+      player.play().catch(() => {});
+    }
+    if (phoneVoice) speechSynthesis.speak(new SpeechSynthesisUtterance(""));
   }
   const voiceLabel = el("span", { class: "walk-btn-label" });
   const voiceBtn = el("button", { type: "button", class: "walk-btn voice-toggle", onclick: () => {
@@ -615,6 +620,7 @@ function startWalk(legs, opts = {}) {
     voiceBtn.replaceChildren(walkIcon(voiceOn ? "voiceOn" : "voiceOff"), voiceLabel);
   }
   showVoice();
+  if (voiceOn) unlockAudio();  // Voice was left on: the Start walking tap unlocks sound for this walk
   if (!canSpeak) voiceBtn.hidden = true;
   // Like a map app: once your position is known the map zooms in on you and keeps you in the middle.
   // Dragging the map stops that; the button brings you back.

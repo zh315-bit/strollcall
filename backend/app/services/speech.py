@@ -58,10 +58,26 @@ def _reserve(chars: int, cap: int) -> None:
         _day["chars"] += chars
 
 
+def _reason(e: Exception) -> str:
+    """ElevenLabs' own error code and message (never the key or the text), for the log."""
+    detail = (getattr(e, "body", None) or {}).get("detail") if isinstance(getattr(e, "body", None), dict) else None
+    if isinstance(detail, dict):
+        return f"{detail.get('status') or detail.get('code') or ''} {str(detail.get('message', ''))[:200]}".strip()
+    return str(detail or "")[:200]
+
+
+def _fingerprint(key: str) -> str | None:
+    """First 8 hex chars of SHA-256: enough to compare two keys, impossible to recover the key."""
+    import hashlib
+
+    return hashlib.sha256(key.encode()).hexdigest()[:8] if key else None
+
+
 def status(s: Settings | None = None) -> dict:
     s = s or get_settings()
     return {"provider": "elevenlabs" if enabled(s) else "device", "model": s.elevenlabs_model,
-            "voice_id": s.elevenlabs_voice_id, "chars_today": _day["chars"], "daily_char_cap": s.elevenlabs_daily_char_cap}
+            "voice_id": s.elevenlabs_voice_id, "key_fingerprint": _fingerprint(s.elevenlabs_api_key.get_secret_value()),
+            "chars_today": _day["chars"], "daily_char_cap": s.elevenlabs_daily_char_cap}
 
 
 def speak(text: str, client=None, s: Settings | None = None) -> bytes:
@@ -83,7 +99,10 @@ def speak(text: str, client=None, s: Settings | None = None) -> bytes:
         audio = b"".join((client or _client(s)).text_to_speech.convert(
             s.elevenlabs_voice_id, text=text, model_id=s.elevenlabs_model, output_format=OUTPUT_FORMAT))
     except Exception as e:  # noqa: BLE001 - any failure: the page falls back to the phone's voice
-        log.warning("ElevenLabs speech failed (%s)", type(e).__name__)
+        log.warning("ElevenLabs speech failed (%s %s): %s", type(e).__name__, getattr(e, "status_code", ""),
+                    _reason(e))
+        with _lock:
+            _day["chars"] = max(0, _day["chars"] - len(text))  # nothing was spoken
         raise SpeechUnavailable("ElevenLabs is unavailable right now") from e
     if not audio:
         raise SpeechUnavailable("ElevenLabs returned no audio")
