@@ -83,7 +83,9 @@ if __name__ == "__main__":
         with ThreadPoolExecutor(n) as ex:
             list(ex.map(lambda c: worker(port, height, c, outdir), chunks))
         subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-framerate", str(FPS), "-i", str(outdir / "%06d.jpg"),
-                        "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p",
+                        "-vf", "scale=in_range=pc:out_range=tv:in_color_matrix=bt601:out_color_matrix=bt709,format=yuv420p",
+                        "-c:v", "libx264", "-preset", "medium", "-crf", "18",
+                        "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv",
                         str(REN / f"silent_{height}.mp4")], check=True)
         print(REN / f"silent_{height}.mp4")
     srv.shutdown()
