@@ -1,7 +1,7 @@
 # Credits
 
 ## Music
-- **Track:** original instrumental written for this video by `audio/music.py` (plucked-string synthesis, soft bass, pad and shaker). No samples, nothing downloaded.
+- **Track:** original instrumental written for this video by `audio/music.py` (a warm, slow pad with soft sine notes, low-passed, no plucked or struck sounds). No samples, nothing downloaded.
 - **License:** CC0 1.0 (public domain dedication): https://creativecommons.org/publicdomain/zero/1.0/
 - To use another track, replace `public/audio/music.mp3` and run `npm run render`. Record its source and license here.
 

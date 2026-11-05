@@ -1,50 +1,45 @@
-"""Original background music, synthesised here from scratch (no samples, nothing downloaded): plucked Karplus-Strong
-guitar arpeggios, soft bass, a warm pad and a light shaker, 84 BPM. Released under CC0 (see CREDITS.md).   python music.py"""
+"""Original background music, synthesised here from scratch (no samples, nothing downloaded): a warm, slow pad with
+soft sine notes on top. Every note fades in, so there is no plucked or struck attack, and everything is low-passed.
+Released under CC0 (see CREDITS.md).   python music.py"""
 import subprocess, wave
 from pathlib import Path
 import numpy as np
-SR = 44100; BPM = 84; BEAT = 60 / BPM; DUR = 81.0
-rng = np.random.default_rng(7)
-def note(n): return 440 * 2 ** ((n - 69) / 12)
-def pluck(f, dur, bright=.5):
-    n = int(SR * dur); p = int(SR / f); buf = rng.uniform(-1, 1, p)
-    buf = np.convolve(buf, np.ones(3) / 3, "same") * (0.6 + bright * .4)
-    out = np.zeros(n); d = 0.4985
-    for i in range(0, n, p):                      # vectorised per period
-        m = min(p, n - i); out[i:i + m] = buf[:m]
-        buf = d * (buf + np.roll(buf, 1))
-    return out * np.exp(-np.arange(n) / (SR * dur * .45))
-def pad(notes, dur):
-    t = np.arange(int(SR * dur)) / SR; s = sum(np.sin(2 * np.pi * note(n) * t) + .3 * np.sin(2 * np.pi * note(n) * 2.003 * t) for n in notes)
-    return s * np.minimum(1, t / .6) * np.minimum(1, (dur - t) / .8) / len(notes)
-L = np.zeros(int(SR * (DUR + 4))); Rr = L.copy()
-def put(x, at, gain, pan=0):
-    i = max(0, int(at * SR)); x = x[:len(L) - i]
-    L[i:i + len(x)] += x * gain * (1 - pan) ** .5 * .8; Rr[i:i + len(x)] += x * gain * (1 + pan) ** .5 * .8
-CH = [([48, 55, 64, 67, 71, 72], 36), ([45, 52, 60, 64, 67, 72], 33), ([41, 48, 57, 60, 64, 69], 29), ([43, 50, 59, 62, 67, 71], 31)]
-PAT = [0, 2, 3, 4, 5, 4, 3, 2]; bars = int(79 / (4 * BEAT))
+SR = 44100; DUR = 81.0; BAR = 7.2                     # one chord every 7.2 s
+rng = np.random.default_rng(11)
+N = int(SR * (DUR + 8)); L = np.zeros(N); R = np.zeros(N)
+hz = lambda n: 440 * 2 ** ((n - 69) / 12)
+def env(n, a, r):
+    t = np.arange(n) / SR; d = n / SR
+    return np.sin(np.minimum(1, t / a) * np.pi / 2) ** 2 * np.sin(np.minimum(1, (d - t) / r) * np.pi / 2) ** 2
+def put(x, at, g, pan=0.):
+    i = int(at * SR); x = x[:N - i]; L[i:i + len(x)] += x * g * (1 - pan) ** .5; R[i:i + len(x)] += x * g * (1 + pan) ** .5
+def pad(n, dur):
+    t = np.arange(int(SR * dur)) / SR; f = hz(n)
+    s = sum(np.sin(2 * np.pi * f * (1 + d) * t + rng.uniform(0, 6)) for d in (-.0016, 0, .0016)) / 3 + .1 * np.sin(2 * np.pi * 2 * f * t)
+    return s * env(len(t), 2.4, 3.0) * (1 + .12 * np.sin(2 * np.pi * rng.uniform(.06, .14) * t))
+def soft(n, dur=4.5):
+    t = np.arange(int(SR * dur)) / SR
+    return (np.sin(2 * np.pi * hz(n) * t) + .08 * np.sin(2 * np.pi * 2 * hz(n) * t)) * env(len(t), .35, 3.2)
+CH = [(36, [48, 55, 59, 64]), (33, [45, 52, 55, 60]), (29, [41, 48, 52, 57]), (31, [43, 50, 55, 59])]   # Cmaj7 Am7 Fmaj7 G
+TUNE = [[(0, 67), (3.6, 64)], [(0, 64), (3.6, 60)], [(0, 65), (3.6, 69)], [(0, 67), (3.6, 62)],
+        [(0, 72), (3.6, 67)], [(0, 69), (3.6, 64)], [(0, 65), (3.6, 60)], [(0, 62), (3.6, 67)]]
+bars = int(76 / BAR) + 1
 for b in range(bars):
-    ch, bass = CH[b % 4]; t0 = b * 4 * BEAT; full = b >= 2
-    put(pad(ch[1:4], 4 * BEAT + .6), t0, .05, 0)
-    for k, ix in enumerate(PAT):
-        sw = .018 if k % 2 else 0
-        put(pluck(note(ch[ix]), 1.8, .5), t0 + k * BEAT / 2 + sw + rng.uniform(-.006, .006), (.3 if k % 4 == 0 else .22) * rng.uniform(.85, 1), (ix - 3) * .1)
-    if full:
-        put(pluck(note(bass), 2.2, .2), t0, .34); put(pluck(note(bass + 7), 1.6, .2), t0 + 2 * BEAT, .22)
-    if b >= 4:
-        for k in range(8):
-            n = rng.normal(0, 1, int(SR * .05)) * np.exp(-np.arange(int(SR * .05)) / (SR * .012))
-            n = np.diff(n, prepend=0); put(n, t0 + k * BEAT / 2, .028 if k % 2 else .014, .3)
-end = bars * 4 * BEAT
-for n, d in zip((48, 55, 64, 67, 72), (0, .05, .1, .15, .2)): put(pluck(note(n), 3.5, .5), end + d, .3, 0)
-ir = rng.normal(0, 1, int(SR * 1.4)) * np.exp(-np.arange(int(SR * 1.4)) / (SR * .35)); ir /= np.sqrt((ir ** 2).sum())
-def rev(x):
-    n = 1 << int(np.ceil(np.log2(len(x) + len(ir)))); y = np.fft.irfft(np.fft.rfft(x, n) * np.fft.rfft(ir, n), n)[:len(x)]; return x + .22 * y
-s = np.stack([rev(L), rev(Rr)], 1)[:int(SR * DUR)]
-fade = np.ones(len(s)); fl = int(SR * 2.0); fade[-fl:] = np.linspace(1, 0, fl) ** 1.5; s *= fade[:, None]
+    root, notes = CH[b % 4]; t0 = b * BAR
+    put(pad(root + 12, BAR + 3.5), t0, .07)
+    for i, n in enumerate(notes): put(pad(n, BAR + 3.5), t0, .085, (i - 1.5) * .22)
+    if b >= 1:
+        for dt, n in TUNE[b % 8]: put(soft(n), t0 + dt, .17, rng.uniform(-.25, .25))
+ir = rng.normal(0, 1, int(SR * 3)) * np.exp(-np.arange(int(SR * 3)) / (SR * .8)); ir /= np.sqrt((ir ** 2).sum())
+def finish(x):
+    n = 1 << int(np.ceil(np.log2(len(x) + len(ir)))); X = np.fft.rfft(x, n); f = np.fft.rfftfreq(n, 1 / SR)
+    lp = 1 / (1 + (f / 1800) ** 4)                     # nothing bright gets through
+    return np.fft.irfft(X * lp * (1 + .3 * np.fft.rfft(ir, n)), n)[:len(x)]
+s = np.stack([finish(L), finish(R)], 1)[:int(SR * DUR)]
+fade = np.ones(len(s)); fl = int(SR * 3.5); fade[-fl:] = np.cos(np.linspace(0, np.pi / 2, fl)) ** 2; s *= fade[:, None]
 s = s / np.abs(s).max() * .7
 out = Path(__file__).resolve().parents[1] / "public" / "audio"; w = out / "_music.wav"
 with wave.open(str(w), "wb") as f:
     f.setnchannels(2); f.setsampwidth(2); f.setframerate(SR); f.writeframes((s * 32767).astype("<i2").tobytes())
 subprocess.run(["ffmpeg", "-loglevel", "error", "-y", "-i", str(w), "-b:a", "192k", str(out / "music.mp3")], check=True); w.unlink()
-print("music ok", round(len(s) / SR, 1), "bars", bars, "ends", round(end, 1))
+print("music ok", round(len(s) / SR, 1), "chords", bars)
