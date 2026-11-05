@@ -11,7 +11,7 @@ const S = JSON.parse(fs.readFileSync("src/script.json"));
 const ins = S.flatMap((s) => ["-i", `public/audio/vo_${s.id}.mp3`]).concat(["-i", "public/audio/music.mp3"]);
 const f = S.map((s, i) => { const ms = Math.round((s.start + s.voAt) * 1000); return `[${i}:a]aformat=channel_layouts=stereo:sample_rates=48000,adelay=${ms}|${ms}[v${i}]`; });
 f.push(`${S.map((_, i) => `[v${i}]`).join("")}amix=inputs=${S.length}:normalize=0,apad=whole_dur=81,asplit=2[vk][vm]`);
-f.push(`[${S.length}:a]aformat=channel_layouts=stereo:sample_rates=48000,volume=0.34[m0]`);
+f.push(`[${S.length}:a]aformat=channel_layouts=stereo:sample_rates=48000,volume=0.16[m0]`);
 f.push(`[m0][vk]sidechaincompress=threshold=0.02:ratio=7:attack=30:release=420:makeup=1[m1]`);
 f.push(`[vm][m1]amix=inputs=2:normalize=0,atrim=0:80,afade=t=out:st=78.6:d=1.4[o]`);
 run("ffmpeg", ["-loglevel", "error", "-y", ...ins, "-filter_complex", f.join(";"), "-map", "[o]", "-ar", "48000", "out/raw_mix.wav"]);
