@@ -34,3 +34,9 @@ video/assets/art/*.png
 video/assets/art/*.webp
 video/assets/vo_tts/premade_chris/
 video/assets/vo_tts/v2_script/
+
+# Promo video: dependencies and rendered output stay local
+promo/node_modules/
+promo/out/
+promo/*.mp4
+promo/assets/

@@ -1,0 +1,128 @@
+[
+ {
+  "scene": "s1",
+  "text": "Ever say 'I should go outside'…",
+  "start": 1.6,
+  "end": 3.887
+ },
+ {
+  "scene": "s1",
+  "text": "and then don't? Same.",
+  "start": 3.887,
+  "end": 6.548
+ },
+ {
+  "scene": "s2",
+  "text": "Meet StrollCall.",
+  "start": 9,
+  "end": 10.393
+ },
+ {
+  "scene": "s2",
+  "text": "Less planning. More walking.",
+  "start": 10.393,
+  "end": 12.554
+ },
+ {
+  "scene": "s3",
+  "text": "Tell it what you want in one sentence,",
+  "start": 14.6,
+  "end": 16.504
+ },
+ {
+  "scene": "s3",
+  "text": "like 'twenty minutes, quiet streets, coffee at the end.'",
+  "start": 16.504,
+  "end": 20.465
+ },
+ {
+  "scene": "s3",
+  "text": "Type it, or just say it.",
+  "start": 20.8,
+  "end": 23.042
+ },
+ {
+  "scene": "s3",
+  "text": "StrollCall plans a real walk from where you are,",
+  "start": 23.377,
+  "end": 26.14
+ },
+ {
+  "scene": "s3",
+  "text": "and you're out the door.",
+  "start": 26.14,
+  "end": 27.814
+ },
+ {
+  "scene": "s4",
+  "text": "Want company? Send one link.",
+  "start": 32.5,
+  "end": 35.23
+ },
+ {
+  "scene": "s4",
+  "text": "Your friend taps 'I'm in', no app needed.",
+  "start": 35.461,
+  "end": 38.968
+ },
+ {
+  "scene": "s4",
+  "text": "StrollCall finds a meeting point that's fair by walking time,",
+  "start": 39.303,
+  "end": 43.007
+ },
+ {
+  "scene": "s4",
+  "text": "so nobody's left waiting,",
+  "start": 43.007,
+  "end": 44.783
+ },
+ {
+  "scene": "s4",
+  "text": "then plans the walk you'll share.",
+  "start": 44.783,
+  "end": 47.246
+ },
+ {
+  "scene": "s5",
+  "text": "On the way, your walking buddy has your back.",
+  "start": 50.5,
+  "end": 53.822
+ },
+ {
+  "scene": "s5",
+  "text": "Ask for a coffee stop, a shorter route,",
+  "start": 54.157,
+  "end": 56.7
+ },
+ {
+  "scene": "s5",
+  "text": "or what's nearby.",
+  "start": 56.7,
+  "end": 58.466
+ },
+ {
+  "scene": "s6",
+  "text": "For homebodies, busy students,",
+  "start": 62.6,
+  "end": 64.829
+ },
+ {
+  "scene": "s6",
+  "text": "and friends who keep saying 'we should hang out.'",
+  "start": 64.829,
+  "end": 67.919
+ },
+ {
+  "scene": "s7",
+  "text": "Scan the code and take your first walk today.",
+  "start": 71.6,
+  "end": 74.62
+ },
+ {
+  "scene": "s7",
+  "text": "StrollCall.",
+  "start": 74.955,
+  "end": 76.408
+ }
+]

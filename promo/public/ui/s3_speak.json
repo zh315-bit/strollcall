@@ -1,0 +1,19 @@
+{
+ "start_wall": 1793907689.378999,
+ "duration_s": 9.07,
+ "frames": 544,
+ "events": [
+  {
+   "mark": "tap",
+   "t": 1.0
+  },
+  {
+   "mark": "stop",
+   "t": 5.28
+  },
+  {
+   "mark": "transcript",
+   "t": 6.76
+  }
+ ]
+}

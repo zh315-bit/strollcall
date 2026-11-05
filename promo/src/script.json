@@ -1,0 +1,93 @@
+[
+ {
+  "id": "s1",
+  "title": "Hook",
+  "start": 0,
+  "end": 8,
+  "voAt": 1.6,
+  "vo": "Ever say 'I should go outside'… and then don't? Same.",
+  "caps": [
+   "Ever say 'I should go outside'…",
+   "and then don't? Same."
+  ]
+ },
+ {
+  "id": "s2",
+  "title": "Logo reveal",
+  "start": 8,
+  "end": 14,
+  "voAt": 1.0,
+  "vo": "Meet StrollCall. Less planning. More walking.",
+  "caps": [
+   "Meet StrollCall.",
+   "Less planning. More walking."
+  ]
+ },
+ {
+  "id": "s3",
+  "title": "Solo walk",
+  "start": 14,
+  "end": 32,
+  "voAt": 0.6,
+  "vo": "Tell it what you want in one sentence, like 'twenty minutes, quiet streets, coffee at the end.' Type it, or just say it. StrollCall plans a real walk from where you are, and you're out the door.",
+  "caps": [
+   "Tell it what you want in one sentence,",
+   "like 'twenty minutes, quiet streets, coffee at the end.'",
+   "Type it, or just say it.",
+   "StrollCall plans a real walk from where you are,",
+   "and you're out the door."
+  ]
+ },
+ {
+  "id": "s4",
+  "title": "Walk with a friend",
+  "start": 32,
+  "end": 50,
+  "voAt": 0.5,
+  "vo": "Want company? Send one link. Your friend taps 'I'm in', no app needed. StrollCall finds a meeting point that's fair by walking time, so nobody's left waiting, then plans the walk you'll share.",
+  "caps": [
+   "Want company? Send one link.",
+   "Your friend taps 'I'm in', no app needed.",
+   "StrollCall finds a meeting point that's fair by walking time,",
+   "so nobody's left waiting,",
+   "then plans the walk you'll share."
+  ]
+ },
+ {
+  "id": "s5",
+  "title": "Walking buddy",
+  "start": 50,
+  "end": 62,
+  "voAt": 0.5,
+  "vo": "On the way, your walking buddy has your back. Ask for a coffee stop, a shorter route, or what's nearby.",
+  "caps": [
+   "On the way, your walking buddy has your back.",
+   "Ask for a coffee stop, a shorter route,",
+   "or what's nearby."
+  ]
+ },
+ {
+  "id": "s6",
+  "title": "Who it's for",
+  "start": 62,
+  "end": 71,
+  "voAt": 0.6,
+  "vo": "For homebodies, busy students, and friends who keep saying 'we should hang out.'",
+  "caps": [
+   "For homebodies, busy students,",
+   "and friends who keep saying 'we should hang out.'"
+  ]
+ },
+ {
+  "id": "s7",
+  "title": "Call to action",
+  "start": 71,
+  "end": 80,
+  "voAt": 0.6,
+  "vo": "Scan the code and take your first walk today. StrollCall.",
+  "caps": [
+   "Scan the code and take your first walk today.",
+   "StrollCall."
+  ]
+ }
+]

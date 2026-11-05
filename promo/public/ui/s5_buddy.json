@@ -1,0 +1,19 @@
+{
+ "start_wall": 1793907580.418035,
+ "duration_s": 12.35,
+ "frames": 734,
+ "events": [
+  {
+   "mark": "hold",
+   "t": 1.51
+  },
+  {
+   "mark": "let go",
+   "t": 4.25
+  },
+  {
+   "mark": "reply",
+   "t": 7.05
+  }
+ ]
+}

@@ -1,0 +1,59 @@
+{
+ "transcript": "20 minutes, quiet streets, coffee at the end.",
+ "solo": {
+  "min": 19.38,
+  "km": 1.5504,
+  "dest": "Black Seed Bagels",
+  "cat": "cafe",
+  "stops": []
+ },
+ "buddy": {
+  "take": 1,
+  "reply": "“Can we stop for a coffee?” Added a coffee stop: Heytea, open when you get there, per OpenStreetMap. It's on your way: no extra time.",
+  "events": [
+   {
+    "mark": "hold",
+    "t": 1.51
+   },
+   {
+    "mark": "let go",
+    "t": 4.25
+   },
+   {
+    "mark": "reply",
+    "t": 7.05
+   }
+  ],
+  "mic": [
+   184.7421875,
+   794.0
+  ]
+ },
+ "invite_btn": [
+  16,
+  619.8203125,
+  358,
+  50.078125
+ ],
+ "a_link_box": [
+  36,
+  247.1328125,
+  318,
+  77.59375
+ ],
+ "im_in_btn": [
+  36,
+  669.7109375,
+  70.3203125,
+  39.1953125
+ ],
+ "pair": {
+  "a": 5.91,
+  "b": 6.02,
+  "gap": 0.11,
+  "shared": 18.81,
+  "meet": "5th Ave & E 12th St",
+  "dest": "Oasis Cafe"
+ },
+ "transcript_take": 1
+}
