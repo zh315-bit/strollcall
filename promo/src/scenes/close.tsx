@@ -7,15 +7,15 @@ import cfg from "../config.json";
 import { Logo } from "./open";
 
 export const S5 = () => {
-  const t = useT(); const e: any = ev.events; const OFF = .3;
-  const hold = e[0].t - OFF, go = e[1].t - OFF, reply = e[2].t - OFF;
+  const t = useT(); const e: any = ev.events; const RATE = 1.3, OFF = 0;   // the real clip, a little fast
+  const hold = e[0].t / RATE, go = e[1].t / RATE, reply = e[2].t / RATE, last = voEnd("s5") + .7;
   const mic = (log as any).buddy.mic;
-  const state = t < hold ? "walking" : t < go ? "listening" : t < reply ? "thinking" : t < 10.9 ? "speaking" : "arrived";
+  const state = t < hold ? "walking" : t < go ? "listening" : t < reply ? "thinking" : t < last ? "speaking" : "arrived";
   const STATES = ["walking", "listening", "thinking", "speaking", "arrived"];
   const asks = [["a coffee stop", wordT("s5", "a coffee")], ["a shorter route", wordT("s5", "a shorter")], ["what’s nearby", wordT("s5", "what")]] as any[];
   return <Abs w={1920} h={1080}><Sky />
     <Phone x={210} y={22}>
-      <OffthreadVideo src={staticFile("ui/s5_buddy.mp4")} trimBefore={Math.round(OFF * 30)} muted style={{ position: "absolute", left: 0, top: 0, width: 390, height: 844 }} />
+      <OffthreadVideo src={staticFile("ui/s5_buddy.mp4")} playbackRate={RATE} muted style={{ position: "absolute", left: 0, top: 0, width: 390, height: 844 }} />
       <Pulse x={mic[0]} y={mic[1]} t={t} a={hold} b={go} r={50} />
       {t > hold - .2 && t < go + .1 && <div style={{ position: "absolute", left: mic[0] - 24, top: mic[1] - 24, width: 48, height: 48, borderRadius: 24, background: "rgba(43,35,64,.3)", border: "3px solid #fff" }} />}
     </Phone>
@@ -62,7 +62,7 @@ export const S6 = () => {
 };
 export const S7 = () => {
   const t = useT(); const placeholder = cfg.shortLink === "[SHORT_LINK]";
-  const q = pop(t, .5), last = voEnd("s7");
+  const q = pop(t, .15);
   return <Abs w={1920} h={1080}><Sky veil={.55} />
     <Abs x={250} y={170} w={540} h={690} style={{ background: "#fff", borderRadius: 48, boxShadow: "0 18px 46px rgba(43,35,64,.22)", transform: `scale(${q})`, display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 40, boxSizing: "border-box" }}>
       <div style={{ position: "relative", width: 440, height: 440 }}>
@@ -73,9 +73,9 @@ export const S7 = () => {
       <div style={{ fontFamily: FB, fontWeight: 700, fontSize: 30, color: C.sub, marginTop: 8 }}>Scan to start</div>
     </Abs>
     <Abs x={860} y={190} w={860} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <Logo t={t} at={.2} s={.95} />
-      <div style={{ marginTop: 24, background: C.yellow, color: C.ink, fontFamily: FH, fontWeight: 600, fontSize: 52, padding: "10px 34px", borderRadius: 60, transform: `scale(${pop(t, .9)})` }}>Less planning. More walking.</div>
-      <div style={{ marginTop: 44, fontFamily: FB, fontWeight: 700, fontSize: 26, color: C.ink, opacity: prog(t, 1.2, .5) }}>A student project, not affiliated with NYU.</div>
+      <Logo t={t} at={.05} s={.95} />
+      <div style={{ marginTop: 24, background: C.yellow, color: C.ink, fontFamily: FH, fontWeight: 600, fontSize: 52, padding: "10px 34px", borderRadius: 60, transform: `scale(${pop(t, .5)})` }}>Less planning. More walking.</div>
+      <div style={{ marginTop: 44, fontFamily: FB, fontWeight: 700, fontSize: 26, color: C.ink, opacity: prog(t, .8, .4) }}>A student project, not affiliated with NYU.</div>
     </Abs>
   </Abs>;
 };

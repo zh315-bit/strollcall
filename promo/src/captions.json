@@ -2,127 +2,127 @@
  {
   "scene": "s1",
   "text": "Ever say 'I should go outside'…",
-  "start": 1.6,
-  "end": 3.887
+  "start": 0.6,
+  "end": 2.597
  },
  {
   "scene": "s1",
   "text": "and then don't? Same.",
-  "start": 3.887,
-  "end": 6.548
+  "start": 2.597,
+  "end": 4.99
  },
  {
   "scene": "s2",
   "text": "Meet StrollCall.",
-  "start": 9,
-  "end": 10.393
+  "start": 5.9,
+  "end": 6.968
  },
  {
   "scene": "s2",
   "text": "Less planning. More walking.",
-  "start": 10.393,
-  "end": 12.554
+  "start": 6.968,
+  "end": 9.083
  },
  {
   "scene": "s3",
   "text": "Tell it what you want in one sentence,",
-  "start": 14.6,
-  "end": 16.504
+  "start": 10,
+  "end": 11.695
  },
  {
   "scene": "s3",
   "text": "like 'twenty minutes, quiet streets, coffee at the end.'",
-  "start": 16.504,
-  "end": 20.465
+  "start": 11.695,
+  "end": 15.598
  },
  {
   "scene": "s3",
   "text": "Type it, or just say it.",
-  "start": 20.8,
-  "end": 23.042
+  "start": 16.095,
+  "end": 17.966
  },
  {
   "scene": "s3",
   "text": "StrollCall plans a real walk from where you are,",
-  "start": 23.377,
-  "end": 26.14
+  "start": 18.081,
+  "end": 20.495
  },
  {
   "scene": "s3",
   "text": "and you're out the door.",
-  "start": 26.14,
-  "end": 27.814
+  "start": 20.495,
+  "end": 22.099
  },
  {
   "scene": "s4",
   "text": "Want company? Send one link.",
-  "start": 32.5,
-  "end": 35.23
+  "start": 24.5,
+  "end": 27.068
  },
  {
   "scene": "s4",
   "text": "Your friend taps 'I'm in', no app needed.",
-  "start": 35.461,
-  "end": 38.968
+  "start": 27.182,
+  "end": 30.388
  },
  {
   "scene": "s4",
   "text": "StrollCall finds a meeting point that's fair by walking time,",
-  "start": 39.303,
-  "end": 43.007
+  "start": 30.885,
+  "end": 33.904
  },
  {
   "scene": "s4",
   "text": "so nobody's left waiting,",
-  "start": 43.007,
-  "end": 44.783
+  "start": 33.904,
+  "end": 35.506
  },
  {
   "scene": "s4",
   "text": "then plans the walk you'll share.",
-  "start": 44.783,
-  "end": 47.246
+  "start": 35.506,
+  "end": 37.807
  },
  {
   "scene": "s5",
   "text": "On the way, your walking buddy has your back.",
-  "start": 50.5,
-  "end": 53.822
+  "start": 38.8,
+  "end": 41.484
  },
  {
   "scene": "s5",
   "text": "Ask for a coffee stop, a shorter route,",
-  "start": 54.157,
-  "end": 56.7
+  "start": 41.598,
+  "end": 43.641
  },
  {
   "scene": "s5",
   "text": "or what's nearby.",
-  "start": 56.7,
-  "end": 58.466
+  "start": 43.641,
+  "end": 45.28
  },
  {
   "scene": "s6",
   "text": "For homebodies, busy students,",
-  "start": 62.6,
-  "end": 64.829
+  "start": 46.6,
+  "end": 48.434
  },
  {
   "scene": "s6",
   "text": "and friends who keep saying 'we should hang out.'",
-  "start": 64.829,
-  "end": 67.919
+  "start": 48.434,
+  "end": 51.501
  },
  {
   "scene": "s7",
   "text": "Scan the code and take your first walk today.",
-  "start": 71.6,
-  "end": 74.62
+  "start": 53.1,
+  "end": 55.598
  },
  {
   "scene": "s7",
   "text": "StrollCall.",
-  "start": 74.955,
-  "end": 76.408
+  "start": 55.875,
+  "end": 57.212
  }
 ]

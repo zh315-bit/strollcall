@@ -13,7 +13,7 @@ MODEL = "eleven_multilingual_v2"
 c = ElevenLabs(api_key=os.environ["ELEVENLABS_API_KEY"])
 def tts(voice, text, out):
     r = c.text_to_speech.convert_with_timestamps(voice, text=text, model_id=MODEL, output_format="mp3_44100_128",
-        voice_settings=VoiceSettings(stability=0.5, similarity_boost=0.8, style=0.15, speed=0.88))
+        voice_settings=VoiceSettings(stability=0.5, similarity_boost=0.8, style=0.15, speed=0.96))
     out.write_bytes(base64.b64decode(r.audio_base_64))
     a = r.alignment
     return {"chars": a.characters, "start": a.character_start_times_seconds, "end": a.character_end_times_seconds}

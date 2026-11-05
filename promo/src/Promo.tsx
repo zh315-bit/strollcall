@@ -9,7 +9,7 @@ import { S4 } from "./scenes/friend";
 import { S5, S6, S7 } from "./scenes/close";
 
 const SCENES: Record<string, React.FC> = { s1: S1, s2: S2, s3: S3, s4: S4, s5: S5, s6: S6, s7: S7 };
-const Fade: React.FC<{ children: any }> = ({ children }) => { const t = useT(); return <AbsoluteFill style={{ opacity: prog(t, 0, .35) }}>{children}</AbsoluteFill>; };
+const Fade: React.FC<{ children: any }> = ({ children }) => { const t = useT(); return <AbsoluteFill style={{ opacity: prog(t, 0, .22) }}>{children}</AbsoluteFill>; };
 const Captions = () => {
   const t = useT(); const c = (caps as any[]).find((x) => t >= x.start && t < x.end);
   if (!c) return null;
@@ -19,7 +19,7 @@ const Captions = () => {
 };
 export const Promo: React.FC<{ captions: boolean }> = ({ captions }) => (
   <AbsoluteFill style={{ background: C.cream }}>
-    {script.map((s) => { const Sc = SCENES[s.id]; return <Sequence key={s.id} from={s.start * 30} durationInFrames={(s.end - s.start) * 30} layout="none"><Fade><Sc /></Fade></Sequence>; })}
+    {script.map((s) => { const Sc = SCENES[s.id]; return <Sequence key={s.id} from={Math.round(s.start * 30)} durationInFrames={Math.round(s.end * 30) - Math.round(s.start * 30)} layout="none"><Fade><Sc /></Fade></Sequence>; })}
     {captions && <Captions />}
   </AbsoluteFill>
 );

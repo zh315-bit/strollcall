@@ -6,7 +6,7 @@
 - To use another track, replace `public/audio/music.mp3` and run `npm run render`. Record its source and license here.
 
 ## Voice
-- **Voice:** ElevenLabs premade voice "Will - Relaxed Optimist" (young, American, conversational), model `eleven_multilingual_v2`, speed 0.88.
+- **Voice:** ElevenLabs premade voice "Will - Relaxed Optimist" (young, American, conversational), model `eleven_multilingual_v2`, speed 0.96.
 - Also tried: "Jessica - Playful, Bright, Warm" and "Sarah - Mature, Reassuring, Confident". Samples are in `assets/vo_samples/` (local only).
 - Commercial use of ElevenLabs output depends on the account's plan. Check the plan before publishing.
 

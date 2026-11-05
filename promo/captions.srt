@@ -1,83 +1,83 @@
 1
-00:00:01,600 --> 00:00:03,887
+00:00:00,600 --> 00:00:02,597
 Ever say 'I should go outside'…
 
 2
-00:00:03,887 --> 00:00:06,548
+00:00:02,597 --> 00:00:04,990
 and then don't? Same.
 
 3
-00:00:09,000 --> 00:00:10,393
+00:00:05,900 --> 00:00:06,968
 Meet StrollCall.
 
 4
-00:00:10,393 --> 00:00:12,554
+00:00:06,968 --> 00:00:09,083
 Less planning. More walking.
 
 5
-00:00:14,600 --> 00:00:16,504
+00:00:10,000 --> 00:00:11,695
 Tell it what you want in one sentence,
 
 6
-00:00:16,504 --> 00:00:20,465
+00:00:11,695 --> 00:00:15,598
 like 'twenty minutes, quiet streets, coffee at the end.'
 
 7
-00:00:20,800 --> 00:00:23,042
+00:00:16,095 --> 00:00:17,966
 Type it, or just say it.
 
 8
-00:00:23,377 --> 00:00:26,140
+00:00:18,081 --> 00:00:20,495
 StrollCall plans a real walk from where you are,
 
 9
-00:00:26,140 --> 00:00:27,814
+00:00:20,495 --> 00:00:22,099
 and you're out the door.
 
 10
-00:00:32,500 --> 00:00:35,230
+00:00:24,500 --> 00:00:27,068
 Want company? Send one link.
 
 11
-00:00:35,461 --> 00:00:38,968
+00:00:27,182 --> 00:00:30,388
 Your friend taps 'I'm in', no app needed.
 
 12
-00:00:39,303 --> 00:00:43,007
+00:00:30,885 --> 00:00:33,904
 StrollCall finds a meeting point that's fair by walking time,
 
 13
-00:00:43,007 --> 00:00:44,783
+00:00:33,904 --> 00:00:35,506
 so nobody's left waiting,
 
 14
-00:00:44,783 --> 00:00:47,246
+00:00:35,506 --> 00:00:37,807
 then plans the walk you'll share.
 
 15
-00:00:50,500 --> 00:00:53,822
+00:00:38,800 --> 00:00:41,484
 On the way, your walking buddy has your back.
 
 16
-00:00:54,157 --> 00:00:56,700
+00:00:41,598 --> 00:00:43,641
 Ask for a coffee stop, a shorter route,
 
 17
-00:00:56,700 --> 00:00:58,466
+00:00:43,641 --> 00:00:45,280
 or what's nearby.
 
 18
-00:01:02,600 --> 00:01:04,829
+00:00:46,600 --> 00:00:48,434
 For homebodies, busy students,
 
 19
-00:01:04,829 --> 00:01:07,919
+00:00:48,434 --> 00:00:51,501
 and friends who keep saying 'we should hang out.'
 
 20
-00:01:11,600 --> 00:01:14,620
+00:00:53,100 --> 00:00:55,598
 Scan the code and take your first walk today.
 
 21
-00:01:14,955 --> 00:01:16,408
+00:00:55,875 --> 00:00:57,212
 StrollCall.

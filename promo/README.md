@@ -1,6 +1,6 @@
 # StrollCall promo video (16:9)
 
-An 80-second promo for new users. Remotion (React), 1920×1080, 30 fps. Not the hackathon video.
+A short promo for new users. Remotion (React), 1920×1080, 30 fps. Not the hackathon video.
 
 ## Re-render
 Everything (captions, `captions.srt`, `script.md`, QR, audio mix, both MP4s, `stills/`) comes from one command:

@@ -3,7 +3,7 @@ import { useT, Abs, Pic, Orange, Blue, C, FH, FB, pop, prog, wordT, easeOut, Sky
 const blink = (t: number, p = 2.7) => t % p < .12;
 export const S1 = () => {
   const t = useT(); const a = wordT("s1", "and then"), same = wordT("s1", "Same");
-  const say = pop(t, 1.7), zoom = 1 + t * .006;
+  const say = pop(t, wordT("s1", "I should") - .1, .35), zoom = 1 + t * .006;
   const breath = Math.sin(t * 2) * .012;
   const droop = prog(t, same, .6);
   const bubbleOut = 1 - prog(t, a + .2, .4);
@@ -33,7 +33,7 @@ export const S2 = () => {
   const t = useT(); const less = wordT("s2", "Less"), more = wordT("s2", "More");
   return <Abs w={1920} h={1080}><Sky veil={.5} />
     <Abs x={0} y={190} w={1920} style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <Logo t={t} at={.7} />
+      <Logo t={t} at={.1} />
       <div style={{ display: "flex", gap: 26, marginTop: 26 }}>
         {[["Less planning.", less], ["More walking.", more]].map(([s, at]: any) => <div key={s} style={{ transform: `scale(${pop(t, at, .4)})`, background: C.yellow, color: C.ink, fontFamily: FH, fontWeight: 600, fontSize: 58, padding: "12px 34px", borderRadius: 60 }}>{s}</div>)}
       </div>
